@@ -1,4 +1,4 @@
-# HOPSI – Startup-Stream Branch Strategy
+# SIMO Intellisense – Startup-Stream Branch Strategy
 
 **Versión:** 1.0 | **Fecha:** 2026-02-24 | **Autor:** HOMESI Engineering
 
@@ -6,7 +6,7 @@
 
 ## Estructura de Ramas
 
-El flujo de trabajo de HOPSI sigue el modelo **Startup-Stream**: ágil en la creación, riguroso en la promoción.
+El flujo de trabajo de SIMO Intellisense sigue el modelo **Startup-Stream**: ágil en la creación, riguroso en la promoción.
 
 ```
 feat/nombre-capacidad  →  staging  →  main  →  production

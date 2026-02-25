@@ -2,9 +2,9 @@
 trigger: always_on
 ---
 
-# PROTOCOLO DE ARQUITECTURA: Global State vs. Database (HOPSI)
+# PROTOCOLO DE ARQUITECTURA: Global State vs. Database (SIMO Intellisense)
 
-**Contexto:** HOPSI utiliza una arquitectura Híbrida basada en Next.js (App Router), PostgreSQL (Supabase RLS) y Zustand (Global State). Para garantizar el rendimiento (evitar lags), la seguridad (evitar fugas de memoria) y la integridad de los datos, todos los agentes de IA y desarrolladores deben respetar la siguiente frontera arquitectónica:
+**Contexto:** SIMO Intellisense utiliza una arquitectura Híbrida basada en Next.js (App Router), PostgreSQL (Supabase RLS) y Zustand (Global State). Para garantizar el rendimiento (evitar lags), la seguridad (evitar fugas de memoria) y la integridad de los datos, todos los agentes de IA y desarrolladores deben respetar la siguiente frontera arquitectónica:
 
 ## 1. GLOBAL STATE MANAGER (Zustand / React Context)
 **Propósito:** Manejo del "Contexto de Sesión" y "Reactividad de la Interfaz". Es la memoria a corto plazo.

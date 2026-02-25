@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-Título del Proyecto: HOMESI Enterprise OS (H-OS) – Plataforma BPO Modular, Multi-tenant y Offshore.
+Título del Proyecto: SIMO Intellisense – Plantaforma BPO Modular, Multi-tenant y Offshore.
 
 1. Propósito General
 Desarrollar una solución empresarial robusta para HOMESI, una compañía de servicios BPO que opera bajo un modelo de Offshore Office en Colombia para clientes en Estados Unidos y Europa. La plataforma debe garantizar que la promesa de valor de HOMESI —"Éxito Ingenieril" y "Certidumbre de Resultados"— sea ejecutable, medible y escalable a través de una gestión rigurosa del talento humano y la ejecución táctica.
@@ -18,7 +18,7 @@ Visualización y Reporting: Multimoneda dinámica (USD, EUR, COP) con conversió
 
 3. Módulos y Estructura Funcional
 
-Módulo 1: Business Plan (El Motor de Ejecución H-OS)
+Módulo 1: Business Plan (El Motor de Ejecución SIMO Intellisense)
 
 
 Propósito: Traducir la estrategia en hitos inevitables y tareas granulares.
@@ -61,4 +61,4 @@ Módulo 5: CEO Playground
 Panel de control estratégico para la toma de decisiones de alta gerencia (aún por definir sub-módulos específicos).
 
 4. Filosofía de Interfaz (UX/UI)
-La aplicación debe reflejar una identidad de ingeniería y precisión. Debe facilitar la visualización de "Cuadros de Mando" (Scoreboards) y asegurar que el usuario sienta que está operando un "Sistema Operativo de Negocios" (H-OS) donde cada acción está "engineered" para el éxito. sensacion de que todos los datos están interconectados, interfaz facil de navegar e intuitiva
+La aplicación debe reflejar una identidad de ingeniería y precisión. Debe facilitar la visualización de "Cuadros de Mando" (Scoreboards) y asegurar que el usuario sienta que está operando un "Sistema Operativo de Negocios" (SIMO Intellisense) donde cada acción está "engineered" para el éxito. sensacion de que todos los datos están interconectados, interfaz facil de navegar e intuitiva

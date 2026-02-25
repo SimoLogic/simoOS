@@ -219,8 +219,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onHomeClick }) => {
                     <div className="w-8 h-8 bg-cobalt-blue rounded-lg flex items-center justify-center shadow-md group-hover:bg-cobalt-blue/80 transition-colors">
                         <Home className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-lg font-bold tracking-widest text-white">
-                        H-OP-SY
+                    <span className="text-base font-bold tracking-tight text-white">
+                        SIMO Intellisense
                     </span>
                 </button>
 

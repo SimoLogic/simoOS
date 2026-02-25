@@ -306,7 +306,7 @@ export const LegalEntityApp: React.FC = () => {
                 <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 shrink-0">
                     <p className="text-[11px] text-slate-400 flex items-center gap-2 uppercase tracking-wider font-semibold">
                         <MapPin className="w-3 h-3" />
-                        Managing {entities.length} active legal entities for HOPSI
+                        Managing {entities.length} active legal entities for SIMO Intellisense
                     </p>
                 </div>
             </div>

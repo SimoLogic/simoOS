@@ -1,6 +1,6 @@
 <div align="center">
 
-# HOPSI — HOMESI Operating System
+# SIMO Intellisense — Enterprise Operating System
 
 **Enterprise BPO Operating Platform | Multi-Tenant | Offshore-Ready**
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-HOPSI is a modular, multi-tenant enterprise operating system designed for HOMESI — a BPO company operating an offshore office in Colombia for clients in the USA and Europe. The platform provides HR management, Business Plan execution, Growthify sales performance tracking, Operations compliance, and Finance P&L oversight in a single cockpit.
+SIMO Intellisense is a modular, multi-tenant enterprise operating system designed for HOMESI — a BPO company operating an offshore office in Colombia for clients in the USA and Europe. The platform provides HR management, Business Plan execution, Growthify sales performance tracking, Operations compliance, and Finance P&L oversight in a single cockpit.
 
 **Design Philosophy:** "Éxito Ingenierial" — every action is engineered for certainty of results.
 
@@ -102,8 +102,8 @@ HOPSI is a modular, multi-tenant enterprise operating system designed for HOMESI
 ### 2. Clone & Install
 
 ```bash
-git clone https://github.com/your-org/hopsi.git
-cd hopsi
+git clone https://github.com/your-org/simo-intellisense.git
+cd simo-intellisense
 npm install
 ```
 
@@ -183,4 +183,4 @@ See full policy → [`docs/BRANCH_STRATEGY.md`](./docs/BRANCH_STRATEGY.md)
 
 ---
 
-*HOPSI — Engineered for Certainty. Built for Scale.*
+*SIMO Intellisense — Engineered for Certainty. Built for Scale.*
