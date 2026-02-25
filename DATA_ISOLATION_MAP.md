@@ -1,6 +1,6 @@
-# HOPSI Data Isolation Map (Multi-Tenant Architecture)
+# SIMO Intellisense Data Isolation Map (Multi-Tenant Architecture)
 
-This document outlines how data isolation is enforced within the HOPSI Business Operating System to ensure that distinct client tenants (Offshore Offices) cannot access or modify each other's data.
+This document outlines how data isolation is enforced within the SIMO Intellisense Business Operating System to ensure that distinct client tenants (Offshore Offices) cannot access or modify each other's data.
 
 ## 1. Multi-Tenant Identifier (TCODE)
 Every record in the system—from Employee Master data to Financial entries—is tagged with a `tenant_code` (TCODE), a unique identifier generated during tenant creation (e.g., `TNT-001`, `TNT-042`).

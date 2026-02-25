@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "H-OP-SY — HOMESI Operating System",
+    title: "SIMO Intellisense — Enterprise Operating System",
     description: "Business Operating System for Mortgage Professionals",
 };
 
