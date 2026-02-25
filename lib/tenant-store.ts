@@ -28,18 +28,16 @@ const mapTenantFromDb = (dbRow: any): Tenant => {
 };
 
 const mapTenantToDb = (tenant: Tenant): any => {
-    const { tenant_id, ...rest } = tenant;
     return {
-        ...rest,
-        tcode: sanitizeStr(tenant_id, 20),
-        // Required fields with length caps
-        name: sanitizeStr((tenant as any).name, 255),
-        // Optional fields: empty string → null in DB
-        contact_email: sanitizeOptStr((tenant as any).contact_email, 255),
-        contact_phone: sanitizeOptStr((tenant as any).contact_phone, 50),
-        address: sanitizeOptStr((tenant as any).address, 500),
-        country: sanitizeOptStr((tenant as any).country, 100),
-        notes: sanitizeOptStr((tenant as any).notes, 1000),
+        tcode: sanitizeStr(tenant.tenant_id, 15),
+        legal_name: (tenant.legal_name ?? "").slice(0, 255),
+        dba_name: sanitizeStr(tenant.dba_name, 255),
+        reporting_currency: tenant.reporting_currency,
+        status: tenant.status ?? true,
+        hq_address: tenant.hq_address ?? {},
+        pocs: tenant.pocs ?? [],
+        account_managers: tenant.account_managers ?? [],
+        created_at: tenant.created_at,
     };
 };
 
