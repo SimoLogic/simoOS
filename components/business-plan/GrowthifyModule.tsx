@@ -5,6 +5,7 @@ import { SalesEngineSetup } from "./growthify/SalesEngineSetup";
 import { SalesHCApp } from "./growthify/SalesHCApp";
 import { PlaybookDesigner } from "./growthify/PlaybookDesigner";
 import { SellerActivityApp } from "./growthify/SellerActivityApp";
+import GrowthifyNowPage from "@/app/(dashboard)/growthify/now/page";
 
 interface GrowthifyModuleProps {
     activeSubModule: string;
@@ -22,6 +23,7 @@ export const GrowthifyModule: React.FC<GrowthifyModuleProps> = ({ activeSubModul
             </div>
 
             <div className="flex-1 overflow-hidden">
+                {activeSubModule === "race-now" && <GrowthifyNowPage />}
                 {activeSubModule === "playbooks" && <PlaybookDesigner />}
                 {activeSubModule === "seller-activity" && <SellerActivityApp />}
                 {activeSubModule === "engine-setup" && <SalesEngineSetup />}

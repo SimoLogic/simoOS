@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
     Save, Plus, Settings, CalendarDays, Key, BookOpen, AlertTriangle,
-    MoreVertical, Edit3, Trash2, ChevronRight, Video, FileText, Share2, Shield, Activity, X
+    MoreVertical, Edit3, Trash2, ChevronRight, Video, FileText, Share2, Shield, Activity, X, Mic
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/lib/tenant-context";
@@ -204,6 +204,13 @@ export const PlaybookDesigner: React.FC = () => {
                     </div>
 
                     <button
+                        className="bg-white border-2 border-purple-100 hover:border-purple-300 hover:bg-purple-50 text-purple-600 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all group"
+                        title="AI Voice Builder (Coming soon)"
+                    >
+                        <Mic className="w-4 h-4 group-hover:animate-pulse" />
+                        <span className="hidden lg:inline">AI Voice Builder</span>
+                    </button>
+                    <button
                         onClick={handleSave}
                         disabled={isSaving || !playbookName || !selectedStrategyId || steps.length === 0}
                         className="bg-cobalt-blue hover:bg-navy-blue hover:shadow-lg hover:shadow-cobalt-blue/30 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none disabled:border border-slate-200 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all"
@@ -245,12 +252,22 @@ export const PlaybookDesigner: React.FC = () => {
                                 <p className="text-sm text-slate-500 max-w-lg mx-auto mb-8 leading-relaxed">
                                     Start engineering the mesh by defining the precise, mandatory sequence of actions needed for this <span className="font-bold text-navy-blue uppercase tracking-widest text-[10px]">{playbookCategory}</span> playbook.
                                 </p>
-                                <button
-                                    onClick={() => openStepModal()}
-                                    className="bg-white border-2 border-slate-200 text-navy-blue font-bold px-6 py-3 rounded-xl text-sm hover:border-cobalt-blue hover:text-cobalt-blue hover:shadow-lg hover:shadow-cobalt-blue/10 transition-all flex items-center gap-2 mx-auto"
-                                >
-                                    <Plus className="w-5 h-5" /> Add Initial Node
-                                </button>
+                                <div className="flex items-center justify-center gap-4 mt-6">
+                                    <button
+                                        onClick={() => openStepModal()}
+                                        className="bg-white border-2 border-slate-200 text-navy-blue font-bold px-6 py-3 rounded-xl text-sm hover:border-cobalt-blue hover:text-cobalt-blue hover:shadow-lg hover:shadow-cobalt-blue/10 transition-all flex items-center gap-2"
+                                    >
+                                        <Plus className="w-5 h-5" /> Add Initial Node
+                                    </button>
+                                    <button
+                                        className="bg-gradient-to-r from-purple-600 to-indigo-600 border-2 border-transparent text-white font-bold px-6 py-3 rounded-xl text-sm hover:shadow-xl hover:shadow-purple-500/30 transition-all flex items-center gap-2 relative overflow-hidden group"
+                                    >
+                                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                                        <Mic className="w-5 h-5 relative z-10" /> 
+                                        <span className="relative z-10">Dictate Playbook to AI</span>
+                                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-navy-blue text-[8px] font-black px-2 py-1 rounded-bl-lg uppercase tracking-widest rotate-12">Soon</span>
+                                    </button>
+                                </div>
                             </div>
                         )}
 
