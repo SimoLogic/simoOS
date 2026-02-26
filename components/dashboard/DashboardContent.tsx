@@ -8,12 +8,14 @@ import { SplitView } from "./SplitView";
 import { PayrollNovedades } from "../hr/PayrollNovedades";
 import { HCMaestro } from "../hr/HCMaestro";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
+import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
 import { GrowthifyModule } from "../business-plan/GrowthifyModule";
 import { BPAssignerModule } from "../business-plan/BPAssignerModule";
 import { BranchMasterApp } from "../operations/branches/BranchMasterApp";
 import { HierarchyMapApp } from "../operations/branches/HierarchyMapApp";
 import { ProformasApp } from "../operations/proformas/ProformasApp";
 import { JobTitleApp } from "../hr/recruitment/JobTitleApp";
+import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
 import {
     LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket
 } from "lucide-react";
@@ -82,6 +84,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <PayrollNovedades />
                 ) : activeSubModule === "performance" ? (
                     <PerformanceModule />
+                ) : activeSubModule === "hr-metrics" ? (
+                    <HRMetricsDashboard />
                 ) : activeSubModule === "bp-assigner" ? (
                     <BPAssignerModule />
                 ) : activeSubModule === "branches-master" ? (
@@ -90,8 +94,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <HierarchyMapApp />
                 ) : activeSubModule === "proformas" ? (
                     <ProformasApp />
-                ) : activeSubModule === "job-titles" ? (
+                ) : activeSubModule === "job-titles" || activeSubModule === "job-description" ? (
                     <JobTitleApp />
+                ) : activeSubModule === "fx-manager" ? (
+                    <FxManagerApp />
                 ) : (
                     <SplitView subModuleId={activeSubModule} />
                 )}

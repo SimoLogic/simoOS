@@ -15,7 +15,7 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "existing-accounts", label: "Existing Accounts" },
         { id: "new-business", label: "New Business" },
         { id: "playbooks", label: "Playbooks" },
-        { id: "performance", label: "Performance" },
+        { id: "performance", label: "HR Metrics" },
     ],
     growthify: [
         { id: "playbooks", label: "Playbook Designer" },
@@ -26,16 +26,17 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     hr: [
         { id: "hc-master", label: "HC Master" },
         { id: "recruitment", label: "Recruitment" },
-        { id: "job-titles", label: "Job Title Manager" },
+        { id: "job-description", label: "Job Description" },
         { id: "onboarding", label: "Onboarding" },
         { id: "payroll", label: "Payroll & Benefits" },
-        { id: "performance", label: "Performance" },
+        { id: "hr-metrics", label: "HR Metrics" },
         { id: "payroll-changes", label: "Payroll Changes" },
     ],
     finance: [
         { id: "pnl", label: "P&L Overview" },
         { id: "invoicing", label: "Invoicing" },
         { id: "projections", label: "Projections" },
+        { id: "fx-manager", label: "FX Manager" },
     ],
     operations: [
         { id: "branches-master", label: "Branch Master" },

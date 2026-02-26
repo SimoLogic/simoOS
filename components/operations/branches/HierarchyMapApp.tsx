@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { BranchNode, BranchEmployee, HierarchyLevel } from "@/lib/branch-types";
 import { getBranchHierarchyAction } from "@/app/actions/branch-actions";
 import { useTenant } from "@/lib/tenant-context";
+import { BranchHeadcountModal } from "./BranchHeadcountModal";
 
 // ─── Margins Stub Popup ───────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ const MarginsPopup: React.FC<{ branchCode: string; onClose: () => void }> = ({ b
 
 // ─── Proforma Popup ───────────────────────────────────────────────────────────
 
-const ProformaPopup: React.FC<{ branchCode: string; onClose: () => void }> = ({ branchCode, onClose }) => {
+const ProformaPopup: React.FC<{ branchCode: string; onClose: () => void; onOpenHC: () => void }> = ({ branchCode, onClose, onOpenHC }) => {
     const rows = [
         { label: "Loan Volume (Units)", value: "—", sub: true },
         { label: "Avg Loan Size", value: "—", sub: true },
@@ -85,17 +86,26 @@ const ProformaPopup: React.FC<{ branchCode: string; onClose: () => void }> = ({ 
                     </div>
                     <button onClick={onClose} className="p-1 hover:bg-white/10 rounded text-white/70 hover:text-white">✕</button>
                 </div>
-                <div className="p-4 divide-y divide-slate-50">
-                    {rows.map(r => (
-                        <div key={r.label} className={cn("flex items-center justify-between py-2 px-2",
-                            r.highlight && "bg-cobalt-blue/5 rounded-lg my-1 px-3")}>
-                            <span className={cn("text-xs", r.bold ? "font-bold text-navy-blue" : "text-slate-500 pl-3")}>
+            <div className="p-4 divide-y divide-slate-50">
+                {rows.map(r => {
+                    const isClickable = r.label.includes("Comp") || r.label.includes("Processor");
+                    return (
+                        <div 
+                            key={r.label} 
+                            onDoubleClick={isClickable ? onOpenHC : undefined}
+                            className={cn(
+                                "flex items-center justify-between py-2 px-2 transition-colors",
+                                r.highlight && "bg-cobalt-blue/5 rounded-lg my-1 px-3",
+                                isClickable && "cursor-pointer hover:bg-slate-100/50"
+                            )}>
+                            <span className={cn("text-xs", r.bold ? "font-bold text-navy-blue" : "text-slate-500 pl-3", isClickable && "underline decoration-slate-300 underline-offset-2")}>
                                 {r.sub && "↳ "}{r.label}
                             </span>
                             <span className={cn("text-xs font-mono", r.bold ? "font-bold text-navy-blue" : "text-slate-400")}>{r.value}</span>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
                     <p className="text-[10px] text-slate-400 italic text-center">
                         ✦ Full editing available in <strong>Operations → Proformas</strong>
@@ -140,6 +150,7 @@ const BranchCard: React.FC<{
     const [expanded, setExpanded] = useState(true);
     const [showMargins, setShowMargins] = useState(false);
     const [showProforma, setShowProforma] = useState(false);
+    const [showHC, setShowHC] = useState(false);
     const cfg = levelConfig[node.hierarchy_level];
     const Icon = cfg.icon;
     const hasChildren = node.children.length > 0;
@@ -148,7 +159,8 @@ const BranchCard: React.FC<{
     return (
         <div className={cn("flex flex-col", depth > 0 && "border-l-2 border-slate-100 ml-6 pl-4")}>
             {showMargins && <MarginsPopup branchCode={node.branch_code} onClose={() => setShowMargins(false)} />}
-            {showProforma && <ProformaPopup branchCode={node.branch_code} onClose={() => setShowProforma(false)} />}
+            {showProforma && <ProformaPopup branchCode={node.branch_code} onClose={() => setShowProforma(false)} onOpenHC={() => { setShowProforma(false); setShowHC(true); }} />}
+            {showHC && <BranchHeadcountModal branchCode={node.branch_code} onClose={() => setShowHC(false)} />}
 
             {/* Card */}
             <div className={cn(
@@ -206,6 +218,10 @@ const BranchCard: React.FC<{
                         <button onClick={() => setShowProforma(true)}
                             className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 rounded-lg transition-colors">
                             <FileText className="w-3 h-3" /> Proforma
+                        </button>
+                        <button onClick={() => setShowHC(true)}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                            <Users className="w-3 h-3" /> HC
                         </button>
                         {(hasChildren || hasEmps) && (
                             <button onClick={() => setExpanded(!expanded)}

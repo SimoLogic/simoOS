@@ -21,7 +21,8 @@ import {
     approveJobTitleAction,
     toggleJobTitleStatusAction,
 } from "@/app/actions/job-title-actions";
-import { getEmployeesAction } from "@/app/actions/hr-actions";
+import { getEmployeesAction, processJobDescriptionAudio } from "@/app/actions/hr-actions";
+import { AudioRecorder } from "@/components/shared/AudioRecorder";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -142,6 +143,7 @@ export const JobTitleApp: React.FC = () => {
     const [jdf, setJdf] = useState<JobDescriptionData>(blankJdfData());
     const [toast, setToast] = useState<{ msg: string; type: "success" | "error" | "warning" } | null>(null);
     const [saving, setSaving] = useState(false);
+    const [processingAudio, setProcessingAudio] = useState(false);
 
     // Search
     const [search, setSearch] = useState("");
@@ -190,6 +192,27 @@ export const JobTitleApp: React.FC = () => {
             load();
         } else {
             showToast(res.message ?? "Save failed.", "error");
+        }
+    };
+
+    const handleAudioRecorded = async (base64Audio: string) => {
+        setProcessingAudio(true);
+        try {
+            const res = await processJobDescriptionAudio(base64Audio);
+            if (res.success && res.data) {
+                setJdf(prev => ({
+                    ...prev,
+                    ...res.data
+                }));
+                showToast("AI successfully extracted job details from audio!", "success");
+            } else {
+                showToast(res.message || "Could not process audio.", "error");
+            }
+        } catch (error) {
+            showToast("Error communicating with AI service.", "error");
+            console.error(error);
+        } finally {
+            setProcessingAudio(false);
         }
     };
 
@@ -384,6 +407,22 @@ export const JobTitleApp: React.FC = () => {
 
                         {/* Scrollable content */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+                            {/* AI Audio Input Section */}
+                            <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 rounded-xl p-4 border border-indigo-100 flex flex-col md:flex-row gap-4 items-center justify-between mb-2">
+                                <div>
+                                    <h4 className="font-bold text-navy-blue text-sm flex items-center gap-1.5">
+                                        <Brain className="w-4 h-4 text-purple-600" /> AI Auto-Fill via Dictation
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                                        Dictate the role requirements, skills, and description. Our AI will automatically extract and structure the data into the form below.
+                                    </p>
+                                </div>
+                                <AudioRecorder
+                                    onAudioRecorded={handleAudioRecorded}
+                                    isProcessing={processingAudio}
+                                />
+                            </div>
 
                             {/* ── Section 1: Requisition ── */}
                             <Section icon={Users} title="Requisition" defaultOpen={true}>

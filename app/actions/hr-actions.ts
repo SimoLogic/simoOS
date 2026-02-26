@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from '@supabase/supabase-js';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FullEmployeeRecord } from "@/lib/hr-types";
+import { JobDescriptionData, blankJdfData } from "@/lib/job-title-types";
 import {
     sanitizeDate, sanitizeStr, sanitizeOptStr, sanitizeNum
 } from "@/lib/utils/sanitizers";
@@ -210,5 +212,56 @@ export async function saveEmployeesAction(employees: FullEmployeeRecord[], tenan
     } catch (error: any) {
         console.error('[HR Action] saveEmployees error:', error);
         throw new Error(`Critical DB Error (Batch Save): ${error.message}`);
+    }
+}
+
+// ─── AI Audio Processing (Gemini) ──────────────────────────────────────────
+
+export async function processJobDescriptionAudio(base64Audio: string): Promise<{ success: boolean; data?: Partial<JobDescriptionData>; message?: string }> {
+    try {
+        const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        if (!apiKey) {
+            throw new Error("Google Generative AI API Key is not configured.");
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `
+            You are an expert HR compensation and recruitment analyst.
+            I will provide you with an audio recording of a hiring manager describing a new job position.
+            Your task is to extract the following information and return it strictly as a valid JSON object matching this structure:
+            
+            {
+              "education_level": "string" (one of: High School, Technical/Associate, Bachelor's, Master's, PhD, None),
+              "specific_profession": "string" (e.g. Industrial Engineer, Business Administration),
+              "years_experience": number (total years required),
+              "soft_skills": ["string", "string"],
+              "specific_knowledge": ["string", "string"],
+              "job_description": "string" (a well-written, professional summary of the role based on the audio)
+            }
+
+            If a piece of information is not mentioned, make your best professional guess based on the context, or leave it blank/0 if completely unknown. Ensure the output is ONLY the raw JSON object, without any markdown formatting or backticks.
+        `;
+
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    mimeType: "audio/webm",
+                    data: base64Audio
+                }
+            }
+        ]);
+
+        const responseText = result.response.text();
+        const cleanJsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const extractedData = JSON.parse(cleanJsonStr);
+
+        return { success: true, data: extractedData };
+
+    } catch (error: any) {
+        console.error('[HR Action] processJobDescriptionAudio error:', error);
+        return { success: false, message: error.message || "Failed to process audio with AI." };
     }
 }

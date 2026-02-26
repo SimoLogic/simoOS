@@ -285,3 +285,118 @@ function sanitizeLeaseData(data: BranchLeaseData): BranchLeaseData {
         utilities_included: Boolean(data.utilities_included),
     };
 }
+
+// ─── BRANCH HEADCOUNT & HIERARCHY ─────────────────────────────────────────────
+
+export interface EmployeeHierarchyNode {
+    eid: string;
+    fullName: string;
+    jobTitle: string;
+    country: "CO" | "US";
+    localSalary: number;
+    convertedSalary: number;
+    displayCurrency: string;
+    directLeader: string | null;
+    children: EmployeeHierarchyNode[];
+}
+
+/** Get branch headcount mapped hierarchically with FX conversion */
+export async function getBranchHeadcountHierarchyAction(
+    tenantId: string, 
+    branchCode: string,
+    reportDate: string = new Date().toISOString().split("T")[0]
+): Promise<{ success: boolean; data?: EmployeeHierarchyNode[]; error?: string }> {
+    if (!tenantId?.trim() || !branchCode?.trim()) return { success: false, error: "Missing tenant or branch code" };
+
+    try {
+        const supabase = getSupabase();
+
+        // 1. Get Tenant Reporting Currency
+        const { data: tenantData } = await supabase
+            .from("dim_tenant")
+            .select("reporting_currency")
+            .eq("tcode", tenantId)
+            .single();
+        const reportingCurrency = tenantData?.reporting_currency || "USD";
+
+        // 2. Get Employee Data for the Branch (only active)
+        const { data: employees, error: empError } = await supabase
+            .from("dim_employee")
+            .select("eid, primer_nombre, primer_apellido, job_title, sub_area, direct_leader, entidad_legal, salario_base")
+            .eq("tenant_id", tenantId)
+            .eq("branch", branchCode)
+            .eq("status", "Active");
+        
+        if (empError) throw empError;
+        if (!employees || employees.length === 0) return { success: true, data: [] };
+
+        // 3. Get Applicable FX Rate (from COP to ReportingCurrency)
+        // Currently assuming 'salario_base' in DB is COP for Local Entities in CO, or USD for US.
+        // We will simplify: If legal entity indicates US, salary is USD. Else COP.
+        let fxRateCopToReport = 1;
+        if (reportingCurrency !== "COP") {
+            const { data: fxData } = await supabase
+                .from("dim_fx_rates")
+                .select("exchange_rate")
+                .eq("tenant_id", tenantId)
+                .eq("currency_from", "COP")
+                .eq("currency_to", reportingCurrency)
+                .lte("effective_date", reportDate)
+                .order("effective_date", { ascending: false })
+                .limit(1)
+                .single();
+            if (fxData && fxData.exchange_rate > 0) {
+                // If exchange rate is saved as 4000 (meaning 4000 COP = 1 target)
+                // then conversion is localSalary / 4000
+                fxRateCopToReport = fxData.exchange_rate; 
+            }
+        }
+
+        // 4. Transform and calculate converted salary
+        const nodes: Record<string, EmployeeHierarchyNode> = {};
+        employees.forEach((e: any) => {
+            const isUS = e.entidad_legal?.toUpperCase().includes("US") || false;
+            const country = isUS ? "US" : "CO";
+            
+            let converted = Number(e.salario_base || 0);
+            if (!isUS && reportingCurrency !== "COP" && fxRateCopToReport > 1) {
+                converted = converted / fxRateCopToReport;
+            } else if (isUS && reportingCurrency === "COP") {
+                // Not standard, but covering base
+                converted = converted * fxRateCopToReport;
+            }
+
+            nodes[e.eid] = {
+                eid: e.eid,
+                fullName: `${e.primer_nombre} ${e.primer_apellido}`,
+                jobTitle: e.job_title || e.sub_area || "Sin Título",
+                country,
+                localSalary: Number(e.salario_base || 0),
+                convertedSalary: converted,
+                displayCurrency: reportingCurrency,
+                directLeader: e.direct_leader || null,
+                children: []
+            };
+        });
+
+        // 5. Build Tree
+        const roots: EmployeeHierarchyNode[] = [];
+        Object.values(nodes).forEach(node => {
+            if (node.directLeader && nodes[node.directLeader]) {
+                nodes[node.directLeader].children.push(node);
+            } else {
+                roots.push(node); // Has no leader inside the branch, or leader is missing from query
+            }
+        });
+
+        // 6. Optional: Sort visually by role hierarchy if possible 
+        // Example BM -> LO -> SA (We can just rely on the leader structure assuming it's correctly mapped)
+
+        return { success: true, data: roots };
+
+    } catch (err: any) {
+        console.error("[Branch Headcount] error:", err.message);
+        return { success: false, error: err.message };
+    }
+}
+
