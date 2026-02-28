@@ -59,6 +59,7 @@ const COLUMNS: ColumnDef[] = [
     { key: "historialLaboral.sub_area", label: "Sub-Area", width: "w-36", group: "Professional" },
     { key: "historialLaboral.centro_costo", label: "Cost Center", width: "w-32", group: "Professional" },
     { key: "historialLaboral.direct_leader", label: "Direct Leader", width: "w-40", group: "Professional" },
+    { key: "direct_leader_id", label: "Leader EID", width: "w-32", group: "Professional" },
     { key: "historialLaboral.tipo_contrato", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
     { key: "historialLaboral.fecha_inicio", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
 
@@ -73,12 +74,16 @@ const COLUMNS: ColumnDef[] = [
     { key: "sst.talla_pantalon", label: "Pants", width: "w-20", group: "SST" },
     { key: "sst.tipo_sangre", label: "Blood", width: "w-20", group: "SST" },
 
-    // Contact
+    // Contact & Geography
     { key: "maestro.email_personal", label: "Personal Email", width: "w-48", group: "Contact" },
     { key: "email_corporativo", label: "Corp Email", width: "w-48", group: "Contact" },
+    { key: "continent_id", label: "Continent", width: "w-32", group: "Contact" },
+    { key: "country_id", label: "Country", width: "w-32", group: "Contact" },
+    { key: "city_id", label: "City", width: "w-32", group: "Contact" },
 
     // Payroll
     { key: "historialLaboral.salario_base", label: "Base Salary", width: "w-40", type: "number", format: (v) => `$${Number(v).toLocaleString("es-CO")}`, group: "Payroll" },
+    { key: "salary_currency", label: "Currency", width: "w-24", group: "Payroll" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

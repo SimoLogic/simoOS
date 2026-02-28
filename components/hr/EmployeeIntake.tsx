@@ -21,6 +21,7 @@ import {
 import { getLocalLegalEntitiesAction } from "@/app/actions/legal-entity-actions";
 import { getActiveBranchesAction } from "@/app/actions/branch-actions";
 import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
+import { getContinentsAction, getCountriesAction, getCitiesAction } from "@/app/actions/geography-actions";
 import type { Branch } from "@/lib/branch-types";
 import type { JobTitleRef } from "@/lib/job-title-types";
 
@@ -165,6 +166,25 @@ const Step1: React.FC<{
         reader.onload = (ev) => onFotoChange(ev.target?.result as string);
         reader.readAsDataURL(file);
     };
+
+    // ── Load Geography ──
+    const [continents, setContinents] = useState<any[]>([]);
+    const [countries, setCountries] = useState<any[]>([]);
+    const [cities, setCities] = useState<any[]>([]);
+
+    useEffect(() => {
+        getContinentsAction().then(setContinents).catch(console.error);
+    }, []);
+
+    useEffect(() => {
+        if (data.continent_id) getCountriesAction(data.continent_id).then(setCountries).catch(console.error);
+        else setCountries([]);
+    }, [data.continent_id]);
+
+    useEffect(() => {
+        if (data.country_id) getCitiesAction(data.country_id).then(setCities).catch(console.error);
+        else setCities([]);
+    }, [data.country_id]);
 
     return (
         <div className="space-y-6">
@@ -331,6 +351,32 @@ const Step1: React.FC<{
                             options={MUNICIPIOS_DANE.map(m => ({ value: m.code, label: `${m.code} – ${m.name}` }))}
                         />
                     </Field>
+                    <Field label="Continent" required error={errors.continent_id}>
+                        <Select
+                            value={data.continent_id || ""}
+                            onChange={e => onChange({ ...data, continent_id: e.target.value, country_id: "", city_id: "" })}
+                            placeholder="— Select —"
+                            options={continents.map(c => ({ value: c.id, label: c.name }))}
+                        />
+                    </Field>
+                    <Field label="Country" required error={errors.country_id}>
+                        <Select
+                            value={data.country_id || ""}
+                            onChange={e => onChange({ ...data, country_id: e.target.value, city_id: "" })}
+                            placeholder={data.continent_id ? "— Select —" : "Select Continent First"}
+                            options={countries.map(c => ({ value: c.id, label: c.name }))}
+                            disabled={!data.continent_id}
+                        />
+                    </Field>
+                    <Field label="City" required error={errors.city_id}>
+                        <Select
+                            value={data.city_id || ""}
+                            onChange={e => set("city_id", e.target.value)}
+                            placeholder={data.country_id ? "— Select —" : "Select Country First"}
+                            options={cities.map(c => ({ value: c.id, label: c.name }))}
+                            disabled={!data.country_id}
+                        />
+                    </Field>
                     <Field label="Home Address" required error={errors.direccion_residencia}
                         hint="Full address – required for ARL registration" className="col-span-2">
                         <textarea
@@ -421,15 +467,26 @@ const Step2: React.FC<{
                             options={entityOptions}
                             disabled={entitiesLoading} />
                     </Field>
-                    <Field label="Base Salary (COP / Month)" required error={errors.salario_base}
-                        hint="Monthly gross salary in Colombian Pesos">
+                    <Field label="Base Salary" required error={errors.salario_base}
+                        hint="Monthly gross salary">
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-semibold">$</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">{data.salary_currency || "$"}</span>
                             <input type="number" value={data.salario_base || ""}
                                 onChange={e => set("salario_base", parseFloat(e.target.value) || 0)}
-                                className={cn(inputCls(errors.salario_base), "pl-7")}
-                                placeholder="1,300,000" min={0} step={50000} />
+                                className={cn(inputCls(errors.salario_base), "pl-9")}
+                                placeholder="5000" min={0} />
                         </div>
+                    </Field>
+                    <Field label="Currency" required error={errors.salary_currency}>
+                        <Select value={data.salary_currency || ""}
+                            onChange={e => set("salary_currency", e.target.value)}
+                            placeholder="— Select —"
+                            options={[
+                                { value: "USD", label: "USD" },
+                                { value: "COP", label: "COP" },
+                                { value: "EUR", label: "EUR" },
+                                { value: "PEN", label: "PEN" },
+                            ]} />
                     </Field>
                     <Field label="Income Tax Procedure" error={errors.procedimiento_renta}
                         hint="Procedure 1 or 2 for withholding tax (retención en la fuente)">
@@ -521,12 +578,12 @@ const Step2: React.FC<{
                             onChange={e => set("project", e.target.value)}
                             className={inputCls()} placeholder="US Mortgage BPO 2025" maxLength={100} />
                     </Field>
-                    <Field label="Direct Leader" required error={errors.direct_leader}
-                        hint="Full name or Employee ID of direct manager" className="col-span-2">
-                        <input type="text" value={data.direct_leader}
-                            onChange={e => set("direct_leader", e.target.value)}
-                            className={inputCls(errors.direct_leader)}
-                            placeholder="Ana Torres / EID-0010" />
+                    <Field label="Direct Leader ID" error={errors.direct_leader_id}
+                        hint="EID of direct manager (e.g. EID-1234)">
+                        <input type="text" value={data.direct_leader_id || ""}
+                            onChange={e => set("direct_leader_id", e.target.value)}
+                            className={inputCls(errors.direct_leader_id)}
+                            placeholder="EID-0001" maxLength={20} />
                     </Field>
                 </div>
             </div>
@@ -859,15 +916,25 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
     const handleSave = async () => {
         setDbError(null);
         const now = new Date().toISOString();
+
+        // Extract extra keys that were temporarily stored in the step states
+        const { continent_id, country_id, city_id, ...cleanMaestro } = maestro as any;
+        const { salary_currency, direct_leader_id, ...cleanHistorial } = historial as any;
+
         const record: FullEmployeeRecord = {
             eid,
             status: "Active",
             tenant_id: currentTenant?.tenant_id,
-            maestro: { ...maestro, created_at: now, updated_at: now },
-            historialLaboral: { ...historial, empleado_id: maestro.numero_identificacion, id_historial: 1, created_at: now },
-            afiliaciones: { ...afiliaciones, empleado_id: maestro.numero_identificacion, updated_at: now },
-            sst: { ...sst, empleado_id: maestro.numero_identificacion },
-            email_corporativo: `${maestro.primer_nombre.toLowerCase()}.${maestro.primer_apellido.toLowerCase()}@homesi.co`,
+            continent_id: continent_id || null,
+            country_id: country_id || null,
+            city_id: city_id || null,
+            salary_currency: salary_currency || null,
+            direct_leader_id: direct_leader_id || null,
+            maestro: { ...cleanMaestro, created_at: now, updated_at: now },
+            historialLaboral: { ...cleanHistorial, empleado_id: cleanMaestro.numero_identificacion, id_historial: 1, created_at: now },
+            afiliaciones: { ...afiliaciones, empleado_id: cleanMaestro.numero_identificacion, updated_at: now },
+            sst: { ...sst, empleado_id: cleanMaestro.numero_identificacion },
+            email_corporativo: `${cleanMaestro.primer_nombre.toLowerCase()}.${cleanMaestro.primer_apellido.toLowerCase()}@homesi.co`,
             foto_url: fotoUrl || undefined,
         };
 

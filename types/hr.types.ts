@@ -125,6 +125,11 @@ export interface FullEmployeeRecord {
     tenant_id?: string;                    // TCODE of the owning tenant (e.g. TNT-001)
     foto_url?: string;
     email_corporativo?: string;
+    continent_id?: string | null;
+    country_id?: string | null;
+    city_id?: string | null;
+    salary_currency?: string | null;
+    direct_leader_id?: string | null;
 }
 
 // ── Reference Data (Lookup Tables) ───────────────────────────────────────────

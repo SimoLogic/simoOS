@@ -193,6 +193,11 @@ export const EXCEL_COLUMN_MAP: Record<string, { key: string; label: string }> = 
     "emergency phone": { key: "sst.telefono_emergencia", label: "Emergency Phone" },
     "corporate email": { key: "email_corporativo", label: "Corporate Email" },
     "status": { key: "status", label: "Status" },
+    "continent": { key: "continent_id", label: "Continent" },
+    "country": { key: "country_id", label: "Country" },
+    "city": { key: "city_id", label: "City" },
+    "currency": { key: "salary_currency", label: "Salary Currency" },
+    "direct leader id": { key: "direct_leader_id", label: "Direct Leader ID" },
 };
 
 // ─── Required Fields for New Hires ───────────────────────────────────────────
@@ -588,6 +593,11 @@ export function buildNewRecord(row: AuditedNewRow, tenantId?: string): FullEmplo
         tenant_id: tenantId,
         status: (r["status"] as FullEmployeeRecord["status"]) || "Active",
         email_corporativo: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@homesi.co`,
+        continent_id: r["continent"] ?? null,
+        country_id: r["country"] ?? null,
+        city_id: r["city"] ?? null,
+        salary_currency: r["currency"] ?? null,
+        direct_leader_id: r["direct leader id"] ?? null,
         maestro: {
             numero_identificacion: (r["id number"] ?? "").trim().slice(0, 20),
             tipo_documento_id: (r["document type"] ?? "").trim() as FullEmployeeRecord["maestro"]["tipo_documento_id"],

@@ -35,7 +35,7 @@ const ConfirmSwitchModal: React.FC<ConfirmSwitchModalProps> = ({ tenant, onConfi
                     {tenant.dba_name}
                 </p>
                 <p className="text-xs text-slate-400 text-center">
-                    {tenant.tenant_id} · {tenant.hq_address.country}
+                    {tenant.tenant_id} · {tenant.hq_address?.country || 'No Country'}
                 </p>
             </div>
             <div className="px-6 py-4 bg-amber-50 border-b border-amber-100">

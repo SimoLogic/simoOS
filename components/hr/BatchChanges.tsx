@@ -59,6 +59,9 @@ const TABLE_COLUMNS: { key: string; label: string; locked: boolean; type?: "text
     { key: "maestro.email_personal", label: "Personal Email", locked: false, type: "text" },
     { key: "maestro.municipio_dane", label: "Municipality", locked: false, type: "text" },
     { key: "maestro.direccion_residencia", label: "Address", locked: false, type: "text" },
+    { key: "continent_id", label: "Continent", locked: false, type: "text" },
+    { key: "country_id", label: "Country", locked: false, type: "text" },
+    { key: "city_id", label: "City", locked: false, type: "text" },
     // Status
     { key: "status", label: "Status", locked: false, type: "select", options: ["Active", "Inactive", "On Leave", "Terminated"] },
     // Laboral (editable)
@@ -77,6 +80,8 @@ const TABLE_COLUMNS: { key: string; label: string; locked: boolean; type?: "text
     { key: "historialLaboral.project", label: "Project", locked: false, type: "text" },
     { key: "historialLaboral.digito_dedicacion", label: "Dedication %", locked: false, type: "number" },
     { key: "historialLaboral.direct_leader", label: "Direct Leader", locked: false, type: "text" },
+    { key: "direct_leader_id", label: "Direct Leader ID", locked: false, type: "text" },
+    { key: "salary_currency", label: "Currency", locked: false, type: "select", options: ["USD", "COP", "EUR", "PEN"] },
     // Social Security (editable)
     { key: "afiliaciones.eps_nombre", label: "EPS", locked: false, type: "select", options: EPS_OPTIONS.map(o => o.nombre) },
     { key: "afiliaciones.afp_nombre", label: "AFP", locked: false, type: "select", options: AFP_OPTIONS.map(o => o.nombre) },
@@ -443,6 +448,8 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                     emp.historialLaboral.direct_leader,
                     emp.historialLaboral.job_title,
                     emp.email_corporativo ?? "",
+                    emp.country_id ?? "",
+                    emp.direct_leader_id ?? "",
                 ].join(" ").toLowerCase();
                 if (!hay.includes(q)) return false;
             }

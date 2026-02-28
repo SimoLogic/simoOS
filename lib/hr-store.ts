@@ -47,6 +47,13 @@ const mapToDb = (record: FullEmployeeRecord) => {
         digito_dedicacion: sanitizeNum(record.historialLaboral.digito_dedicacion, 100),
         direct_leader: sanitizeOptStr(record.historialLaboral.direct_leader)?.slice(0, 255),
 
+        // New Geography & Hierarchy
+        continent_id: sanitizeOptStr(record.continent_id),
+        country_id: sanitizeOptStr(record.country_id),
+        city_id: sanitizeOptStr(record.city_id),
+        salary_currency: sanitizeOptStr(record.salary_currency)?.slice(0, 3),
+        direct_leader_id: sanitizeOptStr(record.direct_leader_id),
+
         // JSONB Fields
         afiliaciones: record.afiliaciones,
         sst: record.sst,
@@ -65,6 +72,11 @@ const mapFromDb = (dbRow: any): FullEmployeeRecord => {
         status: dbRow.status,
         email_corporativo: dbRow.email_corporativo,
         foto_url: dbRow.foto_url,
+        continent_id: dbRow.continent_id,
+        country_id: dbRow.country_id,
+        city_id: dbRow.city_id,
+        salary_currency: dbRow.salary_currency,
+        direct_leader_id: dbRow.direct_leader_id,
 
         maestro: {
             numero_identificacion: dbRow.numero_identificacion,
