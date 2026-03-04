@@ -7,11 +7,15 @@ import { cn } from "@/lib/utils";
 
 interface Supervisor {
     eid: string;
-    fullName: string;
+    fullName?: string;
+    maestro?: {
+        primer_nombre: string;
+        primer_apellido: string;
+    };
 }
 
 interface SupervisorSelectorProps {
-    allEmployees: Supervisor[];
+    allEmployees: any[];
     selectedEid: string;
     onChange: (eid: string) => void;
     placeholder?: string;
@@ -39,12 +43,20 @@ export const SupervisorSelector: React.FC<SupervisorSelectorProps> = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const getFullName = (emp: any) => {
+        if (emp.fullName) return emp.fullName;
+        if (emp.maestro) return `${emp.maestro.primer_nombre || ""} ${emp.maestro.primer_apellido || ""}`.trim();
+        return "Unknown";
+    };
+
     const selected = allEmployees.find(e => e.eid === selectedEid);
 
     const filtered = allEmployees.filter(e => {
         if (e.eid === excludeEid) return false;
         const q = search.toLowerCase();
-        return e.fullName.toLowerCase().includes(q) || e.eid.toLowerCase().includes(q);
+        const fName = getFullName(e);
+        const id = e.eid || "";
+        return fName.toLowerCase().includes(q) || id.toLowerCase().includes(q);
     });
 
     return (
@@ -57,7 +69,7 @@ export const SupervisorSelector: React.FC<SupervisorSelectorProps> = ({
                 )}
             >
                 {selected ? (
-                    <span className="text-[11px] font-medium text-slate-700 truncate">{selected.fullName}</span>
+                    <span className="text-[11px] font-medium text-slate-700 truncate">{getFullName(selected)}</span>
                 ) : (
                     <span className="text-[11px] text-slate-400">{placeholder}</span>
                 )}
@@ -100,7 +112,7 @@ export const SupervisorSelector: React.FC<SupervisorSelectorProps> = ({
                                         <User className="w-3 h-3 text-slate-400" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-semibold">{emp.fullName}</span>
+                                        <span className="font-semibold">{getFullName(emp)}</span>
                                         <span className="text-[9px] text-slate-400">{emp.eid}</span>
                                     </div>
                                 </div>

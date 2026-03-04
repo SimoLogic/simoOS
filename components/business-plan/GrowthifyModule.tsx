@@ -3,7 +3,7 @@
 import React from "react";
 import { SalesEngineSetup } from "./growthify/SalesEngineSetup";
 import { SalesHCApp } from "./growthify/SalesHCApp";
-import { PlaybookDesigner } from "./growthify/PlaybookDesigner";
+import { PlaybookDesignerHub } from "./growthify/PlaybookDesignerHub";
 import { SellerActivityApp } from "./growthify/SellerActivityApp";
 import GrowthifyNowPage from "@/app/(dashboard)/growthify/now/page";
 
@@ -24,7 +24,7 @@ export const GrowthifyModule: React.FC<GrowthifyModuleProps> = ({ activeSubModul
 
             <div className="flex-1 overflow-hidden">
                 {activeSubModule === "race-now" && <GrowthifyNowPage />}
-                {activeSubModule === "playbooks" && <PlaybookDesigner />}
+                {activeSubModule === "playbooks" && <PlaybookDesignerHub />}
                 {activeSubModule === "seller-activity" && <SellerActivityApp />}
                 {activeSubModule === "engine-setup" && <SalesEngineSetup />}
                 {activeSubModule === "sales-hc" && <SalesHCApp />}

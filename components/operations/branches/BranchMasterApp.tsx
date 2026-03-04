@@ -34,8 +34,8 @@ const StateLicensingPopup: React.FC<{
     const [local, setLocal] = useState<string[]>([...selected]);
 
     const filtered = US_STATES.filter(s =>
-        s.code.toLowerCase().includes(query.toLowerCase()) ||
-        s.name.toLowerCase().includes(query.toLowerCase())
+        (s.code || "").toLowerCase().includes(query.toLowerCase()) ||
+        (s.name || "").toLowerCase().includes(query.toLowerCase())
     );
 
     const toggle = (code: string) => {
@@ -554,7 +554,7 @@ export const BranchMasterApp: React.FC = () => {
     const displayed = branches.filter(b => {
         const q = search.toLowerCase();
         const matchSearch = !q ||
-            b.branch_code.toLowerCase().includes(q) ||
+            (b.branch_code || "").toLowerCase().includes(q) ||
             (b.branch_name || "").toLowerCase().includes(q) ||
             (b.branch_manager_name || "").toLowerCase().includes(q);
         const matchLevel = levelFilter === "All" || b.hierarchy_level === levelFilter;

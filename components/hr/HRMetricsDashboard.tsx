@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
     Users, Banknote, UserPlus, UserMinus, Activity,
-    TrendingDown, Download, Filter, RefreshCw
+    TrendingDown, Download, Filter, RefreshCw, BarChart2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-    ResponsiveContainer, PieChart, Pie, Cell, Legend
+    ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, AreaChart, Area
 } from "recharts";
 import { useTenant } from "@/lib/tenant-context";
 import { getEmployees } from "@/lib/hr-store";
@@ -124,6 +124,7 @@ export const HRMetricsDashboard: React.FC = () => {
     // Filters
     const [filterArea, setFilterArea] = useState<string>("All");
     const [filterStatus, setFilterStatus] = useState<string>("Active");
+    const [activeAnalysis, setActiveAnalysis] = useState<string>("headcount");
 
     // Modal State
     const [deepDiveData, setDeepDiveData] = useState<{ title: string; data: FullEmployeeRecord[] } | null>(null);
@@ -238,6 +239,66 @@ export const HRMetricsDashboard: React.FC = () => {
         return ["All", ...Array.from(areas)];
     }, [employees]);
 
+    // Additional Chart Data for New Dashboards
+    const demographicsByGender = useMemo(() => {
+        const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
+        filteredEmployees.forEach(emp => {
+            const gender = emp.maestro.genero || "Unknown";
+            if (!counts[gender]) counts[gender] = { name: gender, value: 0, employees: [] };
+            counts[gender].value += 1;
+            counts[gender].employees.push(emp);
+        });
+        return Object.values(counts);
+    }, [filteredEmployees]);
+
+    const demographicsByContract = useMemo(() => {
+        const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
+        filteredEmployees.forEach(emp => {
+            const contract = emp.historialLaboral.tipo_contrato || "Unknown";
+            if (!counts[contract]) counts[contract] = { name: contract, value: 0, employees: [] };
+            counts[contract].value += 1;
+            counts[contract].employees.push(emp);
+        });
+        return Object.values(counts);
+    }, [filteredEmployees]);
+
+    const socialSecurityRisk = useMemo(() => {
+        const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
+        filteredEmployees.forEach(emp => {
+            const risk = `Risk Level ${emp.afiliaciones?.nivel_riesgo_arl || 0}`;
+            if (!counts[risk]) counts[risk] = { name: risk, value: 0, employees: [] };
+            counts[risk].value += 1;
+            counts[risk].employees.push(emp);
+        });
+        return Object.values(counts).sort((a, b) => b.value - a.value);
+    }, [filteredEmployees]);
+
+    // YTD Headcount Mocks logic (Since we don't have historical arrays, we calculate based on dates)
+    const ytdHeadcountTrend = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let baseHC = 0;
+
+        return months.map((m, idx) => {
+            // Count how many people were active in that month
+            const activeInMonth = employees.filter(e => {
+                const startDate = e.historialLaboral.fecha_inicio ? new Date(e.historialLaboral.fecha_inicio) : new Date();
+                const endDate = e.historialLaboral.fecha_fin ? new Date(e.historialLaboral.fecha_fin) : new Date("2099-01-01");
+                const monthDate = new Date(currentYear, idx, 28);
+                return startDate <= monthDate && endDate >= monthDate;
+            });
+            return {
+                name: m,
+                active_hc: activeInMonth.length,
+                attrition: employees.filter(e => {
+                    if (!e.historialLaboral.fecha_fin) return false;
+                    const d = new Date(e.historialLaboral.fecha_fin);
+                    return d.getFullYear() === currentYear && d.getMonth() === idx;
+                }).length
+            };
+        });
+    }, [employees]);
+
     // ─── Render Helpers ─────────────────────────────────────────────────────
 
     const handleChartDoubleClick = (data: any) => {
@@ -274,6 +335,21 @@ export const HRMetricsDashboard: React.FC = () => {
                     <p className="text-sm text-slate-500 mt-1">Real-time HC Master Data Insights</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1 border border-slate-200 shadow-inner">
+                        <Activity className="w-4 h-4 text-cobalt-blue ml-2" />
+                        <select
+                            value={activeAnalysis}
+                            onChange={(e) => setActiveAnalysis(e.target.value)}
+                            className="bg-transparent border-none text-sm font-bold text-navy-blue py-1.5 focus:ring-0 cursor-pointer min-w-[220px]"
+                        >
+                            <option value="headcount">1. Headcount Growth & Attrition</option>
+                            <option value="salary">2. Salary Distribution & Budgets</option>
+                            <option value="demographics">3. Demographic & Contracts</option>
+                            <option value="operations">4. Ops vs Non-Ops Deploy Rate</option>
+                            <option value="risk">5. Social Security & Risk Matrix</option>
+                        </select>
+                    </div>
+
                     <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
                         <Filter className="w-4 h-4 text-slate-400 ml-2" />
                         <select
@@ -369,125 +445,213 @@ export const HRMetricsDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Charts Area */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Bar Chart - Headcount by Area */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:col-span-2 flex flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-navy-blue">Headcount Distribution by Area</h3>
-                                <p className="text-xs text-slate-500 mt-1">Double-click bars to dive into employee list</p>
+                {/* Charts Area Contextualized by activeAnalysis */}
+
+                {activeAnalysis === "headcount" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:col-span-2 flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-navy-blue">YTD Headcount & Attrition Trend</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Growth progression vs Exits</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 min-h-[300px]">
+                                {loading ? <div className="h-full flex items-center justify-center text-slate-400">Loading...</div> : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={ytdHeadcountTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorHc" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#0047AB" stopOpacity={0.8} />
+                                                    <stop offset="95%" stopColor="#0047AB" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
+                                            <RechartsTooltip content={<CustomTooltip />} />
+                                            <Area type="monotone" dataKey="active_hc" name="Active Headcount" stroke="#002B5B" strokeWidth={3} fillOpacity={1} fill="url(#colorHc)" />
+                                            <Line type="monotone" dataKey="attrition" name="Exits" stroke="#EF4444" strokeWidth={2} dot={{ r: 4 }} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                         </div>
-                        <div className="flex-1 min-h-[300px]">
-                            {loading ? (
-                                <div className="h-full flex items-center justify-center text-slate-400">Loading chart...</div>
-                            ) : hcByArea.length === 0 ? (
-                                <div className="h-full flex items-center justify-center text-slate-400">No data available.</div>
-                            ) : (
+
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold text-navy-blue">HC By Area</h3>
+                                <p className="text-xs text-slate-500 mt-1">Double click bars</p>
+                            </div>
+                            <div className="flex-1 min-h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={hcByArea}
-                                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                                        onDoubleClick={handleChartDoubleClick}
-                                    >
+                                    <BarChart data={hcByArea} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} onDoubleClick={handleChartDoubleClick}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
-                                        <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: '#F1F5F9' }} />
-                                        <Bar
-                                            dataKey="value"
-                                            radius={[4, 4, 0, 0]}
-                                            fill="#002B5B"
-                                            activeBar={{ fill: '#0047AB' }}
-                                        >
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                        <RechartsTooltip content={<CustomTooltip />} />
+                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                             {hcByArea.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
-                            )}
+                            </div>
                         </div>
                     </div>
+                )}
 
-                    {/* Salary Impact Pie Chart */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
-                        <div className="mb-2">
-                            <h3 className="text-lg font-bold text-navy-blue">Payroll Impact</h3>
-                            <p className="text-xs text-slate-500 mt-1">Cost distribution by area</p>
+                {activeAnalysis === "salary" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="mb-2">
+                                <h3 className="text-lg font-bold text-navy-blue">Payroll Distribution & Structure</h3>
+                                <p className="text-xs text-slate-500 mt-1">Cost distribution by area</p>
+                            </div>
+                            <div className="flex-1 min-h-[350px] relative">
+                                {loading ? <div className="h-full flex items-center justify-center">Loading...</div> : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={salaryByArea} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={2} dataKey="value" onClick={handlePieDoubleClick}>
+                                                {salaryByArea.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                                            </Pie>
+                                            <RechartsTooltip content={<CustomTooltip />} />
+                                            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                )}
+                            </div>
                         </div>
-                        <div className="flex-1 min-h-[250px] relative">
-                            {loading ? (
-                                <div className="h-full flex items-center justify-center text-slate-400">Loading chart...</div>
-                            ) : salaryByArea.length === 0 ? (
-                                <div className="h-full flex items-center justify-center text-slate-400">No data available.</div>
-                            ) : (
+
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-navy-blue">Top Budgets (COP)</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Highest consuming areas</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 min-h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart layout="vertical" data={salaryByArea} margin={{ top: 10, right: 10, left: 30, bottom: 0 }} onDoubleClick={handleChartDoubleClick}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                        <RechartsTooltip content={<CustomTooltip />} />
+                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} fill="#10B981" activeBar={{ fill: '#059669' }} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeAnalysis === "demographics" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="mb-2">
+                                <h3 className="text-lg font-bold text-navy-blue">Gender Distribution</h3>
+                                <p className="text-xs text-slate-500 mt-1">Demographic base</p>
+                            </div>
+                            <div className="flex-1 min-h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
-                                        <Pie
-                                            data={salaryByArea}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={90}
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                            cursor="pointer"
-                                            onClick={handlePieDoubleClick}
-                                        >
-                                            {salaryByArea.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                                            ))}
+                                        <Pie data={demographicsByGender} cx="50%" cy="50%" outerRadius={100} dataKey="value" label onClick={handlePieDoubleClick}>
+                                            {demographicsByGender.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />)}
                                         </Pie>
                                         <RechartsTooltip content={<CustomTooltip />} />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            height={36}
-                                            iconType="circle"
-                                            wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
-                                        />
+                                        <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
-                            )}
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="mb-2">
+                                <h3 className="text-lg font-bold text-navy-blue">Contract Types Matrix</h3>
+                                <p className="text-xs text-slate-500 mt-1">Classification of labor agreements</p>
+                            </div>
+                            <div className="flex-1 min-h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={demographicsByContract} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} onDoubleClick={handleChartDoubleClick}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                        <RechartsTooltip content={<CustomTooltip />} />
+                                        <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="#F59E0B" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                {/* Secondary Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Ops vs Non Ops */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                        <div className="mb-6">
-                            <h3 className="text-base font-bold text-navy-blue">Operations vs Supporting Team</h3>
-                            <p className="text-xs text-slate-500 mt-1">Roster composition</p>
-                        </div>
-                        <div className="flex items-center justify-center gap-8 h-[200px]">
-                            {loading ? (
-                                <span className="text-slate-400">Loading...</span>
-                            ) : (
-                                <>
-                                    {opsDistribution.map((item, idx) => (
-                                        <div
-                                            key={item.name}
-                                            className={cn(
-                                                "flex flex-col items-center justify-center p-6 rounded-2xl cursor-pointer hover:shadow-md transition-all border",
-                                                idx === 0 ? "bg-emerald-50 border-emerald-100 w-1/2" : "bg-slate-50 border-slate-200 w-1/2"
-                                            )}
-                                            onDoubleClick={() => setDeepDiveData({ title: item.name, data: item.employees })}
-                                            title="Double click to view employees"
-                                        >
-                                            <p className="text-3xl font-black" style={{ color: idx === 0 ? '#059669' : '#475569' }}>
-                                                {item.value} <span className="text-sm font-medium">({((item.value / filteredEmployees.length) * 100).toFixed(0)}%)</span>
-                                            </p>
-                                            <p className="text-xs font-bold uppercase tracking-widest mt-2 text-slate-500">{item.name}</p>
-                                        </div>
-                                    ))}
-                                </>
-                            )}
+                {activeAnalysis === "operations" && (
+                    <div className="grid grid-cols-1 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                            <div className="mb-6">
+                                <h3 className="text-base font-bold text-navy-blue">Operations vs Supporting Team Deploy Rate</h3>
+                                <p className="text-xs text-slate-500 mt-1">Ratio of direct revenue generating employees against structural support cost.</p>
+                            </div>
+                            <div className="flex items-center justify-center gap-8 h-[200px]">
+                                {loading ? (
+                                    <span className="text-slate-400">Loading...</span>
+                                ) : (
+                                    <>
+                                        {opsDistribution.map((item, idx) => (
+                                            <div
+                                                key={item.name}
+                                                className={cn(
+                                                    "flex flex-col items-center justify-center p-6 rounded-2xl cursor-pointer hover:shadow-md transition-all border",
+                                                    idx === 0 ? "bg-emerald-50 border-emerald-100 w-1/2" : "bg-slate-50 border-slate-200 w-1/2"
+                                                )}
+                                                onDoubleClick={() => setDeepDiveData({ title: item.name, data: item.employees })}
+                                                title="Double click to view employees"
+                                            >
+                                                <p className="text-3xl font-black" style={{ color: idx === 0 ? '#059669' : '#475569' }}>
+                                                    {item.value} <span className="text-sm font-medium">({((item.value / filteredEmployees.length) * 100).toFixed(0)}%)</span>
+                                                </p>
+                                                <p className="text-xs font-bold uppercase tracking-widest mt-2 text-slate-500">{item.name}</p>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
+
+                {activeAnalysis === "risk" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-navy-blue">ARL Risk Exposure Matrix</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Distribution of occupational risk levels</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 min-h-[350px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={socialSecurityRisk}>
+                                        <PolarGrid stroke="#E2E8F0" />
+                                        <PolarAngleAxis dataKey="name" tick={{ fill: '#64748B', fontSize: 12, fontWeight: 'bold' }} />
+                                        <PolarRadiusAxis angle={30} domain={[0, 'auto']} />
+                                        <Radar name="Employees" dataKey="value" stroke="#EF4444" fill="#EF4444" fillOpacity={0.5} />
+                                        <RechartsTooltip content={<CustomTooltip />} />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex items-center justify-center bg-gradient-to-br from-navy-blue to-cobalt-blue text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute opacity-10 -right-10 -bottom-10">
+                                <Activity className="w-64 h-64" />
+                            </div>
+                            <div className="relative z-10 text-center">
+                                <h4 className="text-xl font-black mb-2">Compliance Guardian</h4>
+                                <p className="text-sm font-medium text-white/80 max-w-sm">All SSN and Affiliations are actively mirrored to the core database. Risk Level classes dictate the ARL contributions cost centers.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Modals */}

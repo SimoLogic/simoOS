@@ -24,6 +24,9 @@ const mapTenantFromDb = (dbRow: any): Tenant => {
     return {
         ...dbRow,
         tenant_id: dbRow.tcode,
+        pocs: dbRow.pocs || [],
+        account_managers: dbRow.account_managers || [],
+        hq_address: dbRow.hq_address || {}
     };
 };
 

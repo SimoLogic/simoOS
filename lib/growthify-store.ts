@@ -45,14 +45,33 @@ async function assertEmployeeBelongsToTenant(employeeId: string, tenantId: strin
 
 export async function getSalesStrategies(tenantCode: string): Promise<SalesStrategy[]> {
     if (!tenantCode?.trim()) return [];
-    // Phase 1 Mock — table not yet created
-    return [];
+    const { data, error } = await supabase
+        .from('growthify_strategies')
+        .select('*')
+        .eq('tenant_id', tenantCode);
+    if (error) throw new Error(`[Growthify] getSalesStrategies DB Error: ${error.message}`);
+    return data || [];
 }
 
 export async function saveSalesStrategy(
     strategy: Partial<SalesStrategy> & { tenant_id: string; name: string; purpose: string }
 ): Promise<SalesStrategy> {
-    throw new Error("Cannot save strategy in Phase 1 database schema.");
+    if (!strategy.tenant_id?.trim()) throw new Error("tenant_id is required.");
+
+    const newStrategy = {
+        ...strategy,
+        id: strategy.id || generateUUID(),
+        tenant_id: sanitizeStr(strategy.tenant_id, 50),
+        name: sanitizeStr(strategy.name, 255),
+        purpose: sanitizeOptStr(strategy.purpose, 2000),
+        isActive: strategy.isActive ?? false,
+        created_at: sanitizeStr(strategy.created_at) || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.from('growthify_strategies').upsert([newStrategy]);
+    if (error) throw new Error(`[Growthify] saveSalesStrategy DB Error: ${error.message}`);
+    return newStrategy as unknown as SalesStrategy;
 }
 
 export async function toggleStrategyStatus(id: string): Promise<boolean> {
@@ -60,20 +79,32 @@ export async function toggleStrategyStatus(id: string): Promise<boolean> {
 }
 
 export async function deleteSalesStrategy(id: string): Promise<boolean> {
-    throw new Error("Cannot delete strategy in Phase 1 database schema.");
+    if (!id?.trim()) throw new Error("id is required to delete a sales strategy.");
+    const { error } = await supabase.from('growthify_strategies').delete().eq('id', id);
+    if (error) throw new Error(`[Growthify] deleteSalesStrategy DB Error: ${error.message}`);
+    return true;
 }
 
 // ─── Reward Schemes ───────────────────────────────────────────────────────────
 
 export async function getRewardSchemes(tenantCode: string): Promise<RewardScheme[]> {
     if (!tenantCode?.trim()) return [];
-    // Phase 1 Mock — table not yet created
-    return [];
+    const { data, error } = await supabase
+        .from('growthify_rewards')
+        .select('*')
+        .eq('tenant_id', tenantCode);
+    if (error) throw new Error(`[Growthify] getRewardSchemes DB Error: ${error.message}`);
+    return data || [];
 }
 
 export async function getRewardSchemesForStrategy(strategyId: string): Promise<RewardScheme[]> {
-    // Phase 1 Mock
-    return [];
+    if (!strategyId?.trim()) return [];
+    const { data, error } = await supabase
+        .from('growthify_rewards')
+        .select('*')
+        .eq('strategy_id', strategyId);
+    if (error) throw new Error(`[Growthify] getRewardSchemesForStrategy DB Error: ${error.message}`);
+    return data || [];
 }
 
 export async function saveRewardScheme(
@@ -129,8 +160,13 @@ export async function deleteRewardScheme(id: string): Promise<boolean> {
 
 export async function getPendingRequisitions(tenantCode: string): Promise<ApprovalRequisition[]> {
     if (!tenantCode?.trim()) return [];
-    // Phase 1 Mock — growthify_requisitions table not yet created in DB schema
-    return [];
+    const { data, error } = await supabase
+        .from('growthify_requisitions')
+        .select('*')
+        .eq('tenant_id', tenantCode)
+        .eq('status', 'Pending');
+    if (error) throw new Error(`[Growthify] getPendingRequisitions DB Error: ${error.message}`);
+    return data || [];
 }
 
 export async function createApprovalRequisition(
@@ -207,12 +243,9 @@ export async function evaluateSalesAssignment(employeeId: string, approverNumber
 
 export async function getPlaybooks(tenantCode: string): Promise<Playbook[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_playbooks')
-        .select('*')
-        .eq('tenant_id', tenantCode);
-    if (error) throw new Error(`[Growthify] getPlaybooks DB Error: ${error.message}`);
-    return data || [];
+    // The growthify_playbooks table was migrated to dim_playbook. 
+    // Returning empty array for legacy components to prevent crashes.
+    return [];
 }
 
 export async function savePlaybook(

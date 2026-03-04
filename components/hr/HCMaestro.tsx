@@ -364,10 +364,10 @@ export const HCMaestro: React.FC = () => {
         if (q) {
             list = list.filter(
                 (e) =>
-                    e.eid.toLowerCase().includes(q) ||
-                    e.maestro.primer_nombre.toLowerCase().includes(q) ||
-                    e.maestro.primer_apellido.toLowerCase().includes(q) ||
-                    e.maestro.numero_identificacion.includes(q)
+                    (e.eid ?? "").toLowerCase().includes(q) ||
+                    (e.maestro?.primer_nombre ?? "").toLowerCase().includes(q) ||
+                    (e.maestro?.primer_apellido ?? "").toLowerCase().includes(q) ||
+                    String(e.maestro?.numero_identificacion ?? "").includes(q)
             );
         }
 
@@ -380,8 +380,8 @@ export const HCMaestro: React.FC = () => {
         if (filters.status) list = list.filter(e => e.status === filters.status);
         if (filters.entidad_legal) list = list.filter(e => e.historialLaboral.entidad_legal === filters.entidad_legal);
         if (filters.area) list = list.filter(e => e.historialLaboral.area === filters.area);
-        if (filters.subArea) list = list.filter(e => e.historialLaboral.sub_area?.toLowerCase().includes(filters.subArea.toLowerCase()));
-        if (filters.leader) list = list.filter(e => e.historialLaboral.direct_leader?.toLowerCase().includes(filters.leader.toLowerCase()));
+        if (filters.subArea) list = list.filter(e => (e.historialLaboral.sub_area || "").toLowerCase().includes(filters.subArea.toLowerCase()));
+        if (filters.leader) list = list.filter(e => (e.historialLaboral.direct_leader || "").toLowerCase().includes(filters.leader.toLowerCase()));
         if (filters.costCenter) list = list.filter(e => e.historialLaboral.centro_costo?.includes(filters.costCenter));
         if (filters.contract) list = list.filter(e => e.historialLaboral.tipo_contrato === filters.contract);
         if (filters.salaryType) list = list.filter(e => e.historialLaboral.tipo_salario === filters.salaryType);

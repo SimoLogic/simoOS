@@ -199,8 +199,8 @@ export const LegalEntityApp: React.FC = () => {
     };
 
     const filtered = entities.filter(e =>
-        e.entity_name.toLowerCase().includes(search.toLowerCase()) ||
-        e.entity_country.toLowerCase().includes(search.toLowerCase())
+        (e.entity_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (e.entity_country || "").toLowerCase().includes(search.toLowerCase())
     );
 
     return (

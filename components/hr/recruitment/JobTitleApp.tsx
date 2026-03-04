@@ -233,7 +233,7 @@ export const JobTitleApp: React.FC = () => {
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return jobTitles.filter(jt => jt.title.toLowerCase().includes(q) || jt.area.toLowerCase().includes(q));
+        return jobTitles.filter(jt => (jt.title || "").toLowerCase().includes(q) || (jt.area || "").toLowerCase().includes(q));
     }, [jobTitles, search]);
 
     const subAreas = form.area ? (SUB_AREAS[form.area] ?? []) : [];

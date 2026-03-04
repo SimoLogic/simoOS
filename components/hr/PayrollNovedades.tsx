@@ -90,12 +90,12 @@ const ApprovalFlowApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const filtered = employees.filter((e) => {
         const q = search.toLowerCase();
         return (
-            e.eid.toLowerCase().includes(q) ||
-            e.firstName.toLowerCase().includes(q) ||
-            e.lastName.toLowerCase().includes(q) ||
-            e.position.toLowerCase().includes(q) ||
-            e.area.toLowerCase().includes(q) ||
-            e.tenant_id.toLowerCase().includes(q)
+            (e.eid || "").toLowerCase().includes(q) ||
+            (e.firstName || "").toLowerCase().includes(q) ||
+            (e.lastName || "").toLowerCase().includes(q) ||
+            (e.position || "").toLowerCase().includes(q) ||
+            (e.area || "").toLowerCase().includes(q) ||
+            (e.tenant_id || "").toLowerCase().includes(q)
         );
     });
 

@@ -137,7 +137,7 @@ const TenantRow: React.FC<TenantRowProps> = ({ tenant, onToggle }) => (
         <td className="px-4 py-3">
             <div className="flex items-center gap-1 text-xs text-slate-400">
                 <Globe className="w-3 h-3" />
-                <span>{tenant.hq_address.city}{tenant.hq_address.country ? `, ${tenant.hq_address.country}` : ""}</span>
+                <span>{tenant.hq_address?.city}{tenant.hq_address?.country ? `, ${tenant.hq_address.country}` : ""}</span>
             </div>
         </td>
         <td className="px-4 py-3">
@@ -161,7 +161,7 @@ const TenantRow: React.FC<TenantRowProps> = ({ tenant, onToggle }) => (
         <td className="px-4 py-3">
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
                 <Users className="w-3 h-3" />
-                {tenant.pocs.length} POC{tenant.pocs.length !== 1 ? "s" : ""}
+                {(tenant.pocs || []).length} POC{(tenant.pocs || []).length !== 1 ? "s" : ""}
             </div>
         </td>
         <td className="px-4 py-3">

@@ -35,7 +35,7 @@ export const ColumnFilter: React.FC<ColumnFilterProps> = ({
 
     const filteredOptions = useMemo(() => {
         const q = search.toLowerCase();
-        return options.filter(opt => opt.toLowerCase().includes(q));
+        return options.filter(opt => (opt || "").toLowerCase().includes(q));
     }, [options, search]);
 
     const toggleOption = (opt: string) => {

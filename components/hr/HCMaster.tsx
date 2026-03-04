@@ -283,10 +283,10 @@ export const HCMaestro: React.FC = () => {
         const q = search.toLowerCase();
         if (q) {
             list = list.filter(e =>
-                e.eid.toLowerCase().includes(q) ||
-                e.maestro.primer_nombre.toLowerCase().includes(q) ||
-                e.maestro.primer_apellido.toLowerCase().includes(q) ||
-                e.maestro.numero_identificacion.includes(q)
+                (e.eid ?? "").toLowerCase().includes(q) ||
+                (e.maestro?.primer_nombre ?? "").toLowerCase().includes(q) ||
+                (e.maestro?.primer_apellido ?? "").toLowerCase().includes(q) ||
+                String(e.maestro?.numero_identificacion ?? "").includes(q)
             );
         }
         if (filterArea) list = list.filter(e => e.historialLaboral.area === filterArea);

@@ -34,6 +34,10 @@ export interface EmpleadoMaestro {
     email_personal: string;                  // VARCHAR(100) – REQUIRED
     municipio_dane: string;                  // VARCHAR(5) – Código DANE 5 dígitos
     direccion_residencia: string;            // TEXT – REQUIRED
+    // Geography (linked to dim_continent, dim_country, dim_city)
+    continent_id?: string | null;
+    country_id?: string | null;
+    city_id?: string | null;
     // System
     created_at: string;
     updated_at: string;
@@ -68,7 +72,10 @@ export interface HistorialLaboral {
     project: string;                         // VARCHAR(100)
     digito_dedicacion: number;               // INT – % dedicación (0-100)
     direct_leader: string;                   // VARCHAR(100) – REQUIRED
+    direct_leader_id?: string | null;        // FK → dim_employee.eid (optional)
     job_title: string;                       // VARCHAR(100) – Optional, role label
+    // Monetary
+    salary_currency?: string | null;         // "COP", "USD", "EUR", "PEN"
     // System
     created_at?: string;
 }
@@ -281,6 +288,9 @@ export const blankMaestro = (): Omit<EmpleadoMaestro, "created_at" | "updated_at
     email_personal: "",
     municipio_dane: "",
     direccion_residencia: "",
+    continent_id: null,
+    country_id: null,
+    city_id: null,
 });
 
 export const blankHistorial = (empleado_id = ""): Omit<HistorialLaboral, "id_historial" | "created_at"> => ({
@@ -303,7 +313,9 @@ export const blankHistorial = (empleado_id = ""): Omit<HistorialLaboral, "id_his
     project: "",
     digito_dedicacion: 100,
     direct_leader: "",
+    direct_leader_id: null,
     job_title: "",
+    salary_currency: null,
 });
 
 export const blankAfiliaciones = (empleado_id = ""): EmpleadoAfiliaciones => ({
