@@ -45,14 +45,15 @@ export async function saveFxRateAction(
             tenant_id: validatedData.tenant_id,
             effective_date: validatedData.effective_date,
             exchange_rate: validatedData.exchange_rate,
-            currency_from: validatedData.currency_from,
-            currency_to: validatedData.currency_to
+            currency_from: validatedData.currency_from || "COP",
+            currency_to: validatedData.currency_to || "USD"
         });
 
         return { success: true };
     } catch (err: any) {
         if (err instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + err.errors.map(e => e.message).join(", ") };
+            const zodErr = err as any;
+            return { success: false, error: "Validation Error: " + zodErr.errors.map((e: any) => e.message).join(", ") };
         }
         console.error("[Finance Action] saveFxRate error:", err.message);
         return { success: false, error: err.message };
