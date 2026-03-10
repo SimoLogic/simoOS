@@ -18,6 +18,7 @@ Al recibir la orden de este protocolo, debes ejecutar estos 4 pasos en orden, si
 ### 2. Oficialización y Migración (SIMO-DEV)
 * **Regla:** Si hallaste código SQL suelto, empaquétalo inmediatamente en `supabase/migrations/` dándole el número consecutivo correspondiente (ej. `00014_feature_name.sql`).
 * **Acción:** Ejecuta `npx supabase db push` para inyectar estos cambios en el laboratorio (DEV).
+* **Tipado:** Inmediatamente después del push, ejecuta `npm run generate-types` para sincronizar los tipos de TypeScript con la nueva estructura de base de datos.
 * *Garantía:* Asegúrate de que las llaves foráneas y el esquema sean estables. Si no hay cambios de BD, documenta que la BD ya estaba sincronizada.
 
 ### 3. Empaquetado de Código (Control de Versiones)

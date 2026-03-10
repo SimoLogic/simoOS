@@ -1,0 +1,11 @@
+{
+    "HR": {
+        "title": "Human Resources",
+        "employee_list": "Employee List",
+        "add_employee": "Add Employee"
+    },
+    "Playbook": {
+        "designer": "Playbook Designer",
+        "approval": "Approval Pending"
+    }
+}
