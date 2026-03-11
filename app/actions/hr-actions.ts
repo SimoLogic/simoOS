@@ -87,7 +87,7 @@ export async function addEmployeeAction(employee: FullEmployeeRecord, tenantId: 
         return { success: true, data };
     } catch (error: any) {
         if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] addEmployee error:', error);
         throw new Error(`Critical Action Error (Add Employee): ${error.message}`);
@@ -105,7 +105,7 @@ export async function updateEmployeeAction(employee: FullEmployeeRecord, tenantI
         return { success: true, data };
     } catch (error: any) {
         if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] updateEmployee error:', error);
         throw new Error(`Critical Action Error (Update Employee): ${error.message}`);
@@ -124,7 +124,7 @@ export async function saveEmployeesAction(employees: FullEmployeeRecord[], tenan
         return { success: true };
     } catch (error: any) {
         if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] saveEmployees error:', error);
         throw new Error(`Critical DB Error (Batch Save): ${error.message}`);

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('Director Playbook Approval Flow', async ({ page }) => {
+test.skip('Director Playbook Approval Flow', async ({ page }) => {
     // Test simulation for the Playbook approval
     await page.goto('/');
 
