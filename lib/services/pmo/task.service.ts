@@ -137,6 +137,25 @@ export async function getTaskByIdService(
   return data ? mapTaskFromDb(data) : null;
 }
 
+export async function searchTasksService(
+  queryParam: string,
+  orgId: string,
+  limit: number = 10
+): Promise<PmoTask[]> {
+  if (!queryParam?.trim() || !orgId?.trim()) return [];
+  const db = getPmoDB();
+
+  const { data, error } = await db
+    .from("pmo_tasks")
+    .select("*")
+    .eq("org_id", orgId)
+    .ilike("title", `%${queryParam}%`)
+    .limit(limit);
+
+  throwIfDbError(error, "searchTasksService");
+  return (data ?? []).map(mapTaskFromDb);
+}
+
 export async function createTaskService(input: CreateTaskInput): Promise<PmoTask> {
   const db = getPmoDB();
 

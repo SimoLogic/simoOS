@@ -39,7 +39,18 @@ interface PmoStore extends PmoUIState {
   // ─── Search ──────────────────────────────────────────────────────────
   globalSearchQuery: string;
   setGlobalSearchQuery: (query: string) => void;
-  
+
+  // ─── Filters ─────────────────────────────────────────────────────────
+  filterStatus: string | null;
+  setFilterStatus: (status: string | null) => void;
+  filterAssignee: string | null;
+  setFilterAssignee: (assigneeId: string | null) => void;
+
+  // ─── Optimistic Updates ──────────────────────────────────────────────
+  optimisticTasks: Record<string, Partial<import("@/types/pmo.types").PmoTask>>;
+  setOptimisticTaskUpdate: (taskId: string, updates: Partial<import("@/types/pmo.types").PmoTask>) => void;
+  clearOptimisticTaskUpdate: (taskId: string) => void;
+
   // ─── Reset ───────────────────────────────────────────────────────────
   resetPmoStore: () => void;
 }
@@ -50,6 +61,9 @@ const INITIAL_STATE: PmoUIState & {
   sidePeekTaskId: string | null;
   isFilterPanelOpen: boolean;
   globalSearchQuery: string;
+  filterStatus: string | null;
+  filterAssignee: string | null;
+  optimisticTasks: Record<string, Partial<import("@/types/pmo.types").PmoTask>>;
 } = {
   // PmoUIState
   activeView:          "grid",
@@ -60,11 +74,13 @@ const INITIAL_STATE: PmoUIState & {
   widgetCount:         0,
   isHPCMode:           false,
   
-  // UI Flags
   isSidePeekOpen:      false,
   sidePeekTaskId:      null,
   isFilterPanelOpen:   false,
   globalSearchQuery:   "",
+  filterStatus:        null,
+  filterAssignee:      null,
+  optimisticTasks:     {},
 };
 
 // ─── STORE ────────────────────────────────────────────────────────────────
@@ -127,6 +143,40 @@ export const usePmoStore = create<PmoStore>()(
       // ── Search ────────────────────────────────────────────────────────
       setGlobalSearchQuery: (query) =>
         set({ globalSearchQuery: query }, false, "pmo/setGlobalSearchQuery"),
+
+      // ── Filters ───────────────────────────────────────────────────────
+      setFilterStatus: (status) =>
+        set({ filterStatus: status }, false, "pmo/setFilterStatus"),
+      
+      setFilterAssignee: (assigneeId) =>
+        set({ filterAssignee: assigneeId }, false, "pmo/setFilterAssignee"),
+
+      // ── Optimistic Updates ──────────────────────────────────────────────
+      setOptimisticTaskUpdate: (taskId, updates) =>
+        set(
+          (state) => ({
+            optimisticTasks: {
+              ...state.optimisticTasks,
+              [taskId]: {
+                ...(state.optimisticTasks[taskId] || {}),
+                ...updates,
+              },
+            },
+          }),
+          false,
+          "pmo/setOptimisticTaskUpdate"
+        ),
+
+      clearOptimisticTaskUpdate: (taskId) =>
+        set(
+          (state) => {
+            const newOptimisticTasks = { ...state.optimisticTasks };
+            delete newOptimisticTasks[taskId];
+            return { optimisticTasks: newOptimisticTasks };
+          },
+          false,
+          "pmo/clearOptimisticTaskUpdate"
+        ),
 
       // ── Reset (al cambiar de módulo) ──────────────────────────────────
       resetPmoStore: () =>

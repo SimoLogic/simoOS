@@ -15,6 +15,7 @@ import {
   moveTaskService,
   deleteTaskService,
   batchDeleteTasksService,
+  searchTasksService,
 } from "@/lib/services/pmo/task.service";
 import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
 import { validateFieldValue } from "@/lib/pmo/field-engine";
@@ -105,6 +106,19 @@ export async function getTaskAction(
     return { success: true, data: task };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function searchTasksAction(
+  query: string,
+  orgId: string
+): Promise<PmoTask[]> {
+  if (!query?.trim() || !orgId?.trim()) return [];
+  try {
+    return await searchTasksService(query, orgId, 10);
+  } catch (err: unknown) {
+    console.error("[PMO Action] searchTasks:", err);
+    return [];
   }
 }
 
