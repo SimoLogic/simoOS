@@ -177,11 +177,26 @@ const TaskSection: React.FC<{ title: string, color: string, borderColor: string,
             </div>
             
             <div className="flex flex-col">
-                {tasks.map(task => (
-                    <div key={task.id} className="flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors group">
+                {tasks.map(task => {
+                    const today = new Date();
+                    let isCriticalSLA = false;
+                    
+                    if (task.dueDate && task.status !== "done") {
+                        const due = new Date(task.dueDate);
+                        const daysRemaining = countWorkdays(today, due, "CO");
+                        isCriticalSLA = daysRemaining <= 1 || today > due;
+                    }
+
+                    return (
+                    <div key={task.id} className={`flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors group ${isCriticalSLA ? 'bg-rose-50/40 hover:bg-rose-50 border-rose-100' : ''}`}>
                         <div className="flex flex-col gap-1 w-[40%]">
-                            <span className="text-sm font-semibold text-vibe-dark truncate group-hover:text-vibe-blue transition-colors">
+                            <span className="text-sm font-semibold text-vibe-dark truncate group-hover:text-vibe-blue transition-colors flex items-center gap-2">
                                 {task.title}
+                                {isCriticalSLA && (
+                                   <span className="flex items-center gap-1 text-[10px] text-action-red font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200 shadow-sm" title="SLA Breach Risk < 24h">
+                                       <AlertCircle className="w-3 h-3" /> SLA
+                                   </span>
+                                )}
                             </span>
                             <div className="flex items-center gap-2">
                                 <div 
@@ -199,12 +214,12 @@ const TaskSection: React.FC<{ title: string, color: string, borderColor: string,
                             <div className="w-[140px]">
                                 {task.priority ? <PriorityBadge priority={task.priority} showLabel /> : <span className="text-gray-400 text-xs">Sin prioridad</span>}
                             </div>
-                            <div className="w-[100px] text-right text-xs font-semibold text-gray-500">
+                            <div className={`w-[100px] text-right text-xs font-semibold ${isCriticalSLA ? 'text-action-red' : 'text-gray-500'}`}>
                                 {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Sin fecha'}
                             </div>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         </section>
     );

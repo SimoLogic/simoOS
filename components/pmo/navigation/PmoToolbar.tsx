@@ -5,6 +5,7 @@ import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw } from "lucide-
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { ImportExportMenu } from "@/components/pmo/navigation/ImportExportMenu";
 import { KeyboardShortcuts } from "@/components/pmo/shared/KeyboardShortcuts";
+import { NotificationCenter } from "@/components/pmo/navigation/NotificationCenter";
 
 interface PmoToolbarProps {
   boardName: string;
@@ -49,6 +50,8 @@ export function PmoToolbar({ boardName, workspaceName = "Workspace", onNewTaskCl
         <div className="flex items-center gap-2">
           {/* Invisible Global Listener for Time Travel */}
           <KeyboardShortcuts />
+          
+          <NotificationCenter orgId="org-1" />
           
           <ImportExportMenu orgId="org-1" boardId="b1" />
           

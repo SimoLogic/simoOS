@@ -13,6 +13,18 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import { guardDelete, guardBatchDelete, type DeleteVector } from "@/lib/pmo/task-guard";
 import { triggerOutgoingWebhook } from "@/lib/pmo/outgoing-webhook";
 import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
+import { Queue } from "bullmq";
+
+// ─── QUEUE INJECTION ─────────────────────────────────────────────────────────
+// Redis connection is defined globally in our bullmq worker/queue setup. 
+// Standard setup assumes REDIS_URL from Env.
+const automationQueue = new Queue("pmo-automations", {
+  connection: {
+    url: process.env.REDIS_URL,
+    // Upstash specific tls if rediss
+    tls: process.env.REDIS_URL?.startsWith("rediss") ? { rejectUnauthorized: false } : undefined
+  }
+});
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -210,7 +222,7 @@ export async function updateTaskService(
   // Capturar estado actual ANTES del update (para detectar cambio a 'done')
   const { data: current } = await db
     .from("pmo_tasks")
-    .select("status, is_protected, source_playbook_id, source_playbook_task_id, occurrence_index, title")
+    .select("status, is_protected, source_playbook_id, source_playbook_task_id, occurrence_index, title, due_date")
     .eq("id", taskId)
     .eq("org_id", orgId)
     .single();
@@ -281,6 +293,27 @@ export async function updateTaskService(
       completedBy:          userId ?? "unknown",
       title:                updated.title,
     });
+  }
+
+  // ── SPRINT 10: AUTOMATION TRIGGER ENGINE (BullMQ) ──
+  // If anything meaningful changed, enqueue a trigger evaluation job.
+  // This keeps "If A then B" computation OFF the main response thread.
+  if (Object.keys(patch).length > 1) { // more than just updated_at
+    automationQueue.add(
+      "evaluate_triggers",
+      {
+        taskId,
+        orgId,
+        userId: userId ?? "system",
+        changes: {
+          oldStatus: current?.status,
+          newStatus: input.status,
+          oldDueDate: current?.due_date,
+          newDueDate: input.dueDate
+        }
+      },
+      { removeOnComplete: true, removeOnFail: false }
+    ).catch(e => console.error("[PMO Automation] Failed to enqueue trigger:", e));
   }
 
   return updated;

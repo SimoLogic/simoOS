@@ -181,11 +181,20 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const row = rows[virtualRow.index];
             const isHeader = row.type === 'header';
+            
+            let isCriticalSLA = false;
+            const today = new Date();
+            if (!isHeader && row.task.dueDate && row.task.status !== "done") {
+               const due = new Date(row.task.dueDate);
+               // Simple approximation assuming countWorkdays has already been imported
+               // Need to import WorkdayHelper at top level.
+               isCriticalSLA = today > due || (due.getTime() - today.getTime()) < 86400000;
+            }
 
             return (
               <div
                 key={virtualRow.key}
-                className="absolute top-0 left-0 w-full flex items-center border-b border-gray-100 hover:bg-gray-50/50"
+                className={`absolute top-0 left-0 w-full flex items-center border-b hover:bg-gray-50/50 ${isCriticalSLA ? 'bg-rose-50/40 border-rose-100' : 'border-gray-100'}`}
                 style={{
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
@@ -202,13 +211,18 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
                     <div className="flex items-center w-full h-full group/row">
                         {/* Color Strip for Task Row */}
                         <div className="w-1 shrink-0 h-full" style={{ backgroundColor: row.groupColor }}></div>
-                        <div className="w-9 shrink-0 h-full border-r border-gray-100 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <div className={`w-9 shrink-0 h-full border-r border-gray-100 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity ${isCriticalSLA ? 'bg-rose-50' : ''}`}>
                             <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-vibe-blue focus:ring-vibe-blue" />
                         </div>
 
                         {/* Task Title Cell */}
-                        <div className="w-80 h-full border-r border-gray-100 shrink-0">
+                        <div className="w-80 h-full border-r border-gray-100 shrink-0 flex items-center">
                             <TextCell task={row.task} />
+                            {isCriticalSLA && (
+                                <span className="ml-2 flex items-center shrink-0 gap-1 text-[10px] text-action-red font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200 shadow-sm" title="SLA Breach Risk < 24h">
+                                   <AlertCircle className="w-3 h-3" /> SLA
+                                </span>
+                            )}
                         </div>
                         
                         {/* Assignee Cell */}
