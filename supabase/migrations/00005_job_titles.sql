@@ -7,7 +7,7 @@
 
 -- 1. JOB TITLE CATALOG
 CREATE TABLE IF NOT EXISTS public.dim_job_title (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id           VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
 
     -- Core Identity

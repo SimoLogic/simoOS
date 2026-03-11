@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SIMO Intellisense — Docker Compose
+# Sprint 1 PMO Infrastructure
+#
+# Servicios:
+#   • postgres  — PostgreSQL 16 (Source of Truth, mismo motor que Supabase)
+#   • redis     — Redis 7 (Speed Layer + BullMQ para motor de frecuencias PMO)
+#
+# Uso:
+#   docker compose up -d           → Levanta todos los servicios
+#   docker compose down            → Para y elimina contenedores
+#   docker compose logs -f         → Ver logs en tiempo real
+#   docker compose ps              → Ver estado de servicios
+#
+# IMPORTANTE: Este docker-compose es para desarrollo local.
+# Producción usa Supabase (managed PostgreSQL) + Upstash Redis.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  # ─── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: simo_pmo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-simo_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-simo_dev_secret}
+      POSTGRES_DB:       ${POSTGRES_DB:-simo_intellisense}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Seed scripts — ejecutados en orden alfabético al inicializar
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-simo_dev} -d ${POSTGRES_DB:-simo_intellisense}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 20s
+    networks:
+      - simo_network
+
+  # ─── Redis 7 (BullMQ + Speed Layer) ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: simo_pmo_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 10s
+    networks:
+      - simo_network
+
+  # ─── Redis Commander (UI para inspeccionar colas BullMQ) ─────────────────────
+  # Solo disponible en development — NO incluir en producción
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: simo_redis_ui
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "${REDIS_UI_PORT:-8081}:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - simo_network
+    profiles:
+      - dev-tools  # Solo levantar con: docker compose --profile dev-tools up -d
+
+# ─── Volumes ────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: simo_postgres_data
+  redis_data:
+    name: simo_redis_data
+
+# ─── Network ────────────────────────────────────────────────────────────────────
+networks:
+  simo_network:
+    name: simo_intellisense_network
+    driver: bridge

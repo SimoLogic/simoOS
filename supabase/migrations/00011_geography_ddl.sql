@@ -6,19 +6,19 @@
 
 -- 1. Create Geography Reference Tables
 CREATE TABLE IF NOT EXISTS public.dim_continent (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS public.dim_country (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     continent_id UUID REFERENCES public.dim_continent(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL UNIQUE,
     currency_code VARCHAR(3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.dim_city (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     country_id UUID REFERENCES public.dim_country(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     UNIQUE(country_id, name)

@@ -16,13 +16,15 @@ import { HierarchyMapApp } from "../operations/branches/HierarchyMapApp";
 import { ProformasApp } from "../operations/proformas/ProformasApp";
 import { JobTitleApp } from "../hr/recruitment/JobTitleApp";
 import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
+import { MyPlanShell } from "../pmo/MyPlan/MyPlanShell";
 import {
-    LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket
+    LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
 } from "lucide-react";
 
 const moduleConfig: Record<ModuleId, { label: string; icon: React.ElementType; color: string }> = {
     "business-plan": { label: "Business Plan", icon: LayoutDashboard, color: "text-cobalt-blue" },
     growthify: { label: "Growthify", icon: Rocket, color: "text-purple-500" },
+    pmo: { label: "PMO", icon: LayoutGrid, color: "text-[#6161FF]" },
     hr: { label: "Human Resources", icon: Users, color: "text-emerald-500" },
     finance: { label: "Finance", icon: LineChart, color: "text-amber-500" },
     operations: { label: "Operations", icon: Briefcase, color: "text-violet-500" },
@@ -76,7 +78,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
 
             {/* Sub-module Content — fills remaining height */}
             <div className="flex-1 min-h-0 overflow-hidden">
-                {activeModule === "growthify" ? (
+                {activeModule === "pmo" ? (
+                    // PMO has its own full-featured UI — renders MyPlanShell directly
+                    <MyPlanShell />
+                ) : activeModule === "growthify" ? (
                     <GrowthifyModule activeSubModule={activeSubModule} />
                 ) : activeSubModule === "hc-master" ? (
                     <HCMaestro />

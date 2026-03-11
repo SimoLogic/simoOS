@@ -5,7 +5,7 @@
 
 -- 1. GROWTHIFY STRATEGIES
 CREATE TABLE IF NOT EXISTS public.growthify_strategies (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     purpose TEXT NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.growthify_strategies (
 
 -- 2. GROWTHIFY REWARDS SCHEMES
 CREATE TABLE IF NOT EXISTS public.growthify_rewards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     strategy_id UUID REFERENCES public.growthify_strategies(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.growthify_rewards (
 
 -- 3. GROWTHIFY REQUISITIONS (Approvals)
 CREATE TABLE IF NOT EXISTS public.growthify_requisitions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     target_id VARCHAR(255) NOT NULL, -- ID of the Reward, Assignment, etc.
     module VARCHAR(100) NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.growthify_requisitions (
 
 -- 4. GROWTHIFY HC ASSIGNMENTS
 CREATE TABLE IF NOT EXISTS public.growthify_assignments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     employee_id VARCHAR(15) REFERENCES public.dim_employee(eid) ON DELETE CASCADE,
     strategies JSONB DEFAULT '[]'::jsonb, -- Array of strategy IDs
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.growthify_playbooks (
 
 -- 6. GROWTHIFY SELLER ACTIVITY LOGS
 CREATE TABLE IF NOT EXISTS public.growthify_seller_activity (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     employee_id VARCHAR(15) REFERENCES public.dim_employee(eid) ON DELETE CASCADE,
     playbook_id VARCHAR(50) REFERENCES public.growthify_playbooks(id) ON DELETE CASCADE,

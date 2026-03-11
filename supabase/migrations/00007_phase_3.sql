@@ -16,7 +16,7 @@
 
 CREATE TABLE IF NOT EXISTS public.employee_approvers (
     -- PK
-    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Scope
     tenant_id       VARCHAR(15)  NOT NULL REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     eid             VARCHAR(15)  NOT NULL REFERENCES public.dim_employee(eid)  ON DELETE CASCADE,
@@ -106,7 +106,7 @@ CREATE TRIGGER tr_update_dim_playbooks_at
 
 CREATE TABLE IF NOT EXISTS public.bp_workflow (
     -- PK (matches front-end BPWorkflowEntry.id)
-    id                  UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id                  UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Multi-tenant scope
     tenant_id           VARCHAR(15)   NOT NULL REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     eid                 VARCHAR(15)   NOT NULL REFERENCES public.dim_employee(eid)  ON DELETE CASCADE,
@@ -155,7 +155,7 @@ CREATE TRIGGER tr_update_bp_workflow_at
 
 CREATE TABLE IF NOT EXISTS public.process_designs (
     -- PK
-    id          UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   VARCHAR(15)  NOT NULL REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     -- Identity
     name        VARCHAR(255) NOT NULL,
@@ -194,7 +194,7 @@ CREATE TRIGGER tr_update_process_designs_at
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS public.dim_proforma (
-    id              UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       VARCHAR(15)  NOT NULL REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     -- Identity
     proforma_code   VARCHAR(30)  NOT NULL,

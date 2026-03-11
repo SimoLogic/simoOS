@@ -50,3 +50,13 @@ export {
     generateId, computeKpis
 } from './process-designer.store';
 
+// ─── PMO (Project Management Office) ─────────────────────────────────────────
+export {
+    usePmoStore,
+    usePmoActiveView,
+    usePmoActiveBoardId,
+    usePmoBoardViewLocked,
+    usePmoPeek,
+    usePmoHPCMode,
+} from './pmo.store';
+

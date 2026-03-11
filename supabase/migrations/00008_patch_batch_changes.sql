@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_emp_afiliaciones_gin
 
 -- ── 4. EMPLOYEE APPROVERS TABLE (safety re-inclusion from Phase 3) ────────────
 CREATE TABLE IF NOT EXISTS public.employee_approvers (
-    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       VARCHAR(15) NOT NULL REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     eid             VARCHAR(15) NOT NULL REFERENCES public.dim_employee(eid)  ON DELETE CASCADE,
     "approver1Id"   VARCHAR(15) REFERENCES public.dim_employee(eid) ON DELETE SET NULL,

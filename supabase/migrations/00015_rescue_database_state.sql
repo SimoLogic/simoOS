@@ -89,7 +89,7 @@ ON CONFLICT (entity_name) DO NOTHING;
 
 -- 4. JOB TITLES (dim_job_title)
 CREATE TABLE IF NOT EXISTS public.dim_job_title (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id           VARCHAR(15) REFERENCES public.dim_tenant(tcode) ON DELETE CASCADE,
     title               VARCHAR(255) NOT NULL,
     area                VARCHAR(100),

@@ -56,6 +56,9 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "strategy", label: "Strategic Overview" },
         { id: "market-analysis", label: "Market Analysis" },
     ],
+    pmo: [
+        { id: "my-plan", label: "My Plan" },
+    ],
 };
 
 interface ModuleNavigationProps {
