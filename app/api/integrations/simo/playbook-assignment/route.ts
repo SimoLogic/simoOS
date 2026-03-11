@@ -11,9 +11,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyHmacSignature } from "@/lib/pmo/hmac";
 import {
-  processPlaybookAssignment,
   PlaybookAssignmentSchema,
 } from "@/lib/pmo/playbook-processor";
+import { enqueuePlaybookAssignment } from "@/lib/pmo/queue";
 import { getPmoDB } from "@/lib/pmo/pmo-db";
 import { z } from "zod";
 
@@ -99,34 +99,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }, { status: 200 });
   }
 
-  // ── 6. Procesar Playbook Assignment ───────────────────────────────────────
-  // Sprint 4: Mover a BullMQ queue para procesamiento asíncrono
-  // Por ahora: procesamiento síncrono con respuesta inmediata
+  // ── 6. Encolar Playbook Assignment (BullMQ) ──────────────────────────────
   try {
-    const result = await processPlaybookAssignment(payload);
+    const jobId = await enqueuePlaybookAssignment(payload, idempotencyKey);
+    console.info(`[Simo Endpoint] Job enqueued with ID: ${jobId}`);
 
-    if (!result.success && result.errors.length > 0) {
-      return NextResponse.json({
-        status:       "failed",
-        assignmentId: result.assignmentId,
-        playbookId:   result.playbookId,
-        errors:       result.errors,
-      }, { status: 500 });
-    }
+    // Registrar SyncEvent como queued
+    const db = getPmoDB();
+    await db.from("pmo_sync_events").insert({
+      org_id: payload.orgId,
+      idempotency_key: idempotencyKey,
+      event_type: "playbook_assignment",
+      status: "queued",
+      payload: payload as unknown as Record<string, unknown>,
+    });
 
     return NextResponse.json({
-      status:       "completed",
-      assignmentId: result.assignmentId,
-      playbookId:   result.playbookId,
-      tasksCreated: result.tasksCreated,
-      tasksSkipped: result.tasksSkipped,
-      groupId:      result.groupId,
+      status:       "queued",
+      jobId,
+      assignmentId: payload.assignmentId,
+      playbookId:   payload.playbookId,
       idempotencyKey,
-    }, { status: 201 });
+    }, { status: 202 });
 
-  } catch (processingErr) {
-    console.error("[Simo Endpoint] Processing error:", processingErr);
-    return err(`Processing failed: ${(processingErr as Error).message}`, 500);
+  } catch (enqueueErr) {
+    console.error("[Simo Endpoint] Enqueue error:", enqueueErr);
+    return err(`Queueing failed: ${(enqueueErr as Error).message}`, 500);
   }
 }
 
