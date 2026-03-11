@@ -242,6 +242,27 @@ export async function updateTaskService(
   throwIfDbError(error, "updateTask");
   const updated = mapTaskFromDb(data);
 
+  // ── Audit Trail (Activity Logs) ──
+  if (userId) {
+     const logs = [];
+     if (input.status !== undefined && input.status !== current?.status) {
+         logs.push({
+             org_id: orgId, task_id: taskId, user_id: userId,
+             action_type: "STATUS_CHANGE", old_value: current?.status, new_value: input.status
+         });
+     }
+     if (input.title !== undefined && input.title.trim() !== current?.title) {
+         logs.push({
+             org_id: orgId, task_id: taskId, user_id: userId,
+             action_type: "TITLE_CHANGE", old_value: current?.title, new_value: input.title.trim()
+         });
+     }
+     if (logs.length > 0) {
+         // Fire and forget insert
+         db.from("pmo_activity_logs").insert(logs).then();
+     }
+  }
+
   // ── Outgoing Webhook: notificar a Simo IS si tarea protegida se completó ──
   // Fire-and-forget — NO bloquea la respuesta al usuario
   const wasNotDone   = current?.status !== "done";

@@ -53,6 +53,10 @@ interface PmoStore extends PmoUIState {
 
   // ─── Reset ───────────────────────────────────────────────────────────
   resetPmoStore: () => void;
+
+  // ─── My Work ─────────────────────────────────────────────────────────
+  myTasks: import("@/types/pmo.types").PmoTask[];
+  setMyTasks: (tasks: import("@/types/pmo.types").PmoTask[]) => void;
 }
 
 // ─── INITIAL STATE ────────────────────────────────────────────────────────
@@ -64,6 +68,7 @@ const INITIAL_STATE: PmoUIState & {
   filterStatus: string | null;
   filterAssignee: string | null;
   optimisticTasks: Record<string, Partial<import("@/types/pmo.types").PmoTask>>;
+  myTasks: import("@/types/pmo.types").PmoTask[];
 } = {
   // PmoUIState
   activeView:          "grid",
@@ -81,6 +86,7 @@ const INITIAL_STATE: PmoUIState & {
   filterStatus:        null,
   filterAssignee:      null,
   optimisticTasks:     {},
+  myTasks:             [],
 };
 
 // ─── STORE ────────────────────────────────────────────────────────────────
@@ -181,6 +187,10 @@ export const usePmoStore = create<PmoStore>()(
       // ── Reset (al cambiar de módulo) ──────────────────────────────────
       resetPmoStore: () =>
         set(INITIAL_STATE, false, "pmo/reset"),
+        
+      // ── My Work ───────────────────────────────────────────────────────
+      setMyTasks: (tasks) =>
+        set({ myTasks: tasks }, false, "pmo/setMyTasks"),
     }),
     {
       name: "pmo-store",

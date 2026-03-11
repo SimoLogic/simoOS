@@ -63,6 +63,9 @@ export interface PmoTask {
     createdAt: string;
     updatedAt: string;
     completedAt?: string;
+    // Agregados para el "My Work" View
+    groupName?: string;
+    groupColor?: string;
     timeSpentMinutes?: number;
     
     // Modo de altura en Grid View (Vibe)
