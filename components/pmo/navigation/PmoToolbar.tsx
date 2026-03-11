@@ -3,6 +3,8 @@
 import React from "react";
 import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw } from "lucide-react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
+import { ImportExportMenu } from "@/components/pmo/navigation/ImportExportMenu";
+import { KeyboardShortcuts } from "@/components/pmo/shared/KeyboardShortcuts";
 
 interface PmoToolbarProps {
   boardName: string;
@@ -45,6 +47,11 @@ export function PmoToolbar({ boardName, workspaceName = "Workspace", onNewTaskCl
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Invisible Global Listener for Time Travel */}
+          <KeyboardShortcuts />
+          
+          <ImportExportMenu orgId="org-1" boardId="b1" />
+          
           <button 
             onClick={onNewGroupClick}
             className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors shadow-sm"

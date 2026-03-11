@@ -29,3 +29,8 @@ Este documento es la "Constitución Tecnológica" de Simo Intellisense. Todo age
 
 ## 5. Regla de Oro del Agente
 - **Push & Verify:** Antes de dar un Sprint por terminado, el código debe estar subido (pushed) a la rama correspondiente de GitHub y verificado contra errores de TypeScript.
+
+## 6. Infraestructura de Time Travel (Undo/Redo)
+- Toda mutación de estado que afecte datos del usuario (nombres, estados, fechas, asignaciones) DEBE ser envuelta en el *Command Pattern*.
+- Se debe utilizar el middleware de `zundo` o una implementación propia en el Store para permitir un historial de al menos 50 acciones por sesión.
+- La UI debe ser capaz de detectar la combinación de teclas *Ctrl+Z / Cmd+Z* y ejecutar la función `undo()` de forma global, con un aviso sutil (Toast) que diga: 'Acción deshecha'. El redibujado de la UI debe ser instantáneo.

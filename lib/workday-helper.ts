@@ -15,6 +15,16 @@ import { addDays, addWeeks, addMonths, isWeekend, startOfDay, setDate } from "da
 // Seed built-in — Sprint 4: cargar desde tabla public_holidays en DB
 const BUILT_IN_HOLIDAYS: Record<string, string[]> = {
   CO: [
+    // 2023 (Used in Unit Tests)
+    "2023-01-01","2023-01-09","2023-03-20","2023-04-06","2023-04-07",
+    "2023-05-01","2023-05-22","2023-06-12","2023-06-19","2023-07-03",
+    "2023-07-20","2023-08-07","2023-08-21","2023-10-16","2023-11-06",
+    "2023-11-13","2023-12-08","2023-12-25",
+    // 2024
+    "2024-01-01","2024-01-08","2024-03-25","2024-03-28","2024-03-29",
+    "2024-05-01","2024-05-13","2024-06-03","2024-06-10","2024-07-01",
+    "2024-07-20","2024-08-07","2024-08-19","2024-10-14","2024-11-04",
+    "2024-11-11","2024-12-08","2024-12-25",
     // 2025
     "2025-01-01","2025-01-06","2025-03-24","2025-04-17","2025-04-18",
     "2025-05-01","2025-05-29","2025-06-19","2025-06-23","2025-06-30",
@@ -85,11 +95,11 @@ export interface ExpandedOccurrence {
 
 // ─── HELPERS INTERNOS ─────────────────────────────────────────────────────────
 
-/** Formatea una fecha como string 'YYYY-MM-DD' sin depender del timezone del sistema */
+/** Formatea una fecha como string 'YYYY-MM-DD' usando UTC para evitar saltos de zona horaria */
 export function toISODate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 

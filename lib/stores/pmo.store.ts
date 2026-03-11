@@ -10,6 +10,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { temporal } from "zundo";
 import type { BoardView, PmoUIState } from "@/types/pmo.types";
 
 // ─── STATE SHAPE ──────────────────────────────────────────────────────────
@@ -92,12 +93,13 @@ const INITIAL_STATE: PmoUIState & {
 // ─── STORE ────────────────────────────────────────────────────────────────
 export const usePmoStore = create<PmoStore>()(
   devtools(
-    (set) => ({
-      ...INITIAL_STATE,
+    temporal(
+      (set) => ({
+        ...INITIAL_STATE,
 
-      // ── Vista ──────────────────────────────────────────────────────────
-      setActiveView: (view) =>
-        set({ activeView: view }, false, "pmo/setActiveView"),
+        // ── Vista ──────────────────────────────────────────────────────────
+        setActiveView: (view) =>
+          set({ activeView: view }, false, "pmo/setActiveView"),
 
       setViewLocked: (locked) =>
         set({ isViewLocked: locked }, false, "pmo/setViewLocked"),
@@ -191,7 +193,12 @@ export const usePmoStore = create<PmoStore>()(
       // ── My Work ───────────────────────────────────────────────────────
       setMyTasks: (tasks) =>
         set({ myTasks: tasks }, false, "pmo/setMyTasks"),
-    }),
+      }),
+      {
+        limit: 50,
+        partialize: (state) => ({ optimisticTasks: state.optimisticTasks }),
+      }
+    ),
     {
       name: "pmo-store",
       // Solo trackear en development
