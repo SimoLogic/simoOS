@@ -10,6 +10,8 @@ import { StatusCell } from "@/components/pmo/grid/fields/StatusCell";
 import { PersonCell } from "@/components/pmo/grid/fields/PersonCell";
 import { PmoToolbar } from "@/components/pmo/navigation/PmoToolbar";
 import { CommandPalette } from "@/components/pmo/navigation/CommandPalette";
+import { GanttView } from "@/components/pmo/views/GanttView";
+import { DashboardEngine } from "@/components/pmo/views/DashboardEngine";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { Loader2, AlertCircle } from "lucide-react";
 
@@ -57,6 +59,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
     return () => { isMounted = false; };
   }, [boardId, orgId]);
 
+  const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const filterAssignee = usePmoStore(s => s.filterAssignee);
   const globalSearchQuery = usePmoStore(s => s.globalSearchQuery);
@@ -132,9 +135,26 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
         workspaceName="Ejecución de Estrategia" 
       />
 
-      {/* Grid Headers Static Row */}
-      <div className="flex items-center h-10 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 min-w-max">
-         {/* Fixed Left Checkbox/Color column spacer */}
+      {/* Dynamic View rendering based on pmoStore */}
+      {activeView === 'dashboard' ? (
+        <div className="flex-1 w-full h-full relative">
+           <DashboardEngine boardId={boardId} orgId={orgId} />
+        </div>
+      ) : activeView === 'gantt' && board ? (
+        <div className="flex-1 w-full h-full relative">
+           <GanttView 
+              board={board} 
+              orgCountryCode="CO" 
+              filterStatus={filterStatus}
+              filterAssignee={filterAssignee}
+              optimisticTasks={optimisticTasks}
+           />
+        </div>
+      ) : (
+        <>
+          {/* Grid Headers Static Row */}
+          <div className="flex items-center h-10 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 min-w-max">
+             {/* Fixed Left Checkbox/Color column spacer */}
          <div className="w-10 shrink-0 border-r border-gray-200 h-full"></div>
          {/* Task Name Column */}
          <div className="w-80 px-4 flex items-center shrink-0 border-r border-gray-200 h-full">
@@ -210,6 +230,8 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
           })}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

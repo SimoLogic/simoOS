@@ -63,12 +63,23 @@ export function PmoToolbar({ boardName, workspaceName = "Workspace", onNewTaskCl
       {/* Bottom Row: Views & Filters */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1">
-           <button className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'grid' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-600 hover:bg-gray-100'}`}>
+           <button 
+              onClick={() => usePmoStore.setState({ activeView: "grid" })}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'grid' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-600 hover:bg-gray-100'}`}
+           >
               <LayoutGrid className="w-4 h-4" /> Principal (Grid)
            </button>
-           {/* Kanban placeholder for future use */}
-           <button className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'kanban' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}>
-              Kanban
+           <button 
+              onClick={() => usePmoStore.setState({ activeView: "gantt" })}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'gantt' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}
+           >
+              Cronograma (Gantt)
+           </button>
+           <button 
+              onClick={() => usePmoStore.setState({ activeView: "dashboard" })}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'dashboard' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}
+           >
+              Salud del Proyecto
            </button>
         </div>
 

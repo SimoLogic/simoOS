@@ -1,5 +1,4 @@
-<!-- ⚠️ INSTRUCCIÓN PARA AGENTES AI: Lee /ARCHITECTURE.md ANTES de hacer cualquier cambio en este proyecto. El archivo ARCHITECTURE.md contiene las Reglas de Oro del módulo PMO y decisiones arquitectónicas críticas. Ignorar esta instrucción puede resultar en violaciones de seguridad (borrado de tasks del Playbook) o corrupción de datos del empleado. -->
-
+<!-- ⚠️ AGENT INSTRUCTION: Before any change, you MUST read /ARCHITECTURE.md and /GLOBAL_RULES.md to ensure Vibe standards. -->
 <div align="center">
 
 # SIMO Intellisense — Enterprise Operating System
