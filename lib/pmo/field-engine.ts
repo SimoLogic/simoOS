@@ -7,20 +7,24 @@
 // Función principal: resolveFieldValue(type, rawValue, context) → valor tipado
 // Función de validación: validateFieldValue(type, value) → { valid, error? }
 
-import type { PmoFieldType, TaskStatus } from "@/types/pmo.types";
-import { VIBE_TOKENS } from "@/lib/pmo/utils/vibe-tokens";
+import type { PmoFieldType, TaskStatus } from "../../types/pmo.types";
+import { VIBE_TOKENS } from "./utils/vibe-tokens";
+
+import { evaluate } from "mathjs";
+import DOMPurify from "isomorphic-dompurify";
 
 // ─── TIPOS DE SALIDA DEL MOTOR ────────────────────────────────────────────────
 
 export interface FieldResolveContext {
-  orgId:   string;
-  boardId: string;
+  task: import("@/types/pmo.types").PmoTask;
+  allColumns?: Array<{ title: string; id: string }>;
 }
 
 export interface ResolvedTextField {
   type: "text";
   value: string;
   displayValue: string;
+  error?: string;
 }
 
 export interface StatusOption {
@@ -34,6 +38,8 @@ export interface ResolvedStatusField {
   type:    "status";
   value:   TaskStatus;
   option:  StatusOption;
+  displayValue: string;
+  error?: string;
 }
 
 export interface ResolvedPersonField {
@@ -42,13 +48,23 @@ export interface ResolvedPersonField {
   display:   string;       // Nombre completo o "Unassigned"
   avatarUrl: string | null;
   initials:  string;       // Para fallback de avatar
+  displayValue: string;
+  error?: string;
+}
+
+export interface ResolvedFormulaField {
+  type: "formula";
+  value: number | string | null;
+  displayValue: string;
+  error?: string;
 }
 
 export type ResolvedFieldValue =
   | ResolvedTextField
   | ResolvedStatusField
   | ResolvedPersonField
-  | { type: PmoFieldType; value: unknown; displayValue: string }; // Fallback genérico
+  | ResolvedFormulaField
+  | { type: PmoFieldType; value: unknown; displayValue: string; error?: string }; // Fallback genérico
 
 export interface FieldValidationResult {
   valid: boolean;
@@ -101,7 +117,15 @@ const VALID_STATUSES = new Set<string>(Object.keys(STATUS_OPTIONS));
 const TEXT_MAX_CHARS = 50_000;
 
 function resolveText(rawValue: unknown): ResolvedTextField {
-  const value = typeof rawValue === "string" ? rawValue.slice(0, TEXT_MAX_CHARS) : "";
+  // Shield 2: Validar y sanitizar XSS
+  const rawString = typeof rawValue === "string" ? rawValue : "";
+  const sanitized = DOMPurify.sanitize(rawString, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'],
+    FORBID_ATTR: ['onerror', 'onclick', 'onload']
+  });
+  
+  const value = sanitized.slice(0, TEXT_MAX_CHARS);
   return { type: "text", value, displayValue: value };
 }
 
@@ -117,7 +141,8 @@ function resolveStatus(rawValue: unknown): ResolvedStatusField {
   const value: TaskStatus = VALID_STATUSES.has(rawValue as string)
     ? (rawValue as TaskStatus)
     : "not_started";
-  return { type: "status", value, option: STATUS_OPTIONS[value] };
+  const option = STATUS_OPTIONS[value];
+  return { type: "status", value, option, displayValue: option.label };
 }
 
 function validateStatus(value: unknown): FieldValidationResult {
@@ -158,6 +183,7 @@ function resolvePersonSync(userId: unknown): ResolvedPersonField {
       display:   "Unassigned",
       avatarUrl: null,
       initials:  "UA",
+      displayValue: "Unassigned",
     };
   }
 
@@ -169,6 +195,7 @@ function resolvePersonSync(userId: unknown): ResolvedPersonField {
       display:   cached.name,
       avatarUrl: cached.avatarUrl,
       initials:  getInitials(cached.name),
+      displayValue: cached.name,
     };
   }
 
@@ -180,6 +207,7 @@ function resolvePersonSync(userId: unknown): ResolvedPersonField {
     display,
     avatarUrl: null,
     initials:  display.slice(0, 2).toUpperCase(),
+    displayValue: display,
   };
 }
 
@@ -192,6 +220,76 @@ export function enrichPersonCache(
 ): void {
   for (const u of users) {
     PersonCache.set(u.id, { name: u.name, avatarUrl: u.avatarUrl ?? null });
+  }
+}
+
+// ─── FORMULA FIELD ────────────────────────────────────────────────────────────
+
+function resolveFormula(expression: string, ctx: FieldResolveContext): ResolvedFormulaField {
+  if (!expression || !ctx.task) return { type: "formula", value: null, displayValue: "-" };
+
+  try {
+    // 1. Preprocesar la expresión: Reemplazar tokens {Nombre Columna}
+    let processedExpr = expression;
+    
+    // Regex para buscar tokens tipo {Columna}
+    const tokenRegex = /\{([^}]+)\}/g;
+    let match;
+    
+    // Mapa de valores para resolución rápida
+    const taskData = {
+      ...(ctx.task as any),
+      ...(ctx.task.customFieldValues || {})
+    };
+
+    // Reemplazo iterativo de tokens
+    while ((match = tokenRegex.exec(expression)) !== null) {
+      const fullToken = match[0];
+      const colNameOrId = match[1];
+      
+      // Intentar encontrar el valor:
+      // a) Búsqueda directa por ID o key en Task
+      let val = taskData[colNameOrId];
+
+      // b) Búsqueda por título de columna (si context tiene allColumns)
+      if (val === undefined && ctx.allColumns) {
+        const col = ctx.allColumns.find(c => 
+          c.title.toLowerCase() === colNameOrId.toLowerCase()
+        );
+        if (col) {
+          val = taskData[col.id] ?? taskData[col.title];
+        }
+      }
+
+      // Default a 0 si no se encuentra (para evitar errores de cálculo)
+      const numericVal = Number(val) || 0;
+      processedExpr = processedExpr.replace(fullToken, numericVal.toString());
+    }
+
+    // 2. Evaluar con mathjs
+    // Sanitizar: solo permitir caracteres matemáticos y números (seguridad extra)
+    // Aunque mathjs es potente, limitamos el scope por ahora
+    const result = evaluate(processedExpr);
+    
+    // 3. Formatear resultado
+    const numResult = typeof result === "number" ? result : null;
+    
+    return {
+      type: "formula",
+      value: numResult,
+      displayValue: numResult !== null 
+        ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(numResult)
+        : String(result),
+    };
+
+  } catch (err: any) {
+    console.error("[FieldEngine] Formula Error:", err.message, "Expr:", expression);
+    return {
+      type: "formula",
+      value: null,
+      displayValue: "Error",
+      error: `Math Error: ${err.message}`,
+    };
   }
 }
 
@@ -216,14 +314,16 @@ function validatePerson(value: unknown): FieldValidationResult {
 export function resolveFieldValue(
   type: PmoFieldType,
   rawValue: unknown,
-  _ctx?: FieldResolveContext
+  ctx?: FieldResolveContext
 ): ResolvedFieldValue {
   switch (type) {
     case "text":   return resolveText(rawValue);
     case "status": return resolveStatus(rawValue);
     case "person": return resolvePersonSync(rawValue);
+    case "formula": 
+      return resolveFormula(String(rawValue), ctx!);
     default:
-      // Tipos pendientes de Sprint 4: date, number, formula, dropdown, etc.
+      // Tipos pendientes de Sprint 4: date, number, dropdown, etc.
       return {
         type,
         value: rawValue,

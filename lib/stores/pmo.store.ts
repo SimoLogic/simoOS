@@ -51,6 +51,7 @@ interface PmoStore extends PmoUIState {
   optimisticTasks: Record<string, Partial<import("@/types/pmo.types").PmoTask>>;
   setOptimisticTaskUpdate: (taskId: string, updates: Partial<import("@/types/pmo.types").PmoTask>) => void;
   clearOptimisticTaskUpdate: (taskId: string) => void;
+  applyBulkUpdate: (taskIds: string[], updates: Partial<import("@/types/pmo.types").PmoTask>) => void;
 
   // ─── Reset ───────────────────────────────────────────────────────────
   resetPmoStore: () => void;
@@ -117,7 +118,10 @@ export const usePmoStore = create<PmoStore>()(
       // ── mondayDB Performance ───────────────────────────────────────────
       setWidgetCount: (count) =>
         set(
-          { widgetCount: count, isHPCMode: count > 3000 },
+          { 
+            widgetCount: count, 
+            isHPCMode: count >= 3000 // LLAVE #8: HPC Mode automático
+          },
           false,
           "pmo/setWidgetCount"
         ),
@@ -158,6 +162,20 @@ export const usePmoStore = create<PmoStore>()(
       
       setFilterAssignee: (assigneeId) =>
         set({ filterAssignee: assigneeId }, false, "pmo/setFilterAssignee"),
+
+      // ── Bulk Actions (Prompt #33) ──────────────────────────────────────
+      applyBulkUpdate: (taskIds: string[], updates: Partial<import("@/types/pmo.types").PmoTask>) =>
+        set(
+          (state) => {
+            const newOptimistic = { ...state.optimisticTasks };
+            taskIds.forEach((id: string) => {
+              newOptimistic[id] = { ...(newOptimistic[id] || {}), ...updates };
+            });
+            return { optimisticTasks: newOptimistic };
+          },
+          false,
+          "pmo/applyBulkUpdate"
+        ),
 
       // ── Optimistic Updates ──────────────────────────────────────────────
       setOptimisticTaskUpdate: (taskId, updates) =>

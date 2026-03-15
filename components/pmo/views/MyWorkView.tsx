@@ -75,7 +75,7 @@ export const MyWorkView: React.FC<{ orgId: string; userId: string }> = ({ orgId,
                buckets["OVERDUE"].push(currentTaskData);
            } else {
                // Si vence dentro de los próximos 3 días hábiles
-               const daysRemaining = countWorkdays(today, due, "CO"); // Usando el engine oficial
+               const daysRemaining = countWorkdays(today, due, "US", "CO"); // Usando el engine oficial
                if (daysRemaining <= 3) {
                    buckets["DUE_SOON"].push(currentTaskData);
                } else {
@@ -183,7 +183,7 @@ const TaskSection: React.FC<{ title: string, color: string, borderColor: string,
                     
                     if (task.dueDate && task.status !== "done") {
                         const due = new Date(task.dueDate);
-                        const daysRemaining = countWorkdays(today, due, "CO");
+                        const daysRemaining = countWorkdays(today, due, "US", "CO");
                         isCriticalSLA = daysRemaining <= 1 || today > due;
                     }
 

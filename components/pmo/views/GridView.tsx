@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getFilteredRowModel,
+  getSortedRowModel,
+  Row,
+} from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { PmoBoard, PmoGroup, PmoTask } from "@/types/pmo.types";
+import { PmoBoard, PmoGroup, PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
+import { filterTasks } from "@/lib/pmo/filter-engine";
 import { getBoardAction } from "@/app/actions/pmo/board-actions";
 import { GroupHeader } from "@/components/pmo/grid/GroupHeader";
 import { TextCell } from "@/components/pmo/grid/fields/TextCell";
@@ -10,243 +20,318 @@ import { StatusCell } from "@/components/pmo/grid/fields/StatusCell";
 import { PersonCell } from "@/components/pmo/grid/fields/PersonCell";
 import { PmoToolbar } from "@/components/pmo/navigation/PmoToolbar";
 import { CommandPalette } from "@/components/pmo/navigation/CommandPalette";
-import { GanttView } from "@/components/pmo/views/GanttView";
+import GanttView from "@/components/pmo/views/GanttView";
 import { DashboardEngine } from "@/components/pmo/views/DashboardEngine";
+import { BulkActionBar } from "@/components/pmo/grid/BulkActionBar";
 import { usePmoStore } from "@/lib/stores/pmo.store";
+import { bulkUpdateTasksAction } from "@/app/actions/pmo/bulk-task-actions";
 import { Loader2, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { SidePeek } from "@/components/pmo/grid/SidePeek";
+import { PresenceProvider } from "@/components/pmo/shared/PresenceProvider";
+import { useSessionStore } from "@/lib/session-store";
 
 interface GridViewProps {
   boardId: string;
   orgId: string;
+  isReadOnly?: boolean;
 }
 
+/**
+ * RowItem — Unified row type for the flattened virtualized grid.
+ * We flatten groups and tasks into a single array for virtualization.
+ */
 type RowItem = 
-  | { type: 'header'; group: PmoGroup; isExpanded: boolean }
-  | { type: 'task'; task: PmoTask; groupColor: string };
+  | { type: 'header'; group: PmoGroup; isExpanded: boolean; depth: number }
+  | { type: 'task'; task: PmoTask; groupColor: string; depth: number };
 
-export const GridView: React.FC<GridViewProps> = ({ boardId, orgId }) => {
+const columnHelper = createColumnHelper<PmoTask>();
+
+/**
+ * GridView — The central project engine.
+ * Literal implementation of Prompt #7 & #9 (Sprint 2).
+ * Uses tanstack/react-table for logical engine and tanstack/react-virtual for HPC render.
+ */
+export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }) => {
   const [board, setBoard] = useState<PmoBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Local state for expanded groups to support toggling hierarchy
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+  const [activePeekTaskId, setActivePeekTaskId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const { user_ide, user_name, tenant_id } = useSessionStore();
+  const currentUser = useMemo(() => {
+    if (!user_ide || !user_name) return null;
+    return { userId: user_ide, name: user_name };
+  }, [user_ide, user_name]);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      setLoading(true);
-      setError(null);
-      const res = await getBoardAction(boardId, orgId);
-      if (isMounted) {
-        if (res.success) {
-          setBoard(res.data);
-          // Initialize grouping states
-          const initialExpanded: Record<string, boolean> = {};
-          res.data.groups?.forEach(g => {
-             initialExpanded[g.id] = !g.isCollapsed;
-          });
-          setExpandedGroups(initialExpanded);
-        } else {
-          setError(res.error || "Failed to load board");
-        }
-        setLoading(false);
-      }
-    }
-    load();
-    return () => { isMounted = false; };
-  }, [boardId, orgId]);
-
+  // ── GLOBAL STATE CONNECTIVITY ───────────────────────────────────────────────
   const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const filterAssignee = usePmoStore(s => s.filterAssignee);
   const globalSearchQuery = usePmoStore(s => s.globalSearchQuery);
   const optimisticTasks = usePmoStore(s => s.optimisticTasks);
 
-  // Flatten the board groups into a 1D array for Virtualization
-  const rows = useMemo(() => {
+  const activePeekTask = useMemo(() => {
+    if (!activePeekTaskId || !board) return null;
+    // Search for task in groups
+    for (const g of board.groups || []) {
+      const found = g.tasks?.find(t => t.id === activePeekTaskId);
+      if (found) return { ...found, ...optimisticTasks[found.id] };
+    }
+    return null;
+  }, [activePeekTaskId, board, optimisticTasks]);
+
+  // ── TABLE LOGICAL ENGINE (tanstack/react-table) ───────────────────────────
+  // We use the table for individual tasks, but the Virtualizer handles the flat list.
+  const columns = useMemo(() => [
+    columnHelper.accessor("title", {
+      header: "Tarea",
+      cell: info => <TextCell task={info.row.original} />,
+    }),
+    columnHelper.accessor("assigneeId", {
+      header: "Responsable",
+      cell: info => <PersonCell task={info.row.original} />,
+    }),
+    columnHelper.accessor("status", {
+      header: "Estado",
+      cell: info => <StatusCell task={info.row.original} />,
+    }),
+  ], []);
+
+  // ── HPC RENDER (Flattening & Virtualization) ─────────────────────────────
+  const flatRows = useMemo(() => {
     if (!board) return [];
     const flat: RowItem[] = [];
+    
     board.groups?.forEach(group => {
-       const isExpanded = !!expandedGroups[group.id];
-       
-       // Filter tasks inside mapping
-       const filteredTasks = group.tasks?.filter(task => {
-          // Calculate actual value considering optimistic updates
-          const currentStatus = optimisticTasks[task.id]?.status || task.status;
-          const currentAssigneeId = optimisticTasks[task.id]?.assigneeId !== undefined 
-            ? optimisticTasks[task.id]?.assigneeId 
-            : task.assigneeId;
-          const currentTitle = optimisticTasks[task.id]?.title || task.title;
+      const isExpanded = !!expandedGroups[group.id];
+      
+      // Filter logic (Logic moved to FilterEngine)
+      const tasks = filterTasks(group.tasks || [], {
+        status: filterStatus as TaskStatus,
+        assigneeId: filterAssignee || undefined,
+        searchQuery: globalSearchQuery
+      });
 
-          if (filterStatus && currentStatus !== filterStatus) return false;
-          if (filterAssignee && currentAssigneeId !== filterAssignee) return false;
-          if (globalSearchQuery && !currentTitle.toLowerCase().includes(globalSearchQuery.toLowerCase())) return false;
-          
-          return true;
-       });
-
-       flat.push({ type: 'header', group, isExpanded });
-       if (isExpanded && filteredTasks) {
-           filteredTasks.forEach(task => {
-              flat.push({ type: 'task', task, groupColor: group.color || "#6161FF" });
-           });
-       }
+      flat.push({ type: 'header', group, isExpanded, depth: 0 });
+      if (isExpanded) {
+        tasks.forEach(task => {
+          flat.push({ type: 'task', task: { ...task, ...optimisticTasks[task.id] }, groupColor: group.color || "var(--vibe-purple)", depth: 1 });
+        });
+      }
     });
+
     return flat;
   }, [board, expandedGroups, filterStatus, filterAssignee, globalSearchQuery, optimisticTasks]);
 
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+  const virtualizer = useVirtualizer({
+    count: flatRows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => rows[index].type === 'header' ? 40 : 36, // Header height 40px, Task row height 36px
-    overscan: 10,
+    estimateSize: (index) => flatRows[index].type === 'header' ? 44 : 38,
+    overscan: 15,
   });
 
+  // ── ACTIONS ─────────────────────────────────────────────────────────────────
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
+  const clearSelection = () => setRowSelection({});
+  const selectedCount = Object.keys(rowSelection).length;
+
   if (loading) {
     return (
       <div className="flex w-full h-full items-center justify-center bg-white absolute inset-0">
-        <Loader2 className="w-8 h-8 animate-spin text-vibe-blue" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--vibe-blue)]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col w-full h-full items-center justify-center bg-white absolute inset-0 text-vibe-dark gap-2">
-        <AlertCircle className="w-8 h-8 text-vibe-red" />
-        <p>{error}</p>
+      <div className="flex flex-col w-full h-full items-center justify-center bg-white absolute inset-0 text-[var(--vibe-text-prime)] gap-2">
+        <AlertCircle className="w-8 h-8 text-[var(--vibe-pink)]" />
+        <p className="font-medium">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-white overflow-hidden absolute inset-0 rounded-tl-lg shadow-sm">
-      <CommandPalette orgId={orgId} />
+    <PresenceProvider boardId={boardId} orgId={orgId} currentUser={currentUser}>
+      <div className="w-full h-full flex flex-col bg-white overflow-hidden absolute inset-0 rounded-tl-xl shadow-sm border-l border-t border-[var(--vibe-border)]">
+      {!isReadOnly && <CommandPalette orgId={orgId} />}
       
       <PmoToolbar 
+        boardId={boardId}
+        orgId={orgId}
         boardName={board?.title || "Board"} 
-        workspaceName="Ejecución de Estrategia" 
+        onNewTaskClick={() => console.log("New Task")}
+        onNewGroupClick={() => console.log("New Group")}
+        isReadOnly={isReadOnly}
       />
 
-      {/* Dynamic View rendering based on pmoStore */}
       {activeView === 'dashboard' ? (
-        <div className="flex-1 w-full h-full relative">
-           <DashboardEngine boardId={boardId} orgId={orgId} />
-        </div>
+        <DashboardEngine boardId={boardId} orgId={orgId} isReadOnly={isReadOnly} />
       ) : activeView === 'gantt' && board ? (
-        <div className="flex-1 w-full h-full relative">
-           <GanttView 
-              board={board} 
-              orgCountryCode="CO" 
-              filterStatus={filterStatus}
-              filterAssignee={filterAssignee}
-              optimisticTasks={optimisticTasks}
-           />
-        </div>
+        <GanttView 
+          board={board} 
+          orgCountryCode="CO" 
+          filterStatus={filterStatus}
+          filterAssignee={filterAssignee}
+          optimisticTasks={optimisticTasks}
+          isReadOnly={isReadOnly}
+        />
       ) : (
-        <>
-          {/* Grid Headers Static Row */}
-          <div className="flex items-center h-10 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 min-w-max">
-             {/* Fixed Left Checkbox/Color column spacer */}
-         <div className="w-10 shrink-0 border-r border-gray-200 h-full"></div>
-         {/* Task Name Column */}
-         <div className="w-80 px-4 flex items-center shrink-0 border-r border-gray-200 h-full">
-            Tarea
-         </div>
-         {/* Assignee Column */}
-         <div className="w-40 px-4 flex items-center shrink-0 justify-center border-r border-gray-200 h-full">
-            Responsable
-         </div>
-         {/* Status Column */}
-         <div className="w-32 px-4 flex items-center shrink-0 justify-center border-r border-gray-200 h-full">
-            Estado
-         </div>
-         {/* Fill remaining space */}
-         <div className="flex-1 min-w-[100px] h-full"></div>
-      </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center h-10 border-b border-[var(--vibe-border)] bg-[var(--vibe-surface-2)] text-[12px] font-semibold text-[var(--vibe-text-muted)] min-w-max sticky top-0 z-10">
+            <div className="w-12 shrink-0 border-r border-[var(--vibe-border)] h-full flex items-center justify-center">
+               <input 
+                 type="checkbox" 
+                 className="rounded-[var(--radius-xs)] border-[var(--vibe-border)]"
+                 checked={selectedCount > 0 && selectedCount === flatRows.filter(r => r.type === 'task').length}
+                 onChange={(e) => {
+                    if (e.target.checked) {
+                      const newSel: Record<string, boolean> = {};
+                      flatRows.forEach(r => { if(r.type === 'task') newSel[r.task.id] = true; });
+                      setRowSelection(newSel);
+                    } else {
+                      setRowSelection({});
+                    }
+                 }}
+               />
+            </div>
+            <div className="w-80 px-4 flex items-center shrink-0 border-r border-[var(--vibe-border)] h-full">Tarea</div>
+            <div className="w-40 px-4 flex items-center shrink-0 justify-center border-r border-[var(--vibe-border)] h-full">Responsable</div>
+            <div className="w-32 px-4 flex items-center shrink-0 justify-center border-r border-[var(--vibe-border)] h-full">Estado</div>
+            <div className="flex-1 min-w-[200px] h-full"></div>
+          </div>
 
-      {/* Virtualized Body */}
-      <div className="flex-1 overflow-auto w-full relative" ref={scrollRef}>
-        <div
-          className="w-full relative min-w-max"
-          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            const isHeader = row.type === 'header';
-            
-            let isCriticalSLA = false;
-            const today = new Date();
-            if (!isHeader && row.task.dueDate && row.task.status !== "done") {
-               const due = new Date(row.task.dueDate);
-               // Simple approximation assuming countWorkdays has already been imported
-               // Need to import WorkdayHelper at top level.
-               isCriticalSLA = today > due || (due.getTime() - today.getTime()) < 86400000;
-            }
-
-            return (
-              <div
-                key={virtualRow.key}
-                className={`absolute top-0 left-0 w-full flex items-center border-b hover:bg-gray-50/50 ${isCriticalSLA ? 'bg-rose-50/40 border-rose-100' : 'border-gray-100'}`}
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                 {isHeader ? (
-                    <GroupHeader 
-                       group={row.group} 
-                       isExpanded={row.isExpanded} 
-                       onToggle={() => toggleGroup(row.group.id)}
-                       taskCount={row.group.tasks?.length || 0}
-                    />
-                 ) : (
-                    <div className="flex items-center w-full h-full group/row">
-                        {/* Color Strip for Task Row */}
+          {/* Virtualized Body */}
+          <div className="flex-1 overflow-auto w-full relative scrollbar-thin" ref={scrollRef}>
+            <div
+              className="w-full relative min-w-max"
+              style={{ height: `${virtualizer.getTotalSize()}px` }}
+            >
+              {virtualizer.getVirtualItems().map((vRow) => {
+                const row = flatRows[vRow.index];
+                const isHeader = row.type === 'header';
+                
+                return (
+                  <div
+                    key={vRow.key}
+                    className={cn(
+                      "absolute top-0 left-0 w-full flex items-center border-b transition-colors duration-[var(--motion-productive-short)]",
+                      isHeader ? "bg-white z-0" : "hover:bg-[var(--vibe-surface-2)] cursor-pointer",
+                      !isHeader && rowSelection[row.task.id] ? "bg-[rgba(97,97,255,0.05)]" : "border-[var(--vibe-border)]"
+                    )}
+                    style={{
+                      height: `${vRow.size}px`,
+                      transform: `translateY(${vRow.start}px)`,
+                    }}
+                    onClick={() => {
+                      if (!isHeader) setActivePeekTaskId(row.task.id);
+                    }}
+                  >
+                    {isHeader ? (
+                      <GroupHeader 
+                        group={row.group} 
+                        isExpanded={row.isExpanded} 
+                        onToggle={() => toggleGroup(row.group.id)}
+                        taskCount={row.group.tasks?.length || 0}
+                      />
+                    ) : (
+                      <div className="flex items-center w-full h-full group/row">
+                        {/* Group Color Strip */}
                         <div className="w-1 shrink-0 h-full" style={{ backgroundColor: row.groupColor }}></div>
-                        <div className={`w-9 shrink-0 h-full border-r border-gray-100 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity ${isCriticalSLA ? 'bg-rose-50' : ''}`}>
-                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-vibe-blue focus:ring-vibe-blue" />
+                        
+                        {/* Selection Checkbox */}
+                        <div className="w-11 shrink-0 h-full border-r border-[var(--vibe-border)] flex items-center justify-center">
+                           <input 
+                             type="checkbox" 
+                             checked={!!rowSelection[row.task.id]}
+                             onChange={() => setRowSelection(prev => {
+                               const next = { ...prev };
+                               if (next[row.task.id]) delete next[row.task.id];
+                               else next[row.task.id] = true;
+                               return next;
+                             })}
+                             className="w-4 h-4 rounded-[var(--radius-xs)] border-[var(--vibe-border)] text-[var(--vibe-purple)] focus:ring-[var(--vibe-purple)] cursor-pointer" 
+                           />
                         </div>
 
-                        {/* Task Title Cell */}
-                        <div className="w-80 h-full border-r border-gray-100 shrink-0 flex items-center">
-                            <TextCell task={row.task} />
-                            {isCriticalSLA && (
-                                <span className="ml-2 flex items-center shrink-0 gap-1 text-[10px] text-action-red font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200 shadow-sm" title="SLA Breach Risk < 24h">
-                                   <AlertCircle className="w-3 h-3" /> SLA
-                                </span>
-                            )}
+                        {/* Task Data */}
+                        <div className="w-80 h-full border-r border-[var(--vibe-border)] shrink-0 flex items-center px-2">
+                           <TextCell task={row.task} />
                         </div>
-                        
-                        {/* Assignee Cell */}
-                        <div className="w-40 h-full border-r border-gray-100 shrink-0 flex items-center justify-center p-1">
-                            <PersonCell task={row.task} />
+                        <div className="w-40 h-full border-r border-[var(--vibe-border)] shrink-0 flex items-center justify-center p-1">
+                           <PersonCell task={row.task} />
                         </div>
-                        
-                        {/* Status Cell */}
-                        <div className="w-32 h-full border-r border-gray-100 shrink-0 flex items-center justify-center p-1">
-                            <StatusCell task={row.task} />
+                        <div className="w-32 h-full border-r border-[var(--vibe-border)] shrink-0 flex items-center justify-center p-1">
+                           <StatusCell task={row.task} />
                         </div>
-                        
-                        {/* Fill remaining space */}
-                        <div className="flex-1 h-full min-w-[100px]"></div>
-                    </div>
-                 )}
-              </div>
-            );
-          })}
+                        <div className="flex-1 h-full min-w-[200px]"></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Bulk Actions */}
+      <BulkActionBar 
+        selectedCount={selectedCount}
+        onClear={clearSelection}
+        onUpdateStatus={async (status) => {
+           const ids = Object.keys(rowSelection);
+           ids.forEach(id => usePmoStore.getState().setOptimisticTaskUpdate(id, { status }));
+           const res = await bulkUpdateTasksAction(ids, orgId, "RECON-AGENT", { status });
+           if (res.success) clearSelection();
+           else {
+             ids.forEach(id => usePmoStore.getState().clearOptimisticTaskUpdate(id));
+             console.error("Bulk update failed:", res.error);
+           }
+        }}
+        onUpdatePriority={async (priority) => {
+           const ids = Object.keys(rowSelection);
+           ids.forEach(id => usePmoStore.getState().setOptimisticTaskUpdate(id, { priority }));
+           const res = await bulkUpdateTasksAction(ids, orgId, "RECON-AGENT", { priority });
+           if (res.success) clearSelection();
+           else ids.forEach(id => usePmoStore.getState().clearOptimisticTaskUpdate(id));
+        }}
+        onDelete={() => console.warn("Delete not allowed for protected tasks via bulk action yet.")}
+      />
+
+      {/* Side Peek Panel */}
+      {activePeekTask && (
+        <>
+          {/* Overlay to close when clicking outside */}
+          <div 
+            className="fixed inset-0 bg-transparent z-[55]" 
+            onClick={() => setActivePeekTaskId(null)} 
+          />
+          <SidePeek 
+            task={activePeekTask}
+            isOpen={!!activePeekTaskId}
+            onClose={() => setActivePeekTaskId(null)}
+            onUpdate={async (updates) => {
+              if (activePeekTaskId) {
+                usePmoStore.getState().setOptimisticTaskUpdate(activePeekTaskId, updates);
+                // Implementation of the actual update call would go here in Sprint 4
+              }
+            }}
+          />
         </>
       )}
-    </div>
+      </div>
+    </PresenceProvider>
   );
 };
 

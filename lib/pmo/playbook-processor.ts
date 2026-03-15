@@ -52,7 +52,8 @@ export const PlaybookAssignmentSchema = z.object({
   /** Fecha de inicio (ISO 8601) */
   startDate:      z.string().min(10),
   /** Configuración de calendario del org */
-  countryCode:    z.enum(["CO","MX","AR","ES"]).default("CO"),
+  tenantCountry:  z.string().default("US"),
+  userCountry:    z.string().default("CO"),
   timezone:       z.string().default("America/Bogota"),
   /** Grupo destino — si no existe se crea uno nuevo */
   targetGroupId:  z.string().optional(),
@@ -140,11 +141,11 @@ export async function processPlaybookAssignment(
 ): Promise<ProcessResult> {
   const {
     playbookId, assignmentId, orgId, boardId,
-    employeeId, startDate, countryCode, timezone,
+    employeeId, startDate, tenantCountry, userCountry, timezone,
     taskTemplates, targetGroupId, groupTitle,
   } = assignment;
 
-  const orgConfig: WorkdayOrgConfig = { countryCode, timezone };
+  const orgConfig: WorkdayOrgConfig = { tenantCountry, userCountry, timezone };
   const errors: string[] = [];
   let tasksCreated = 0;
   let tasksSkipped = 0;
@@ -181,7 +182,7 @@ export async function processPlaybookAssignment(
       // Calcular fecha de inicio con offset si aplica
       const { addWorkdays } = await import("@/lib/workday-helper");
       const baseDate = template.offsetWorkdays > 0
-        ? addWorkdays(new Date(startDate), template.offsetWorkdays, countryCode)
+        ? addWorkdays(new Date(startDate), template.offsetWorkdays, tenantCountry, userCountry)
         : new Date(startDate);
 
       // 🗝️ LLAVE #2 — expandFrequency para fechas hábiles reales

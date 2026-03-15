@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { usePmoStore } from "@/lib/stores/pmo.store";
 import { PmoTask } from "@/types/pmo.types";
+import { usePresence } from "@/components/pmo/shared/PresenceProvider";
+import { PresenceBadge } from "@/components/pmo/shared/PresenceBadge";
+import { useSessionStore } from "@/lib/session-store";
+import { usePmoStore } from "@/lib/stores/pmo.store";
 
 interface TextCellProps {
   task: PmoTask;
@@ -13,6 +16,12 @@ export const TextCell: React.FC<TextCellProps> = ({ task }) => {
   
   const setOptimisticTaskUpdate = usePmoStore((s) => s.setOptimisticTaskUpdate);
   const optimisticTasks = usePmoStore((s) => s.optimisticTasks);
+  
+  const { presentUsers, updateCursor } = usePresence();
+  const cellId = `${task.id}-title`;
+  const user_ide = useSessionStore(s => s.user_ide);
+  
+  const remoteUsersInCell = presentUsers.filter(u => u.activeCellId === cellId && u.userId !== user_ide);
 
   const displayTitle = optimisticTasks[task.id]?.title || task.title;
   const [localTitle, setLocalTitle] = useState(displayTitle);
@@ -26,8 +35,11 @@ export const TextCell: React.FC<TextCellProps> = ({ task }) => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
+      updateCursor(cellId);
+    } else if (!isEditing) {
+      updateCursor(null);
     }
-  }, [isEditing]);
+  }, [isEditing, cellId]);
 
   const commitChanges = async () => {
     setIsEditing(false);
@@ -79,6 +91,7 @@ export const TextCell: React.FC<TextCellProps> = ({ task }) => {
       <span className="text-sm text-gray-800 truncate select-none group-hover:text-vibe-dark">
         {displayTitle}
       </span>
+      <PresenceBadge users={remoteUsersInCell} className="ml-auto" />
     </div>
   );
 };

@@ -19,6 +19,7 @@ import {
 } from "@/lib/services/pmo/task.service";
 import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
 import { validateFieldValue } from "@/lib/pmo/field-engine";
+import { getRequiredSession } from "@/lib/pmo/auth-utils";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
@@ -31,7 +32,6 @@ const TaskStatusEnum = z.enum([
 const TaskPriorityEnum = z.enum(["low", "medium", "high", "critical"]);
 
 const CreateTaskSchema = z.object({
-  orgId:       OrgIdSchema,
   boardId:     z.string().min(1, "boardId is required"),
   groupId:     z.string().min(1, "groupId is required"),
   title:       z.string().min(1, "Task title is required").max(255).trim(),
@@ -44,7 +44,6 @@ const CreateTaskSchema = z.object({
 
 const UpdateTaskSchema = z.object({
   taskId:      z.string().min(1),
-  orgId:       OrgIdSchema,
   title:       z.string().min(1).max(255).trim().optional(),
   description: z.string().max(50000).optional(),
   status:      TaskStatusEnum.optional(),
@@ -56,22 +55,18 @@ const UpdateTaskSchema = z.object({
 
 const UpdateFieldSchema = z.object({
   taskId:    z.string().min(1),
-  orgId:     OrgIdSchema,
   fieldType: z.string().min(1),
   value:     z.unknown(),
 });
 
 const MoveTaskSchema = z.object({
   taskId:      z.string().min(1),
-  orgId:       OrgIdSchema,
   newGroupId:  z.string().min(1),
   newPosition: z.number().int().min(0),
 });
 
 const DeleteTaskSchema = z.object({
   taskId: z.string().min(1),
-  orgId:  OrgIdSchema,
-  userId: z.string().min(1, "userId is required for audit trail"),
 });
 
 // ─── RESULT TYPE ──────────────────────────────────────────────────────────────
@@ -84,12 +79,12 @@ type ActionResult<T> =
 
 export async function getTasksAction(
   boardId: string,
-  orgId:   string,
   groupId?: string
 ): Promise<PmoTask[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+  if (!boardId?.trim()) return [];
   try {
-    return await getTasksService(boardId, orgId, groupId);
+    const session = await getRequiredSession();
+    return await getTasksService(boardId, session.orgId, groupId);
   } catch (err: unknown) {
     console.error("[PMO Action] getTasks:", err);
     return [];
@@ -97,11 +92,11 @@ export async function getTasksAction(
 }
 
 export async function getTaskAction(
-  taskId: string,
-  orgId:  string
+  taskId: string
 ): Promise<ActionResult<PmoTask>> {
   try {
-    const task = await getTaskByIdService(taskId, orgId);
+    const session = await getRequiredSession();
+    const task = await getTaskByIdService(taskId, session.orgId);
     if (!task) return { success: false, error: "Task not found" };
     return { success: true, data: task };
   } catch (err: unknown) {
@@ -110,12 +105,12 @@ export async function getTaskAction(
 }
 
 export async function searchTasksAction(
-  query: string,
-  orgId: string
+  query: string
 ): Promise<PmoTask[]> {
-  if (!query?.trim() || !orgId?.trim()) return [];
+  if (!query?.trim()) return [];
   try {
-    return await searchTasksService(query, orgId, 10);
+    const session = await getRequiredSession();
+    return await searchTasksService(query, session.orgId, 10);
   } catch (err: unknown) {
     console.error("[PMO Action] searchTasks:", err);
     return [];
@@ -126,9 +121,11 @@ export async function createTaskAction(
   input: z.infer<typeof CreateTaskSchema>
 ): Promise<ActionResult<PmoTask>> {
   try {
+    const session = await getRequiredSession();
     const validated = CreateTaskSchema.parse(input);
     const task = await createTaskService({
       ...validated,
+      orgId:    session.orgId,
       status:   validated.status as TaskStatus,
       priority: validated.priority as TaskPriority | undefined,
     });
@@ -144,13 +141,14 @@ export async function updateTaskAction(
   input: z.infer<typeof UpdateTaskSchema>
 ): Promise<ActionResult<PmoTask>> {
   try {
+    const session = await getRequiredSession();
     const validated = UpdateTaskSchema.parse(input);
-    const { taskId, orgId, ...fields } = validated;
-    const task = await updateTaskService(taskId, orgId, {
+    const { taskId, ...fields } = validated;
+    const task = await updateTaskService(taskId, session.orgId, {
       ...fields,
       status:   fields.status as TaskStatus | undefined,
       priority: fields.priority as TaskPriority | undefined,
-    });
+    }, session.userId);
     return { success: true, data: task };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)
@@ -167,6 +165,7 @@ export async function updateTaskFieldAction(
   input: z.infer<typeof UpdateFieldSchema>
 ): Promise<ActionResult<PmoTask>> {
   try {
+    const session = await getRequiredSession();
     const validated = UpdateFieldSchema.parse(input);
 
     // Validar el valor con el Field Engine
@@ -189,21 +188,21 @@ export async function updateTaskFieldAction(
     const fieldKey = updateMap[validated.fieldType];
     if (!fieldKey) {
       // Campo custom → guardar en customFieldValues
-      const task = await getTaskByIdService(validated.taskId, validated.orgId);
+      const task = await getTaskByIdService(validated.taskId, session.orgId);
       if (!task) return { success: false, error: "Task not found" };
 
-      const updatedTask = await updateTaskService(validated.taskId, validated.orgId, {
+      const updatedTask = await updateTaskService(validated.taskId, session.orgId, {
         customFieldValues: {
           ...task.customFieldValues,
           [validated.fieldType]: validated.value,
         },
-      });
+      }, session.userId);
       return { success: true, data: updatedTask };
     }
 
-    const updatedTask = await updateTaskService(validated.taskId, validated.orgId, {
+    const updatedTask = await updateTaskService(validated.taskId, session.orgId, {
       [fieldKey]: validated.value,
-    } as Parameters<typeof updateTaskService>[2]);
+    } as Parameters<typeof updateTaskService>[2], session.userId);
 
     return { success: true, data: updatedTask };
   } catch (err: unknown) {
@@ -217,8 +216,12 @@ export async function moveTaskAction(
   input: z.infer<typeof MoveTaskSchema>
 ): Promise<ActionResult<PmoTask>> {
   try {
+    const session = await getRequiredSession();
     const validated = MoveTaskSchema.parse(input);
-    const task = await moveTaskService(validated);
+    const task = await moveTaskService({
+      ...validated,
+      orgId: session.orgId
+    });
     return { success: true, data: task };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)
@@ -236,11 +239,12 @@ export async function deleteTaskAction(
   input: z.infer<typeof DeleteTaskSchema>
 ): Promise<ActionResult<{ taskId: string }>> {
   try {
+    const session = await getRequiredSession();
     const validated = DeleteTaskSchema.parse(input);
     const result = await deleteTaskService({
       taskId: validated.taskId,
-      orgId:  validated.orgId,
-      userId: validated.userId,
+      orgId:  session.orgId,
+      userId: session.userId,
       vector: "server_action",
     });
 
@@ -261,15 +265,14 @@ export async function deleteTaskAction(
 }
 
 export async function batchDeleteTasksAction(
-  taskIds: string[],
-  orgId:   string,
-  userId:  string
+  taskIds: string[]
 ): Promise<ActionResult<{ deleted: string[]; blocked: string[] }>> {
-  if (!taskIds.length || !orgId?.trim() || !userId?.trim()) {
-    return { success: false, error: "taskIds, orgId, and userId are required" };
+  if (!taskIds.length) {
+    return { success: false, error: "taskIds are required" };
   }
   try {
-    const result = await batchDeleteTasksService(taskIds, orgId, userId);
+    const session = await getRequiredSession();
+    const result = await batchDeleteTasksService(taskIds, session.orgId, session.userId);
     return { success: true, data: result };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

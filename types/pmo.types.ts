@@ -59,6 +59,11 @@ export interface PmoTask {
     attachments: PmoAttachment[];
     customFieldValues: Record<string, unknown>;
     
+    // Salesforce & External Connectivity (Addendum)
+    externalId?: string | null;
+    externalUrl?: string | null;
+    metadata?: Record<string, unknown> | null;
+
     // Metadata
     createdAt: string;
     updatedAt: string;
@@ -125,6 +130,7 @@ export interface PmoBoard {
     
     activeView: BoardView;
     isViewLocked: boolean;
+    isArchived: boolean;
     
     groups: PmoGroup[];
     columns: PmoColumn[];
@@ -161,6 +167,47 @@ export type PmoFieldType =
     | 'phone'
     | 'rating'
     | 'progress';
+
+// ─── EVENTS & CONNECTIVITY ────────────────────────────────────────
+export interface PmoEvent {
+    id: string;
+    orgId: string;
+    title: string;
+    description?: string;
+    startDateTime: string;    // ISO string
+    endDateTime: string;      // ISO string
+    
+    // External Connectivity
+    externalId?: string | null;
+    externalUrl?: string | null;
+    metadata?: Record<string, unknown> | null;
+
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface UserIntegration {
+    id: string;
+    orgId: string;
+    userId: string;
+    provider: 'salesforce' | 'outlook' | 'zoom';
+    providerUserId: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface IntegrationToken {
+    id: string;
+    orgId: string;
+    userId: string;
+    provider: 'salesforce' | 'outlook' | 'zoom';
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: string;       // ISO string
+    metadata?: Record<string, unknown> | null;
+    createdAt: string;
+    updatedAt: string;
+}
 
 // ─── WORKSPACE ─────────────────────────────────────────────────────
 export interface PmoWorkspace {

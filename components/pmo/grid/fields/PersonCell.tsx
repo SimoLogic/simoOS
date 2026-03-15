@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { PmoTask } from "@/types/pmo.types";
 import { UserCircle } from "lucide-react";
+import { usePresence } from "@/components/pmo/shared/PresenceProvider";
+import { PresenceBadge } from "@/components/pmo/shared/PresenceBadge";
+import { useSessionStore } from "@/lib/session-store";
 
 // Mock users for Assignee dropdown
 const mockUsers = [
@@ -24,6 +27,11 @@ export const PersonCell: React.FC<PersonCellProps> = ({ task }) => {
 
   const displayAssigneeId = optimisticTasks[task.id]?.assigneeId || task.assigneeId;
   const currentAssignee = mockUsers.find(u => u.id === displayAssigneeId);
+  
+  const { presentUsers, updateCursor } = usePresence();
+  const cellId = `${task.id}-assignee`;
+  const user_ide = useSessionStore(s => s.user_ide);
+  const remoteUsersInCell = presentUsers.filter(u => u.activeCellId === cellId && u.userId !== user_ide);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -34,6 +42,11 @@ export const PersonCell: React.FC<PersonCellProps> = ({ task }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) updateCursor(cellId);
+    else updateCursor(null);
+  }, [isOpen, cellId, updateCursor]);
 
   const handleAssign = async (userId: string | undefined) => {
     setIsOpen(false);
@@ -66,6 +79,7 @@ export const PersonCell: React.FC<PersonCellProps> = ({ task }) => {
                 <UserCircle className="w-5 h-5" />
             </div>
         )}
+        <PresenceBadge users={remoteUsersInCell} className="absolute -top-1 -right-1" />
       </button>
 
       {isOpen && (

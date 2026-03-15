@@ -161,7 +161,7 @@ export async function searchTasksService(
     .from("pmo_tasks")
     .select("*")
     .eq("org_id", orgId)
-    .ilike("title", `%${queryParam}%`)
+    .or(`title.ilike.%${queryParam}%,description.ilike.%${queryParam}%`)
     .limit(limit);
 
   throwIfDbError(error, "searchTasksService");

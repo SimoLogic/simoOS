@@ -27,6 +27,7 @@ export interface UpdateBoardInput {
   description?: string;
   activeView?:  BoardView;
   isViewLocked?: boolean;
+  isArchived?:   boolean;
 }
 
 // ─── DB MAPPERS ───────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ function mapBoardFromDb(row: Record<string, unknown>): PmoBoard {
     isPlaybookBoard: Boolean(row.is_playbook_board),
     activeView:     (row.active_view as BoardView) ?? "grid",
     isViewLocked:   Boolean(row.is_view_locked),
+    isArchived:     Boolean(row.is_archived),
     groups:         [],      // Cargado por separado en group.service.ts
     columns:        [],      // Cargado por separado en column.service.ts
     createdAt:      String(row.created_at),
@@ -151,6 +153,7 @@ export async function updateBoardService(
   if (input.description !== undefined) patch.description  = input.description;
   if (input.activeView  !== undefined) patch.active_view  = input.activeView;
   if (input.isViewLocked !== undefined) patch.is_view_locked = input.isViewLocked;
+  if (input.isArchived !== undefined) patch.is_archived = input.isArchived;
 
   const { data, error } = await db
     .from("pmo_boards")

@@ -21,6 +21,7 @@ export interface BoardPresenceUser {
   avatarUrl: string | null;
   initials:  string;
   color:     string;      // Color único por usuario (para el avatar ring)
+  activeCellId?: string | null; // ID of the cell the user is currently editing/hovering
   joinedAt:  string;      // ISO — para ordenar por quién llegó primero
 }
 
@@ -43,6 +44,8 @@ export interface BoardPresenceState {
   count:          number;
   /** Si el canal de presencia está conectado */
   isConnected:    boolean;
+  /** Función para actualizar mi posición/cursor */
+  updateCursor:   (cellId: string | null) => void;
 }
 
 // ─── PALETA DE COLORES para rings de avatares ─────────────────────────────────
@@ -137,6 +140,7 @@ export function useBoardPresence({
         userId:    string;
         name:      string;
         avatarUrl: string | null;
+        activeCellId?: string | null;
         joinedAt:  string;
       }>();
 
@@ -148,6 +152,7 @@ export function useBoardPresence({
           avatarUrl: u.avatarUrl,
           initials:  getInitials(u.name),
           color:     assignColor(u.userId),
+          activeCellId: u.activeCellId,
           joinedAt:  u.joinedAt,
         }))
         // Ordenar: yo primero, luego por tiempo de conexión
@@ -170,6 +175,7 @@ export function useBoardPresence({
           name:      currentUser.name,
           avatarUrl: currentUser.avatarUrl ?? null,
           joinedAt:  new Date().toISOString(),
+          activeCellId: null,
         });
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         setIsConnected(false);
@@ -194,5 +200,16 @@ export function useBoardPresence({
     presentUsers,
     count: presentUsers.length,
     isConnected,
+    updateCursor: (cellId: string | null) => {
+      if (channelRef.current) {
+        channelRef.current.track({
+          userId:    currentUser!.userId,
+          name:      currentUser!.name,
+          avatarUrl: currentUser!.avatarUrl ?? null,
+          joinedAt:  new Date().toISOString(),
+          activeCellId: cellId,
+        });
+      }
+    }
   };
 }

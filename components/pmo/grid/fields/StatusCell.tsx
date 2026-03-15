@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { TaskStatus, PmoTask } from "@/types/pmo.types";
 import { ChevronDown } from "lucide-react";
+import { usePresence } from "@/components/pmo/shared/PresenceProvider";
+import { PresenceBadge } from "@/components/pmo/shared/PresenceBadge";
+import { useSessionStore } from "@/lib/session-store";
 
 interface StatusCellProps {
   task: PmoTask;
@@ -25,6 +28,11 @@ export const StatusCell: React.FC<StatusCellProps> = ({ task }) => {
 
   const displayStatus = optimisticTasks[task.id]?.status || task.status;
   const config = statusConfig[displayStatus];
+  
+  const { presentUsers, updateCursor } = usePresence();
+  const cellId = `${task.id}-status`;
+  const user_ide = useSessionStore(s => s.user_ide);
+  const remoteUsersInCell = presentUsers.filter(u => u.activeCellId === cellId && u.userId !== user_ide);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -35,6 +43,11 @@ export const StatusCell: React.FC<StatusCellProps> = ({ task }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) updateCursor(cellId);
+    else updateCursor(null);
+  }, [isOpen, cellId, updateCursor]);
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     setIsOpen(false);
@@ -68,6 +81,7 @@ export const StatusCell: React.FC<StatusCellProps> = ({ task }) => {
         <div className="absolute top-0 right-0 bottom-0 flex items-center px-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-r">
             <ChevronDown className="w-3 h-3" />
         </div>
+        <PresenceBadge users={remoteUsersInCell} className="absolute -top-1 -right-1" />
       </button>
 
       {isOpen && (

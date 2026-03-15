@@ -19,7 +19,6 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     ],
     growthify: [
         { id: "race-now", label: "Race Track LIVE" },
-        { id: "playbooks", label: "Playbook Designer" },
         { id: "seller-activity", label: "Seller Activity (Trading Floor)" },
         { id: "engine-setup", label: "Sales Engine Set Up" },
         { id: "sales-hc", label: "Sales HC" },

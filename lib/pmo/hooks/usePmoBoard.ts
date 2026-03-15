@@ -59,6 +59,7 @@ export function usePmoBoard(
         isPlaybookBoard: false,
         activeView: "grid" as BoardView,
         isViewLocked: false,
+        isArchived: false,
         groups: [],
         columns: [],
         createdAt: new Date().toISOString(),

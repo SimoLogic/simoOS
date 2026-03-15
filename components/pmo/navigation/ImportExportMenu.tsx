@@ -90,7 +90,6 @@ export const ImportExportMenu = ({ orgId, boardId, groupId = null }: { orgId: st
                       const targetGroupId = groupId || "generic-group-id"; // Need UI mapper for robust tool
                       
                       await createTaskAction({
-                          orgId,
                           boardId,
                           groupId: targetGroupId,
                           title: row.title,

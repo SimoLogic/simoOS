@@ -165,3 +165,16 @@ export async function deleteBoardAction(
     return { success: false, error: (err as Error).message };
   }
 }
+
+export async function archiveBoardAction(
+  boardId: string,
+  orgId: string
+): Promise<ActionResult<void>> {
+  try {
+    await updateBoardService(boardId, orgId, { isArchived: true });
+    return { success: true, data: undefined };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+

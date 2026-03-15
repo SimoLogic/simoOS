@@ -6,15 +6,20 @@ import { usePmoStore } from "@/lib/stores/pmo.store";
 import { ImportExportMenu } from "@/components/pmo/navigation/ImportExportMenu";
 import { KeyboardShortcuts } from "@/components/pmo/shared/KeyboardShortcuts";
 import { NotificationCenter } from "@/components/pmo/navigation/NotificationCenter";
+import { archiveBoardAction } from "@/app/actions/pmo/board-actions";
+import { BoardPresenceStack } from "@/components/pmo/shared/BoardPresenceStack";
 
 interface PmoToolbarProps {
+  boardId: string;
+  orgId: string;
   boardName: string;
   workspaceName?: string;
   onNewTaskClick?: () => void;
   onNewGroupClick?: () => void;
+  isReadOnly?: boolean;
 }
 
-export function PmoToolbar({ boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick }: PmoToolbarProps) {
+export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, isReadOnly }: PmoToolbarProps) {
   const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const setFilterStatus = usePmoStore(s => s.setFilterStatus);
@@ -48,25 +53,54 @@ export function PmoToolbar({ boardName, workspaceName = "Workspace", onNewTaskCl
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Invisible Global Listener for Time Travel */}
-          <KeyboardShortcuts />
-          
-          <NotificationCenter orgId="org-1" />
-          
-          <ImportExportMenu orgId="org-1" boardId="b1" />
-          
-          <button 
-            onClick={onNewGroupClick}
-            className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors shadow-sm"
-          >
-             + Nuevo Grupo
-          </button>
-          <button 
-            onClick={onNewTaskClick}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-vibe-blue rounded hover:bg-blue-600 transition-colors shadow-sm"
-          >
-             <Plus className="w-4 h-4" /> Nueva Tarea
-          </button>
+          <BoardPresenceStack />
+          {!isReadOnly && (
+            <>
+              {/* Invisible Global Listener for Time Travel */}
+              <KeyboardShortcuts />
+              
+              <NotificationCenter orgId="org-1" />
+              
+              <ImportExportMenu orgId="org-1" boardId="b1" />
+              
+              <button 
+                onClick={onNewGroupClick}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                 + Nuevo Grupo
+              </button>
+
+              <button 
+                onClick={async () => {
+                  if(confirm("¿Seguro que deseas archivar este tablero?")) {
+                    const res = await archiveBoardAction(boardId, orgId);
+                    if (res.success) {
+                        alert("Tablero archivado correctamente.");
+                        window.location.reload(); // Quick refresh to show it's gone from active if filtered
+                    } else {
+                        alert("Error al archivar: " + res.error);
+                    }
+                  }
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-gray-400 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                 Archivar
+              </button>
+
+              <button 
+                onClick={onNewTaskClick}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-vibe-blue rounded hover:bg-blue-600 transition-colors shadow-sm"
+              >
+                 <Plus className="w-4 h-4" /> Nueva Tarea
+              </button>
+            </>
+          )}
+          {isReadOnly && (
+            <div className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              MODO LECTURA
+            </div>
+          )}
         </div>
       </div>
 

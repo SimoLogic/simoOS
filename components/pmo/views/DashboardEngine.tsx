@@ -4,13 +4,15 @@ import React, { useEffect, useState } from "react";
 import { getProjectHealthAction, ProjectHealthMetrics } from "@/app/actions/pmo/dashboard-actions";
 import { CheckCircle2, CircleDashed, Clock, LayoutGrid, AlertCircle, Loader2 } from "lucide-react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
+import { WorkloadWidget } from "@/components/pmo/views/WorkloadWidget";
 
 interface DashboardEngineProps {
   boardId: string;
   orgId: string;
+  isReadOnly?: boolean;
 }
 
-export function DashboardEngine({ boardId, orgId }: DashboardEngineProps) {
+export function DashboardEngine({ boardId, orgId, isReadOnly }: DashboardEngineProps) {
   const [metrics, setMetrics] = useState<ProjectHealthMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,11 @@ export function DashboardEngine({ boardId, orgId }: DashboardEngineProps) {
              <p className="text-3xl font-bold text-vibe-dark mt-1">{metrics.notStartedTasks}</p>
           </div>
 
+       </div>
+
+       {/* People View */}
+       <div className="flex w-full mt-6">
+           <WorkloadWidget boardId={boardId} />
        </div>
     </div>
   );

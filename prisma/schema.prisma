@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PmoTask {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  boardId              String    @map("board_id")
+  groupId              String    @map("group_id")
+  title                String
+  description          String?
+  dueDate              DateTime? @map("due_date")
+  priority             String?
+  status               String    @default("not_started")
+  isProtected          Boolean   @default(false) @map("is_protected")
+  sourcePlaybookId     String?   @map("source_playbook_id")
+  sourcePlaybookTaskId String?   @map("source_playbook_task_id")
+  occurrenceIndex      Int?      @map("occurrence_index")
+  position             Int       @default(0)
+  customFieldValues    Json      @map("custom_field_values")
+  itemHeight           String    @default("simple") @map("item_height")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  completedAt          DateTime? @map("completed_at")
+  timeSpentMinutes     Int?      @map("time_spent_minutes")
+
+  // Salesforce & External Connectivity
+  externalId           String?   @map("external_id")
+  externalUrl          String?   @map("external_url")
+  metadata             Json?     @map("metadata")
+
+  activityLogs         PmoActivityLog[]
+  securityEvents       PmoSecurityEvent[]
+
+  @@index([orgId])
+  @@index([boardId])
+  @@map("pmo_tasks")
+}
+
+model PmoActivityLog {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  taskId      String   @map("task_id")
+  userId      String   @map("user_id")
+  actionType  String   @map("action_type")
+  oldValue    String?  @map("old_value")
+  newValue    String?  @map("new_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task        PmoTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([taskId])
+  @@map("pmo_activity_logs")
+}
+
+model PmoSecurityEvent {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  userId      String   @map("user_id")
+  taskId      String   @map("task_id")
+  attemptedAt DateTime @default(now()) @map("attempted_at")
+  ipAddress   String   @map("ip_address")
+  vector      String
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task        PmoTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([taskId])
+  @@map("pmo_security_events")
+}
+
+model PmoEvent {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  title                String
+  description          String?
+  startDateTime        DateTime  @map("start_date_time")
+  endDateTime          DateTime  @map("end_date_time")
+  
+  // External Connectivity
+  externalId           String?   @map("external_id")
+  externalUrl          String?   @map("external_url")
+  metadata             Json?     @map("metadata")
+
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@index([orgId])
+  @@map("pmo_events")
+}
+
+model UserIntegration {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  userId               String    @map("user_id")
+  provider             String    // 'salesforce', 'outlook', 'zoom'
+  providerUserId       String    @map("provider_user_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@unique([orgId, userId, provider])
+  @@map("pmo_user_integrations")
+}
+
+model IntegrationToken {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  userId               String    @map("user_id")
+  provider             String    // 'salesforce', 'outlook', 'zoom'
+  accessToken          String    @map("access_token")
+  refreshToken         String?   @map("refresh_token")
+  expiresAt            DateTime? @map("expires_at")
+  metadata             Json?     @map("metadata")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@unique([orgId, userId, provider])
+  @@map("pmo_integration_tokens")
+}
+
+model Organization {
+  id                   String    @id @default(uuid())
+  name                 String
+  countryCode          String    @default("US") @map("country_code")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  orgId                String    @map("org_id")
+  email                String    @unique
+  name                 String?
+  countryCode          String    @default("CO") @map("country_code")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@index([orgId])
+  @@map("users")
+}
