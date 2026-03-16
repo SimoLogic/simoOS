@@ -20,6 +20,7 @@ import {
 import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
 import { validateFieldValue } from "@/lib/pmo/field-engine";
 import { getRequiredSession } from "@/lib/pmo/auth-utils";
+import { sanitizeText } from "@/lib/pmo/sanitize";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
@@ -123,11 +124,14 @@ export async function createTaskAction(
   try {
     const session = await getRequiredSession();
     const validated = CreateTaskSchema.parse(input);
+    // ⚡ XSS Gap Closure: sanitize user-supplied text before DB write
     const task = await createTaskService({
       ...validated,
-      orgId:    session.orgId,
-      status:   validated.status as TaskStatus,
-      priority: validated.priority as TaskPriority | undefined,
+      title:       sanitizeText(validated.title),
+      description: sanitizeText(validated.description),
+      orgId:       session.orgId,
+      status:      validated.status as TaskStatus,
+      priority:    validated.priority as TaskPriority | undefined,
     });
     return { success: true, data: task };
   } catch (err: unknown) {
@@ -144,10 +148,13 @@ export async function updateTaskAction(
     const session = await getRequiredSession();
     const validated = UpdateTaskSchema.parse(input);
     const { taskId, ...fields } = validated;
+    // ⚡ XSS Gap Closure: sanitize user-supplied text before DB write
     const task = await updateTaskService(taskId, session.orgId, {
       ...fields,
-      status:   fields.status as TaskStatus | undefined,
-      priority: fields.priority as TaskPriority | undefined,
+      title:       fields.title       ? sanitizeText(fields.title)       : undefined,
+      description: fields.description ? sanitizeText(fields.description) : undefined,
+      status:      fields.status   as TaskStatus | undefined,
+      priority:    fields.priority as TaskPriority | undefined,
     }, session.userId);
     return { success: true, data: task };
   } catch (err: unknown) {

@@ -74,6 +74,7 @@ export interface HistorialLaboral {
     direct_leader: string;                   // VARCHAR(100) – REQUIRED
     direct_leader_id?: string | null;        // FK → dim_employee.eid (optional)
     job_title: string;                       // VARCHAR(100) – Optional, role label
+    role_title: string;                      // VARCHAR(100) – Optional, granular role
     // Monetary
     salary_currency?: string | null;         // "COP", "USD", "EUR", "PEN"
     // System
@@ -315,6 +316,7 @@ export const blankHistorial = (empleado_id = ""): Omit<HistorialLaboral, "id_his
     direct_leader: "",
     direct_leader_id: null,
     job_title: "",
+    role_title: "",
     salary_currency: null,
 });
 

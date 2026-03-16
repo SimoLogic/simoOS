@@ -127,13 +127,72 @@ model IntegrationToken {
 }
 
 model Organization {
-  id                   String    @id @default(uuid())
+  id                   String      @id @default(uuid())
   name                 String
-  countryCode          String    @default("US") @map("country_code")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  countryCode          String      @default("US") @map("country_code")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+
+  playbooks            BpPlaybook[]
 
   @@map("organizations")
+}
+
+// ─── Business Plan: Playbook Designer ────────────────────────────────────────
+
+model BpPlaybook {
+  id               String          @id @default(uuid())
+  orgId            String          @map("org_id")
+  name             String
+  type             String          @default("GROWTH")      // CORE | GROWTH | ELITE
+  family           String          @default("COMMERCIAL")  // COMMERCIAL | OPERATIONAL
+  strategy         String          @default("B2B")         // B2B | B2C | NPPM
+  purpose          String?
+  status           String          @default("DRAFT")       // DRAFT | SUBMITTED
+  globalOwners     String[]        @map("global_owners")   // Array of role names
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  organization     Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  steps            BpPlaybookStep[]
+
+  @@index([orgId])
+  @@map("bp_playbooks")
+}
+
+model BpPlaybookStep {
+  id                       String     @id @default(uuid())
+  orgId                    String     @map("org_id")           // Multi-tenant filter
+  playbookId               String     @map("playbook_id")
+  uid                      String                              // Business UID e.g. "HBT032"
+  stepNum                  String     @map("step_num")         // "01", "02", ...
+  name                     String                              // UPPERCASE activity name
+  typeOfActivity           String?    @map("type_of_activity") // CALL | EMAIL | ...
+  purpose                  String?
+  activityDescription      String?    @map("activity_description")
+  deliverable              String?                             // UPPERCASE output
+  deliverableDescription   String?    @map("deliverable_description")
+  stakeholder              String?                             // UPPERCASE role
+  frequency                String     @default("DAILY")        // DAILY | WEEKLY | MONTHLY | YEARLY
+  repetitions              Int        @default(1)
+  freqNotes                String?    @map("freq_notes")
+  schedulerValue           Int        @default(0) @map("scheduler_value") // Workday offset (WorkdayHelper Llave #2)
+  supportingTask           String?    @map("supporting_task")  // UPPERCASE counteraction
+  counteractionDescription String?    @map("counteraction_description")
+  requestedTo              String?    @map("requested_to")     // Employee ID
+  sla                      String?                             // UPPERCASE success metric
+  slaDescription           String?    @map("sla_description")
+  isLocked                 Boolean    @default(false) @map("is_locked")     // Shield Protocol
+  isRepeatable             Boolean    @default(false) @map("is_repeatable") // Library membership
+  position                 Int        @default(0)              // Sort order
+  createdAt                DateTime   @default(now()) @map("created_at")
+  updatedAt                DateTime   @updatedAt @map("updated_at")
+
+  playbook                 BpPlaybook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([playbookId])
+  @@map("bp_playbook_steps")
 }
 
 model User {
@@ -147,4 +206,188 @@ model User {
 
   @@index([orgId])
   @@map("users")
+}
+
+// ─── HR Module ────────────────────────────────────────────────────────────────
+// Llave #3: isLocked = true means the record is IMMUTABLE (Shield Protocol)
+// Llave #4: All salary / ID fields are AES-256-GCM encrypted (HR Vault)
+// Llave #1: Every query MUST filter by orgId (multi-tenant isolation)
+
+model HrEmployee {
+  id                    String                @id @default(uuid())
+  orgId                 String                @map("org_id")
+  eid                   String                @unique            // EID-0042
+  status                String                @default("Active") // Active | Inactive | On Leave | Terminated
+  emailCorporate        String?               @map("email_corporate")
+  photoUrl              String?               @map("photo_url")
+
+  // Encrypted identity (AES-256-GCM via lib/security/hr-vault.ts)
+  identificacionEnc     String                @map("identificacion_enc")
+  tipoDocumento         String                @map("tipo_documento")
+  primerNombre          String                @map("primer_nombre")
+  otrosNombres          String?               @map("otros_nombres")
+  primerApellido        String                @map("primer_apellido")
+  segundoApellido       String                @map("segundo_apellido")
+  fechaNacimiento       String                @map("fecha_nacimiento") // ISO date
+  genero                String                @db.Char(1)
+  emailPersonal         String                @map("email_personal")
+  municipioDane         String                @map("municipio_dane")
+  direccionResidencia   String                @map("direccion_residencia")
+
+  // Geography
+  continentId           String?               @map("continent_id")
+  countryId             String?               @map("country_id")
+  cityId                String?               @map("city_id")
+  salaryCurrencyCode    String                @default("COP") @map("salary_currency_code")
+
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  contracts             HrContract[]
+  payrollPeriods        HrPayroll[]
+  vacationRequests      HrVacationRequest[]
+  performanceReviews    HrPerformanceReview[]
+
+  @@index([orgId])
+  @@index([eid])
+  @@map("hr_employees")
+}
+
+model HrContract {
+  id                    String      @id @default(uuid())
+  orgId                 String      @map("org_id")
+  employeeId            String      @map("employee_id")
+  fechaInicio           String      @map("fecha_inicio")  // ISO date
+  fechaFin              String?     @map("fecha_fin")     // null = current
+  tipoContrato          String      @map("tipo_contrato")
+  tipoSalario           String      @map("tipo_salario")
+
+  // Encrypted salary (AES-256-GCM)
+  salarioBaseEnc        String      @map("salario_base_enc")
+  salaryCurrencyCode    String      @default("COP") @map("salary_currency_code")
+
+  procedimientoRenta    Int         @default(1) @map("procedimiento_renta")
+  entidadLegal          String?     @map("entidad_legal")
+  area                  String
+  subArea               String      @map("sub_area")
+  centroCosto           String      @map("centro_costo")
+  nombreCentroCosto     String?     @map("nombre_centro_costo")
+  branch                String?
+  cliente               String?
+  project               String?
+  digitoDedicacion      Int         @default(100) @map("digito_dedicacion")
+  directLeaderId        String?     @map("direct_leader_id")
+  jobTitle              String?     @map("job_title")
+
+  // Shield Protocol — signed contracts are immutable
+  isLocked              Boolean     @default(false) @map("is_locked")
+
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payrollPeriods        HrPayroll[]
+
+  @@index([orgId])
+  @@index([employeeId])
+  @@map("hr_contracts")
+}
+
+model HrPayroll {
+  id                    String      @id @default(uuid())
+  orgId                 String      @map("org_id")
+  employeeId            String      @map("employee_id")
+  contractId            String      @map("contract_id")
+  periodLabel           String      @map("period_label")  // "2026-03"
+  periodStart           DateTime    @map("period_start")
+  periodEnd             DateTime    @map("period_end")
+
+  // WorkdayHelper — computed via lib/hr/payroll-calculator.ts
+  workedDaysCount       Int         @default(0) @map("worked_days_count")
+  vacationDaysDeducted  Int         @default(0) @map("vacation_days_deducted")
+
+  // Encrypted amounts (AES-256-GCM)
+  baseAmountEnc         String      @map("base_amount_enc")
+  totalGrossEnc         String      @map("total_gross_enc")
+  deductionsEnc         String      @map("deductions_enc")  // JSON: {health, pension, arl}
+  netPayEnc             String      @map("net_pay_enc")
+  currencyCode          String      @default("COP") @map("currency_code")
+
+  // Shield Protocol — processed payrolls are immutable
+  isLocked              Boolean     @default(false) @map("is_locked")
+  processedAt           DateTime?   @map("processed_at")
+  processedBy           String?     @map("processed_by")
+
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  contract              HrContract  @relation(fields: [contractId], references: [id])
+
+  @@unique([orgId, employeeId, periodLabel])
+  @@index([orgId])
+  @@index([employeeId])
+  @@map("hr_payroll_periods")
+}
+
+model HrVacationRequest {
+  id                    String      @id @default(uuid())
+  orgId                 String      @map("org_id")
+  employeeId            String      @map("employee_id")
+  requestDate           DateTime    @default(now()) @map("request_date")
+  startDate             DateTime    @map("start_date")
+  endDate               DateTime    @map("end_date")
+
+  // WorkdayHelper — computed via lib/hr/vacation-calculator.ts
+  calendarDays          Int         @default(0) @map("calendar_days")
+  workdayDays           Int         @default(0) @map("workday_days")
+  holidaysSkipped       Int         @default(0) @map("holidays_skipped")
+
+  status                String      @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  approvedById          String?     @map("approved_by_id")
+  approvedAt            DateTime?   @map("approved_at")
+  notes                 String?
+
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([employeeId])
+  @@map("hr_vacation_requests")
+}
+
+model HrPerformanceReview {
+  id                    String      @id @default(uuid())
+  orgId                 String      @map("org_id")
+  employeeId            String      @map("employee_id")
+  reviewerId            String      @map("reviewer_id")
+  reviewPeriod          String      @map("review_period")  // "Q1-2026"
+  reviewDate            DateTime    @map("review_date")
+
+  // Scoring (0.0 – 5.0)
+  scoreDelivery         Float       @default(0) @map("score_delivery")
+  scoreAttitude         Float       @default(0) @map("score_attitude")
+  scoreCollaboration    Float       @default(0) @map("score_collaboration")
+  scoreInnovation       Float       @default(0) @map("score_innovation")
+  scoreOverall          Float       @default(0) @map("score_overall") // weighted avg
+
+  strengthsNotes        String?     @map("strengths_notes")
+  improvementNotes      String?     @map("improvement_notes")
+  nextGoals             String?     @map("next_goals")
+
+  status                String      @default("DRAFT") // DRAFT | SUBMITTED | ACKNOWLEDGED
+
+  // Shield Protocol — acknowledged reviews are immutable
+  isLocked              Boolean     @default(false) @map("is_locked")
+
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([employeeId])
+  @@map("hr_performance_reviews")
 }

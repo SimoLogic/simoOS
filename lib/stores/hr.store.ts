@@ -46,6 +46,8 @@ const mapToDb = (record: FullEmployeeRecord) => {
         project: sanitizeOptStr(record.historialLaboral.project)?.slice(0, 255),
         digito_dedicacion: sanitizeNum(record.historialLaboral.digito_dedicacion, 100),
         direct_leader: sanitizeOptStr(record.historialLaboral.direct_leader)?.slice(0, 255),
+        job_title: sanitizeOptStr(record.historialLaboral.job_title)?.slice(0, 255),
+        role_title: sanitizeOptStr(record.historialLaboral.role_title)?.slice(0, 255),
 
         // JSONB Fields
         afiliaciones: record.afiliaciones,
@@ -103,6 +105,7 @@ const mapFromDb = (dbRow: any): FullEmployeeRecord => {
             digito_dedicacion: dbRow.digito_dedicacion,
             direct_leader: dbRow.direct_leader,
             job_title: dbRow.job_title ?? "",
+            role_title: dbRow.role_title ?? "",
             created_at: dbRow.created_at
         },
 

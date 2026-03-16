@@ -51,6 +51,7 @@ const TABLE_COLUMNS: { key: string; label: string; locked: boolean; type?: "text
     { key: "maestro.segundo_apellido", label: "Second Last Name", locked: true },
     // Job Title immediately after names (R3)
     { key: "historialLaboral.job_title", label: "Job Title", locked: false, type: "text" },
+    { key: "historialLaboral.role_title", label: "Role Title", locked: false, type: "text" },
     // Remaining identity (locked)
     { key: "maestro.tipo_documento_id", label: "Doc Type", locked: true },
     { key: "maestro.numero_identificacion", label: "ID Number", locked: true },
@@ -134,6 +135,22 @@ const applyEdits = (emp: FullEmployeeRecord, draft: Record<string, unknown>): Fu
     }
     return result as unknown as FullEmployeeRecord;
 };
+
+// ─── Computed: Salary [Reporting Currency] ────────────────────────────────────
+// Reads from dim_fx_rates: from_currency = employee.salary_currency, to_currency = USD
+// Falls back to — if no rate is found
+const computeReportingSalary = (
+    salario_base: number | undefined,
+    salary_currency: string | undefined,
+    fxRates: Record<string, number>
+): string => {
+    if (!salario_base || !salary_currency) return "—";
+    if (salary_currency === "USD") return `$${Number(salario_base).toFixed(2)}`;
+    const rate = fxRates[salary_currency];
+    if (!rate) return "—";
+    return `$${(salario_base * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 
 // ─── Multi-Select Filter Component ───────────────────────────────────────────
 
@@ -296,6 +313,23 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
     const [anyTenantExists, setAnyTenantExists] = useState(false);
     const [employees, setEmployees] = useState<FullEmployeeRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [fxRates, setFxRates] = useState<Record<string, number>>({ COP: 0.000245, EUR: 1.09, PEN: 0.27 });
+
+    useEffect(() => {
+        // Build fxRates dictionary
+        import("@/lib/database").then(({ supabase }) => {
+            supabase.from("dim_fx_rates")
+                .select("from_currency, rate")
+                .eq("to_currency", "USD")
+                .then(({ data }) => {
+                    if (data && data.length > 0) {
+                        const rateMap: Record<string, number> = {};
+                        data.forEach((r: any) => { rateMap[r.from_currency] = r.rate; });
+                        setFxRates(rateMap);
+                    }
+                });
+        }).catch(() => { /* fallback rates kept */ });
+    }, []);
 
     useEffect(() => {
         const init = async () => {
@@ -698,6 +732,10 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                                             {col.locked && <span className="ml-1 text-[8px] text-slate-300">🔒</span>}
                                         </th>
                                     ))}
+                                    {/* Computed Reporting Salary Col */}
+                                    <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-left whitespace-nowrap text-slate-500 bg-slate-50">
+                                        Salary [Reporting USD]
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -803,6 +841,16 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                                                         />
                                                     </td>
                                                 ))}
+                                                {/* Computed Salary [Reporting Currency] — read-only */}
+                                                <td className="px-2 py-1.5 align-middle border-l border-slate-50 min-w-[120px]">
+                                                    <span className="text-[11px] font-mono font-semibold text-emerald-700">
+                                                        {computeReportingSalary(
+                                                            display.historialLaboral?.salario_base,
+                                                            display.salary_currency ?? undefined,
+                                                            fxRates
+                                                        )}
+                                                    </span>
+                                                </td>
                                             </tr>
                                         );
                                     })

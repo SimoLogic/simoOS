@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Responsive, WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { usePmoStore } from "@/lib/stores/pmo.store";
@@ -11,8 +10,24 @@ import { BatteryWidget } from "@/components/pmo/widgets/BatteryWidget";
 import { WorkloadWidget } from "@/components/pmo/widgets/WorkloadWidget";
 import { AlertCircle, ZapOff, LayoutDashboard, Terminal } from "lucide-react";
 import { TaskLogWidget } from "@/components/pmo/widgets/TaskLogWidget";
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
+import type { LayoutItem } from "react-grid-layout";
+// CJS interop: cast to any to bypass react-grid-layout type conflicts
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const ReactGridLayout = (require("react-grid-layout") as any).default ||
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  (require("react-grid-layout") as any);
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const WidthProvider = (require("react-grid-layout") as any).WidthProvider;
+const GridLayout = WidthProvider(ReactGridLayout) as React.ComponentType<{
+  className?: string;
+  layout: LayoutItem[];
+  cols: number;
+  rowHeight: number;
+  isDraggable?: boolean;
+  isResizable?: boolean;
+  margin?: [number, number];
+  children?: React.ReactNode;
+}>;
 
 interface DashboardViewProps {
   board: PmoBoard;
@@ -99,12 +114,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ board, optimisticT
             </div>
         </div>
 
-        <ResponsiveGridLayout
+        <GridLayout
           className="layout"
           layout={layout}
           cols={12}
           rowHeight={80}
-          width={1200}
           isDraggable={true}
           isResizable={true}
           margin={[16, 16]}
@@ -118,7 +132,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ board, optimisticT
           <div key="activity">
             <TaskLogWidget />
           </div>
-        </ResponsiveGridLayout>
+        </GridLayout>
       </div>
 
       <style jsx>{`

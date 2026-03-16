@@ -4,9 +4,8 @@ import {
   REFRESH_TOKEN_NAME, 
   PmoSession, 
   verifyToken, 
-  signAccessToken, 
-  signRefreshToken 
 } from "./auth-core";
+import { signAccessToken, signRefreshToken } from "./auth-server";
 
 /**
  * getServerSession - Retrieves session from cookies in Server Actions/Components

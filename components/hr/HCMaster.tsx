@@ -62,6 +62,8 @@ const COLUMNS: ColumnDef[] = [
     { key: "direct_leader_id", label: "Leader EID", width: "w-32", group: "Professional" },
     { key: "historialLaboral.tipo_contrato", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
     { key: "historialLaboral.fecha_inicio", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
+    { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
+    { key: "historialLaboral.role_title", label: "Role Title", width: "w-44", group: "Professional" },
 
     // Benefits
     { key: "afiliaciones.eps_nombre", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
@@ -82,9 +84,25 @@ const COLUMNS: ColumnDef[] = [
     { key: "city_id", label: "City", width: "w-32", group: "Contact" },
 
     // Payroll
-    { key: "historialLaboral.salario_base", label: "Base Salary", width: "w-40", type: "number", format: (v) => `$${Number(v).toLocaleString("es-CO")}`, group: "Payroll" },
+    { key: "historialLaboral.salario_base", label: "Salary [Local Currency]", width: "w-44", type: "number", format: (v) => `$${Number(v).toLocaleString("es-CO")}`, group: "Payroll" },
     { key: "salary_currency", label: "Currency", width: "w-24", group: "Payroll" },
+    // Salary [Reporting Currency] is a computed column — rendered separately in the table
 ];
+
+// ─── Computed: Salary [Reporting Currency] ────────────────────────────────────
+// Reads from dim_fx_rates: from_currency = employee.salary_currency, to_currency = USD
+// Falls back to — if no rate is found
+const computeReportingSalary = (
+    salario_base: number | undefined,
+    salary_currency: string | undefined,
+    fxRates: Record<string, number>
+): string => {
+    if (!salario_base || !salary_currency) return "—";
+    if (salary_currency === "USD") return `$${Number(salario_base).toFixed(2)}`;
+    const rate = fxRates[salary_currency];
+    if (!rate) return "—";
+    return `$${(salario_base * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,13 +115,19 @@ const setValue = (obj: any, path: string, value: any) => {
     target[last] = value;
 };
 
-function exportToExcel(employees: FullEmployeeRecord[]) {
+function exportToExcel(employees: FullEmployeeRecord[], fxRates: Record<string, number>) {
     const data = employees.map((emp) => {
         const row: any = {};
         COLUMNS.forEach((col) => {
             const val = getValue(emp, col.key);
             row[col.label] = col.format ? col.format(val) : val;
         });
+        // Computed column
+        row["Salary [Reporting Currency] (USD)"] = computeReportingSalary(
+            emp.historialLaboral?.salario_base,
+            emp.salary_currency ?? undefined,
+            fxRates
+        );
         return row;
     });
 
@@ -217,6 +241,24 @@ export const HCMaestro: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // FX rates: key = from_currency, value = rate to USD
+    const [fxRates, setFxRates] = useState<Record<string, number>>({ COP: 0.000245, EUR: 1.09, PEN: 0.27 });
+
+    useEffect(() => {
+        // Try to pull live FX rates from Supabase dim_fx_rates table
+        import("@/lib/database").then(({ supabase }) => {
+            supabase.from("dim_fx_rates")
+                .select("from_currency, rate")
+                .eq("to_currency", "USD")
+                .then(({ data }) => {
+                    if (data && data.length > 0) {
+                        const rateMap: Record<string, number> = {};
+                        data.forEach((r: any) => { rateMap[r.from_currency] = r.rate; });
+                        setFxRates(rateMap);
+                    }
+                });
+        }).catch(() => { /* DB not available, use fallback rates */ });
+    }, []);
 
     useEffect(() => {
         const fetch = async () => {
@@ -334,7 +376,7 @@ export const HCMaestro: React.FC = () => {
                         <p className="text-sm text-slate-400 mt-0.5">Unified master record populated via Employee Intake. Identity fields are protected.</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => exportToExcel(displayed)} className="px-3 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2">
+                        <button onClick={() => exportToExcel(displayed, fxRates)} className="px-3 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2">
                             <Download className="w-4 h-4" /> Export Excel
                         </button>
                         <button onClick={handleSaveAll} className="px-4 py-2 bg-navy-blue text-white text-sm font-semibold rounded-lg hover:bg-navy-blue/90 transition-all shadow-sm flex items-center gap-2">
@@ -394,6 +436,9 @@ export const HCMaestro: React.FC = () => {
                                     </button>
                                 </th>
                             ))}
+                            <th className="px-3 py-2.5 text-left border-l border-slate-100 whitespace-nowrap w-48">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase">Salary [Reporting Currency] USD</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -448,6 +493,16 @@ export const HCMaestro: React.FC = () => {
                                             onStartEdit={() => setEditingCell({ eid: emp.eid, key: col.key })} onChange={val => handleCellChange(emp.eid, col.key, val)} />
                                     </td>
                                 ))}
+                                {/* Computed Salary [Reporting Currency] — read-only */}
+                                <td className="px-2 py-1 align-middle border-l border-slate-50 w-48">
+                                    <span className="text-xs font-mono text-emerald-700 font-semibold">
+                                        {computeReportingSalary(
+                                            emp.historialLaboral?.salario_base,
+                                            emp.salary_currency ?? undefined,
+                                            fxRates
+                                        )}
+                                    </span>
+                                </td>
                             </tr>
                         ))}
                     </tbody>

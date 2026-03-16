@@ -13,6 +13,7 @@ import {
     UserCog,
     LayoutGrid,
     CalendarDays,
+    Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,8 @@ const pmoSubModules: PmoSubModule[] = [
     { id: "my-plan", label: "My Plan", icon: CalendarDays, href: "/pmo/my-plan" },
     { id: "my-work", label: "My Work", icon: Briefcase, href: "/pmo/my-work" },
 ];
+
+
 
 interface ModuleItem {
     id: ModuleId;
@@ -214,6 +217,7 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                                     </button>
                                 </div>
                             )}
+
                         </React.Fragment>
                     );
                 })}

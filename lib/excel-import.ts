@@ -157,6 +157,7 @@ export const EXCEL_COLUMN_MAP: Record<string, { key: string; label: string }> = 
     "first last name": { key: "maestro.primer_apellido", label: "First Last Name" },
     "second last name": { key: "maestro.segundo_apellido", label: "Second Last Name" },
     "job title": { key: "historialLaboral.job_title", label: "Job Title" },
+    "role title": { key: "historialLaboral.role_title", label: "Role Title" },
     "document type": { key: "maestro.tipo_documento_id", label: "Document Type" },
     "id number": { key: "maestro.numero_identificacion", label: "ID Number" },
     "date of birth": { key: "maestro.fecha_nacimiento", label: "Date of Birth" },
@@ -634,6 +635,7 @@ export function buildNewRecord(row: AuditedNewRow, tenantId?: string): FullEmplo
             digito_dedicacion: parseInt(r["dedication %"] ?? "100") || 100,
             direct_leader: r["direct leader"] ?? "",
             job_title: r["job title"] ?? "",
+            role_title: r["role title"] ?? "",
             created_at: now,
         },
         afiliaciones: {

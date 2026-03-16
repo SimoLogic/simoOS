@@ -1,10 +1,39 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// HOPSI H-OS · HR Module · Job Title Types
-// Mirrors the dim_job_title DB table
+// SIMO Intellisense H-OS · HR Module · Job Title + Role Title Types
+// Mirrors dim_job_title + dim_role_title DB tables
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type JobTitleStatus = "Draft" | "Active" | "Inactive";
 export type ApprovalDecision = "Pending" | "Approved" | "Rejected";
+export type RoleTitleStatus = "Active" | "Inactive";
+
+// ── Role Title entity ─────────────────────────────────────────────────────────
+export interface RoleTitle {
+    id: string;
+    tenant_id: string;
+    job_title_id: string;
+    role_title: string;         // max 60 chars
+    describe_role: string;      // max 500 chars
+    status: RoleTitleStatus;
+    created_at: string;
+    updated_at: string;
+}
+
+/** Lightweight reference used in dropdowns */
+export interface RoleTitleRef {
+    id: string;
+    role_title: string;
+    job_title_id: string;
+    describe_role?: string;
+}
+
+export const blankRoleTitle = (tenant_id = "", job_title_id = ""): Omit<RoleTitle, "id" | "created_at" | "updated_at"> => ({
+    tenant_id,
+    job_title_id,
+    role_title: "",
+    describe_role: "",
+    status: "Active",
+});
 
 // ── Language proficiency levels ───────────────────────────────────────────────
 export const LANGUAGE_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2", "Native"] as const;
@@ -79,6 +108,8 @@ export interface JobTitle {
     approver2_id: string;
     approver2_status: ApprovalDecision;
     jdf_data: JobDescriptionData;
+    /** Role Titles associated with this Job Title */
+    role_titles: RoleTitleRef[];
     created_at: string;
     updated_at: string;
 }
@@ -98,6 +129,7 @@ export const blankJobTitle = (tenant_id = ""): Omit<JobTitle, "id" | "created_at
     approver2_id: "",
     approver2_status: "Pending",
     jdf_data: blankJdfData(),
+    role_titles: [],
 });
 
 // ── Lightweight reference (used in dropdowns) ─────────────────────────────────
@@ -106,6 +138,8 @@ export interface JobTitleRef {
     title: string;
     area?: string;
     status: JobTitleStatus;
+    /** Active Role Titles associated, used to populate the Role Title dropdown */
+    role_titles?: RoleTitleRef[];
 }
 
 // ── Common psychometric and skills tests ──────────────────────────────────────

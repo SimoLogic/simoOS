@@ -23,7 +23,8 @@ import { getActiveBranchesAction } from "@/app/actions/branch-actions";
 import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
 import { getContinentsAction, getCountriesAction, getCitiesAction } from "@/app/actions/geography-actions";
 import type { Branch } from "@/lib/branch-types";
-import type { JobTitleRef } from "@/lib/job-title-types";
+import type { JobTitleRef, RoleTitleRef } from "@/lib/job-title-types";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -377,14 +378,6 @@ const Step1: React.FC<{
                             disabled={!data.country_id}
                         />
                     </Field>
-                    <Field label="Home Address" required error={errors.direccion_residencia}
-                        hint="Full address – required for ARL registration" className="col-span-2">
-                        <textarea
-                            value={data.direccion_residencia}
-                            onChange={e => set("direccion_residencia", e.target.value)}
-                            className={cn(inputCls(errors.direccion_residencia), "resize-none h-16")}
-                            placeholder="Calle 123 # 45-67, Apto 8, Bogotá D.C." />
-                    </Field>
                 </div>
             </div>
         </div>
@@ -406,7 +399,7 @@ const Step2: React.FC<{
     const [entitiesLoading, setEntitiesLoading] = useState(true);
     // ── Load Active Branches from DB ──
     const [activeBranches, setActiveBranches] = useState<Branch[]>([]);
-    // ── Load Active Job Titles from DB ──
+    // ── Load Active Job Titles (with Role Titles) from DB ──
     const [jobTitleOptions, setJobTitleOptions] = useState<JobTitleRef[]>([]);
     const tenantCtx = useTenant();
 
@@ -420,6 +413,10 @@ const Step2: React.FC<{
             getActiveJobTitlesAction(tenantCtx.currentTenant.tenant_id).then(setJobTitleOptions).catch(() => { });
         }
     }, [tenantCtx.currentTenant?.tenant_id]);
+
+    // Derive role titles for the currently selected Job Title
+    const selectedJobTitleObj = jobTitleOptions.find(jt => jt.title === data.job_title);
+    const roleTitleOptions: RoleTitleRef[] = (selectedJobTitleObj?.role_titles ?? []);
 
     // Fallback to hard-coded list if DB returns nothing (e.g. table not yet created)
     const entityOptions = localEntities.length > 0
@@ -467,8 +464,8 @@ const Step2: React.FC<{
                             options={entityOptions}
                             disabled={entitiesLoading} />
                     </Field>
-                    <Field label="Base Salary" required error={errors.salario_base}
-                        hint="Monthly gross salary">
+                    <Field label="Base Salary [Local Currency]" required error={errors.salario_base}
+                        hint="Monthly gross salary in the employee's local currency">
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">{data.salary_currency || "$"}</span>
                             <input type="number" value={data.salario_base || ""}
@@ -517,7 +514,7 @@ const Step2: React.FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Area" required error={errors.area}>
                         <Select value={data.area}
-                            onChange={e => { set("area", e.target.value); onChange({ ...data, area: e.target.value, sub_area: "" }); }}
+                            onChange={e => { set("area", e.target.value); onChange({ ...data, area: e.target.value, sub_area: "", job_title: "", role_title: "" } as any); }}
                             error={errors.area}
                             placeholder="— Select area —"
                             options={AREAS_EMPRESA.map(a => ({ value: a, label: a }))} />
@@ -530,14 +527,33 @@ const Step2: React.FC<{
                             options={subAreas.map(s => ({ value: s, label: s }))}
                             disabled={!data.area} />
                     </Field>
+                    {/* Job Title + Role Title — side by side */}
                     <Field label="Job Title" error={errors.job_title}
-                        hint="Official role from Job Title Manager · Select area first for filtered results" className="col-span-2">
+                        hint="Official role from Job Title Library">
                         <Select value={data.job_title}
-                            onChange={e => set("job_title", e.target.value)}
+                            onChange={e => {
+                                // Reset role_title when job title changes
+                                onChange({ ...data, job_title: e.target.value, role_title: "" } as any);
+                            }}
                             placeholder="— Select Job Title —"
                             options={jobTitleOptions
                                 .filter(jt => !data.area || !jt.area || jt.area === data.area)
                                 .map(jt => ({ value: jt.title, label: jt.title }))} />
+                    </Field>
+                    <Field label="Role Title" error={(errors as any).role_title}
+                        hint={data.job_title ? "Select an operational role assigned to this employee" : "Select a Job Title first"}>
+                        <Select
+                            value={(data as any).role_title || ""}
+                            onChange={e => set("role_title" as any, e.target.value)}
+                            placeholder={data.job_title ? (roleTitleOptions.length > 0 ? "— Select Role Title —" : "No role titles defined") : "— Select Job Title first —"}
+                            options={roleTitleOptions.map(rt => ({ value: rt.role_title, label: rt.role_title }))}
+                            disabled={!data.job_title || roleTitleOptions.length === 0} />
+                        {(data as any).role_title && (() => {
+                            const found = roleTitleOptions.find(rt => rt.role_title === (data as any).role_title);
+                            return found?.describe_role ? (
+                                <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed">{found.describe_role}</p>
+                            ) : null;
+                        })()}
                     </Field>
                     <Field label="Cost Center" required error={errors.centro_costo}
                         hint="Alphanumeric, max 10 characters">
@@ -590,6 +606,7 @@ const Step2: React.FC<{
         </div>
     );
 };
+
 
 // ─── Step 3: Social Security ──────────────────────────────────────────────────
 
@@ -898,17 +915,26 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
         return {};
     }, [maestro, historial, afiliaciones, sst]);
 
-    const goNext = () => {
-        const errs = validate(step);
-        setErrors(errs);
-        if (Object.keys(errs).length === 0) {
-            setStep(s => Math.min(s + 1, 5));
-        }
+    // Free navigation — no sequential enforcement for steps 1-4
+    const goToStep = (target: number) => {
+        setErrors({});
+        setStep(target);
     };
 
-    const goPrev = () => {
+    const goNext = () => goToStep(Math.min(step + 1, 5));
+    const goPrev = () => goToStep(Math.max(step - 1, 1));
+
+    // Per-segment "Save Progress" — validates only the current step
+    const [stepSaved, setStepSaved] = useState<number | null>(null);
+    const handleSaveProgress = () => {
+        const errs = validate(step);
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
+            return;
+        }
         setErrors({});
-        setStep(s => Math.max(s - 1, 1));
+        setStepSaved(step);
+        setTimeout(() => setStepSaved(null), 2500);
     };
 
     const [dbError, setDbError] = useState<string | null>(null);
@@ -1010,7 +1036,7 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
                     </div>
                 </div>
 
-                {/* ── Stepper ── */}
+                {/* ── Stepper (clickable steps for free navigation) ── */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
                     <div className="flex items-center gap-0">
                         {STEPS.map((s, i) => {
@@ -1019,26 +1045,30 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
                             const Icon = s.icon;
                             return (
                                 <React.Fragment key={s.id}>
-                                    <div className="flex flex-col items-center gap-1.5 min-w-[80px]">
+                                    <button
+                                        onClick={() => goToStep(s.id)}
+                                        className="flex flex-col items-center gap-1.5 min-w-[80px] group"
+                                        title={`Go to ${s.label}`}
+                                    >
                                         <div className={cn(
                                             "w-8 h-8 rounded-full flex items-center justify-center transition-all border-2",
                                             isDone ? "bg-emerald-500 border-emerald-500" :
                                                 isActive ? `${s.bg} border-transparent` :
-                                                    "bg-white border-slate-200"
+                                                    "bg-white border-slate-200 group-hover:border-cobalt-blue/40"
                                         )}>
                                             {isDone ? (
                                                 <CheckCircle2 className="w-4 h-4 text-white" />
                                             ) : (
-                                                <Icon className={cn("w-4 h-4", isActive ? "text-white" : "text-slate-400")} />
+                                                <Icon className={cn("w-4 h-4", isActive ? "text-white" : "text-slate-400 group-hover:text-cobalt-blue")} />
                                             )}
                                         </div>
                                         <span className={cn(
                                             "text-[10px] font-semibold text-center leading-tight",
-                                            isActive ? "text-navy-blue" : isDone ? "text-emerald-600" : "text-slate-400"
+                                            isActive ? "text-navy-blue" : isDone ? "text-emerald-600" : "text-slate-400 group-hover:text-cobalt-blue"
                                         )}>
                                             {s.label}
                                         </span>
-                                    </div>
+                                    </button>
                                     {i < STEPS.length - 1 && (
                                         <div className={cn(
                                             "flex-1 h-0.5 mb-5 transition-colors",
@@ -1091,23 +1121,47 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
                         <span className="text-xs text-slate-400 font-mono">{currentStep.table}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {step > 1 && (
+                        {step > 1 && step < 5 && (
                             <button onClick={goPrev}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
                                 <ChevronLeft className="w-4 h-4" /> Back
                             </button>
                         )}
-                        {step < 5 ? (
-                            <button onClick={goNext}
-                                className="flex items-center gap-2 px-5 py-2 bg-cobalt-blue text-white text-sm font-semibold rounded-lg hover:bg-cobalt-blue/90 transition-colors shadow-sm">
-                                Continue <ChevronRight className="w-4 h-4" />
-                            </button>
-                        ) : (
-                            <button onClick={handleSave} disabled={saved}
-                                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60">
-                                <Save className="w-4 h-4" />
-                                Save Employee to HC Maestro
-                            </button>
+                        {step < 5 && (
+                            <>
+                                <button
+                                    onClick={handleSaveProgress}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-4 py-2 text-sm font-semibold border rounded-lg transition-colors",
+                                        stepSaved === step
+                                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    )}
+                                >
+                                    {stepSaved === step ? (
+                                        <><CheckCircle2 className="w-3.5 h-3.5" /> Saved!</>
+                                    ) : (
+                                        <><Save className="w-3.5 h-3.5" /> Save Progress</>
+                                    )}
+                                </button>
+                                <button onClick={goNext}
+                                    className="flex items-center gap-2 px-5 py-2 bg-cobalt-blue text-white text-sm font-semibold rounded-lg hover:bg-cobalt-blue/90 transition-colors shadow-sm">
+                                    Continue <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+                        {step === 5 && (
+                            <>
+                                <button onClick={goPrev}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+                                    <ChevronLeft className="w-4 h-4" /> Back
+                                </button>
+                                <button onClick={handleSave} disabled={saved}
+                                    className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60">
+                                    <Save className="w-4 h-4" />
+                                    Save Employee to HC Maestro
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

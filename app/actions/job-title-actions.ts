@@ -2,7 +2,19 @@
 
 import { supabase } from "@/lib/database";
 import { sanitizeStr, sanitizeOptStr } from "@/lib/utils/sanitizers";
-import type { JobTitle, JobTitleRef, ApprovalDecision, JobDescriptionData } from "@/lib/job-title-types";
+import type {
+    JobTitle, JobTitleRef, ApprovalDecision, JobDescriptionData,
+    RoleTitle, RoleTitleRef,
+} from "@/lib/job-title-types";
+
+// ─── Helper: map raw DB row → RoleTitleRef ────────────────────────────────────
+
+const mapRoleTitleRef = (r: any): RoleTitleRef => ({
+    id: r.id,
+    role_title: r.role_title,
+    job_title_id: r.job_title_id,
+    describe_role: r.describe_role ?? "",
+});
 
 // ─── Helper: map raw DB row → JobTitle ────────────────────────────────────────
 
@@ -22,17 +34,20 @@ const mapRow = (row: any): JobTitle => ({
     approver2_id: row.approver2_id ?? "",
     approver2_status: row.approver2_status,
     jdf_data: (row.jdf_data as JobDescriptionData) ?? ({} as JobDescriptionData),
+    role_titles: Array.isArray(row.dim_role_title)
+        ? row.dim_role_title.filter((rt: any) => rt.status === "Active").map(mapRoleTitleRef)
+        : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
 });
 
-// ─── READ: Get Active Job Titles (for dropdowns) ──────────────────────────────
+// ─── READ: Get Active Job Titles (for dropdowns) — includes Role Titles ───────
 
 export async function getActiveJobTitlesAction(tenant_id: string): Promise<JobTitleRef[]> {
     if (!tenant_id) return [];
     const { data, error } = await supabase
         .from("dim_job_title")
-        .select("id, title, area, status")
+        .select("id, title, area, status, dim_role_title(id, role_title, job_title_id, describe_role, status)")
         .eq("tenant_id", tenant_id)
         .eq("status", "Active")
         .order("title", { ascending: true });
@@ -46,6 +61,11 @@ export async function getActiveJobTitlesAction(tenant_id: string): Promise<JobTi
         title: r.title,
         area: r.area ?? "",
         status: r.status,
+        role_titles: Array.isArray(r.dim_role_title)
+            ? (r.dim_role_title as any[])
+                .filter((rt) => rt.status === "Active")
+                .map(mapRoleTitleRef)
+            : [],
     }));
 }
 
@@ -55,7 +75,7 @@ export async function getAllJobTitlesAction(tenant_id: string): Promise<JobTitle
     if (!tenant_id) return [];
     const { data, error } = await supabase
         .from("dim_job_title")
-        .select("*")
+        .select("*, dim_role_title(id, role_title, job_title_id, describe_role, status)")
         .eq("tenant_id", tenant_id)
         .order("created_at", { ascending: false });
 
@@ -64,6 +84,101 @@ export async function getAllJobTitlesAction(tenant_id: string): Promise<JobTitle
         return [];
     }
     return (data ?? []).map(mapRow);
+}
+
+// ─── READ: Get Role Titles for a specific Job Title ───────────────────────────
+
+export async function getRoleTitlesForJobTitleAction(
+    tenant_id: string,
+    job_title_id: string
+): Promise<RoleTitleRef[]> {
+    if (!tenant_id || !job_title_id) return [];
+    const { data, error } = await supabase
+        .from("dim_role_title")
+        .select("id, role_title, job_title_id, describe_role")
+        .eq("tenant_id", tenant_id)
+        .eq("job_title_id", job_title_id)
+        .eq("status", "Active")
+        .order("role_title", { ascending: true });
+
+    if (error) {
+        console.error("[job-title-actions] getRoleTitlesForJobTitleAction:", error.message);
+        return [];
+    }
+    return (data ?? []).map(mapRoleTitleRef);
+}
+
+// ─── WRITE: Save / Upsert Role Title ─────────────────────────────────────────
+
+export interface SaveRoleTitlePayload {
+    id?: string;
+    tenant_id: string;
+    job_title_id: string;
+    role_title: string;
+    describe_role?: string;
+}
+
+export async function saveRoleTitleAction(
+    payload: SaveRoleTitlePayload
+): Promise<{ success: boolean; message?: string; id?: string }> {
+    try {
+        const dbPayload = {
+            tenant_id: payload.tenant_id,
+            job_title_id: payload.job_title_id,
+            role_title: sanitizeStr(payload.role_title, 60),
+            describe_role: sanitizeOptStr(payload.describe_role ?? "", 500),
+            status: "Active" as const,
+        };
+
+        let result;
+        if (payload.id) {
+            result = await supabase
+                .from("dim_role_title")
+                .update(dbPayload)
+                .eq("id", payload.id)
+                .eq("tenant_id", payload.tenant_id)
+                .select("id")
+                .single();
+        } else {
+            result = await supabase
+                .from("dim_role_title")
+                .insert([dbPayload])
+                .select("id")
+                .single();
+        }
+
+        if (result.error) {
+            if (result.error.code === "23505") {
+                return { success: false, message: `Role Title "${payload.role_title}" already exists for this Job Title.` };
+            }
+            throw result.error;
+        }
+        return { success: true, id: result.data?.id };
+    } catch (err: any) {
+        console.error("[job-title-actions] saveRoleTitleAction:", err.message);
+        return { success: false, message: err.message ?? "Unexpected error saving Role Title." };
+    }
+}
+
+// ─── WRITE: Toggle Role Title Status (Activate / Deactivate) ─────────────────
+
+export async function toggleRoleTitleStatusAction(
+    id: string,
+    currentStatus: "Active" | "Inactive"
+): Promise<{ success: boolean; message?: string }> {
+    try {
+        const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+        const { error } = await supabase
+            .from("dim_role_title")
+            .update({ status: newStatus })
+            .eq("id", id);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (err: any) {
+        console.error("[job-title-actions] toggleRoleTitleStatusAction:", err.message);
+        return { success: false, message: err.message };
+    }
 }
 
 // ─── WRITE: Save / Upsert Job Title ──────────────────────────────────────────
@@ -81,7 +196,9 @@ export interface SaveJobTitlePayload {
     approver1_id: string;
     approver2_id: string;
     jdf_data: JobDescriptionData;
-    submitForApproval?: boolean;  // if true → moves from Draft to awaiting approval
+    /** Inline Role Titles to upsert alongside the Job Title */
+    role_titles?: Array<{ id?: string; role_title: string; describe_role: string }>;
+    submitForApproval?: boolean;
 }
 
 export async function saveJobTitleAction(
@@ -105,7 +222,7 @@ export async function saveJobTitleAction(
             approver2_status: "Pending",
         };
 
-        // Anti-self-approval guard (belt + suspenders — DB constraint also handles this)
+        // Anti-self-approval guard
         if (payload.requester_id && payload.approver1_id && payload.requester_id === payload.approver1_id) {
             return { success: false, message: "Approver 1 cannot be the same person as the Requester." };
         }
@@ -116,9 +233,23 @@ export async function saveJobTitleAction(
             return { success: false, message: "Approver 1 and Approver 2 must be different people." };
         }
 
+        let jobTitleId: string | undefined = payload.id;
         let result;
+
         if (payload.id) {
-            // UPDATE
+            // UPDATE — preserve approval state
+            const { data: current } = await supabase
+                .from("dim_job_title")
+                .select("status, approver1_status, approver2_status")
+                .eq("id", payload.id)
+                .single();
+
+            if (current) {
+                dbPayload.status = current.status;
+                dbPayload.approver1_status = current.approver1_status;
+                dbPayload.approver2_status = current.approver2_status;
+            }
+
             result = await supabase
                 .from("dim_job_title")
                 .update(dbPayload)
@@ -142,10 +273,72 @@ export async function saveJobTitleAction(
             throw result.error;
         }
 
-        return { success: true, id: result.data?.id };
+        jobTitleId = result.data?.id ?? payload.id;
+
+        // ── Upsert Role Titles ────────────────────────────────────────────────
+        if (jobTitleId && payload.role_titles && payload.role_titles.length > 0) {
+            for (const rt of payload.role_titles) {
+                if (!rt.role_title.trim()) continue;
+                await saveRoleTitleAction({
+                    id: rt.id,
+                    tenant_id: payload.tenant_id,
+                    job_title_id: jobTitleId,
+                    role_title: rt.role_title,
+                    describe_role: rt.describe_role,
+                });
+            }
+        }
+
+        return { success: true, id: jobTitleId };
     } catch (err: any) {
         console.error("[job-title-actions] saveJobTitleAction:", err.message);
         return { success: false, message: err.message ?? "Unexpected error saving Job Title." };
+    }
+}
+
+// ─── WRITE: Duplicate Job Title (creates new Draft with all Role Titles) ──────
+
+export async function duplicateJobTitleAction(
+    id: string,
+    tenant_id: string
+): Promise<{ success: boolean; message?: string; id?: string }> {
+    try {
+        // Fetch the original
+        const { data: original, error: fetchErr } = await supabase
+            .from("dim_job_title")
+            .select("*, dim_role_title(role_title, describe_role)")
+            .eq("id", id)
+            .eq("tenant_id", tenant_id)
+            .single();
+
+        if (fetchErr || !original) throw fetchErr ?? new Error("Job Title not found");
+
+        const copyTitle = `${original.title} (Copy)`;
+
+        const res = await saveJobTitleAction({
+            tenant_id,
+            title: copyTitle,
+            area: original.area ?? "",
+            sub_area: original.sub_area ?? "",
+            cost_center: original.cost_center ?? "",
+            sub_cost_center: original.sub_cost_center ?? "",
+            direct_supervisor: original.direct_supervisor ?? "",
+            requester_id: original.requester_id ?? "",
+            approver1_id: original.approver1_id ?? "",
+            approver2_id: original.approver2_id ?? "",
+            jdf_data: original.jdf_data ?? {},
+            role_titles: Array.isArray(original.dim_role_title)
+                ? original.dim_role_title.map((rt: any) => ({
+                    role_title: rt.role_title,
+                    describe_role: rt.describe_role ?? "",
+                }))
+                : [],
+        });
+
+        return res;
+    } catch (err: any) {
+        console.error("[job-title-actions] duplicateJobTitleAction:", err.message);
+        return { success: false, message: err.message ?? "Unexpected error duplicating Job Title." };
     }
 }
 
@@ -159,7 +352,6 @@ export async function approveJobTitleAction(
     try {
         const field = approverNum === 1 ? "approver1_status" : "approver2_status";
 
-        // First fetch the current record to check if both approvals will be given
         const { data: current, error: fetchErr } = await supabase
             .from("dim_job_title")
             .select("approver1_status, approver2_status")
@@ -184,7 +376,7 @@ export async function approveJobTitleAction(
     }
 }
 
-// ─── WRITE: Toggle Status (Activate / Deactivate) ────────────────────────────
+// ─── WRITE: Toggle Job Title Status (Activate / Deactivate) ──────────────────
 
 export async function toggleJobTitleStatusAction(
     id: string,

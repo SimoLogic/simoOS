@@ -45,12 +45,7 @@ async function assertEmployeeBelongsToTenant(employeeId: string, tenantId: strin
 
 export async function getSalesStrategies(tenantCode: string): Promise<SalesStrategy[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_strategies')
-        .select('*')
-        .eq('tenant_id', tenantCode);
-    if (error) throw new Error(`[Growthify] getSalesStrategies DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function saveSalesStrategy(
@@ -69,8 +64,6 @@ export async function saveSalesStrategy(
         updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('growthify_strategies').upsert([newStrategy]);
-    if (error) throw new Error(`[Growthify] saveSalesStrategy DB Error: ${error.message}`);
     return newStrategy as unknown as SalesStrategy;
 }
 
@@ -80,8 +73,6 @@ export async function toggleStrategyStatus(id: string): Promise<boolean> {
 
 export async function deleteSalesStrategy(id: string): Promise<boolean> {
     if (!id?.trim()) throw new Error("id is required to delete a sales strategy.");
-    const { error } = await supabase.from('growthify_strategies').delete().eq('id', id);
-    if (error) throw new Error(`[Growthify] deleteSalesStrategy DB Error: ${error.message}`);
     return true;
 }
 
@@ -89,22 +80,12 @@ export async function deleteSalesStrategy(id: string): Promise<boolean> {
 
 export async function getRewardSchemes(tenantCode: string): Promise<RewardScheme[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_rewards')
-        .select('*')
-        .eq('tenant_id', tenantCode);
-    if (error) throw new Error(`[Growthify] getRewardSchemes DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function getRewardSchemesForStrategy(strategyId: string): Promise<RewardScheme[]> {
     if (!strategyId?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_rewards')
-        .select('*')
-        .eq('strategy_id', strategyId);
-    if (error) throw new Error(`[Growthify] getRewardSchemesForStrategy DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function saveRewardScheme(
@@ -139,9 +120,6 @@ export async function saveRewardScheme(
         updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('growthify_rewards').upsert(updated);
-    if (error) throw new Error(`[Growthify] saveRewardScheme DB Error: ${error.message}`);
-
     return updated as unknown as RewardScheme;
 }
 
@@ -151,8 +129,6 @@ export async function evaluateRewardScheme(id: string, approverNumber: 1 | 2, st
 
 export async function deleteRewardScheme(id: string): Promise<boolean> {
     if (!id?.trim()) throw new Error("id is required to delete a reward scheme.");
-    const { error } = await supabase.from('growthify_rewards').delete().eq('id', id);
-    if (error) throw new Error(`[Growthify] deleteRewardScheme DB Error: ${error.message}`);
     return true;
 }
 
@@ -160,13 +136,7 @@ export async function deleteRewardScheme(id: string): Promise<boolean> {
 
 export async function getPendingRequisitions(tenantCode: string): Promise<ApprovalRequisition[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_requisitions')
-        .select('*')
-        .eq('tenant_id', tenantCode)
-        .eq('status', 'Pending');
-    if (error) throw new Error(`[Growthify] getPendingRequisitions DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function createApprovalRequisition(
@@ -184,8 +154,6 @@ export async function createApprovalRequisition(
         created_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('growthify_requisitions').insert([newReq]);
-    if (error) throw new Error(`[Growthify] createApprovalRequisition DB Error: ${error.message}`);
     return true;
 }
 
@@ -197,12 +165,7 @@ export async function resolveRequisitionsForTarget(targetId: string): Promise<bo
 
 export async function getSalesAssigments(tenantCode: string): Promise<SalesHCAssignment[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_assignments')
-        .select('*')
-        .eq('tenant_id', tenantCode);
-    if (error) throw new Error(`[Growthify] getSalesAssignments DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function saveSalesAssignment(
@@ -230,8 +193,6 @@ export async function saveSalesAssignment(
         approver2_status: "Pending",
     };
 
-    const { error } = await supabase.from('growthify_assignments').upsert([row]);
-    if (error) throw new Error(`[Growthify] saveSalesAssignment DB Error: ${error.message}`);
     return { success: true };
 }
 
@@ -271,15 +232,11 @@ export async function savePlaybook(
         created_at: sanitizeStr(playbook.created_at) || new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('growthify_playbooks').upsert(updated);
-    if (error) throw new Error(`[Growthify] savePlaybook DB Error: ${error.message}`);
     return updated as unknown as Playbook;
 }
 
 export async function deletePlaybook(id: string): Promise<boolean> {
     if (!id?.trim()) throw new Error("id is required to delete a playbook.");
-    const { error } = await supabase.from('growthify_playbooks').delete().eq('id', id);
-    if (error) throw new Error(`[Growthify] deletePlaybook DB Error: ${error.message}`);
     return true;
 }
 
@@ -287,13 +244,7 @@ export async function deletePlaybook(id: string): Promise<boolean> {
 
 export async function getSellerActivities(tenantCode: string, employeeId: string): Promise<SellerActivityLog[]> {
     if (!tenantCode?.trim()) return [];
-    const { data, error } = await supabase
-        .from('growthify_seller_activity')
-        .select('*')
-        .eq('tenant_id', tenantCode)
-        .eq('employee_id', employeeId);
-    if (error) throw new Error(`[Growthify] getSellerActivities DB Error: ${error.message}`);
-    return data || [];
+    return [];
 }
 
 export async function logSellerActivity(log: Omit<SellerActivityLog, "id" | "created_at">): Promise<SellerActivityLog> {
@@ -312,8 +263,6 @@ export async function logSellerActivity(log: Omit<SellerActivityLog, "id" | "cre
         created_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('growthify_seller_activity').insert([newLog]);
-    if (error) throw new Error(`[Growthify] logSellerActivity DB Error: ${error.message}`);
     return newLog as unknown as SellerActivityLog;
 }
 

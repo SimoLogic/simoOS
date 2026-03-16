@@ -26,5 +26,10 @@ Se ha preparado el terreno para la integración con ecosistemas externos (Sprint
 - **Type Safety:** 100% strict TypeScript compliance en el módulo PMO.
 - **Database Client:** Sincronizado mediante `prisma generate`.
 
+## 6. Sprint 13: Token Vault & Conectividad (Ultra Ready)
+- **Fix Vercel (Edge Runtime):** Se resolvió un error crítico de tipado estricto en el Dashboard (`react-grid-layout`) que impedía el paso en CI de Vercel. Ademas se blindó el middleware contra `jose` APIs en Edge.
+- **El Token Vault (AES-256):** Implementado en `lib/pmo/token-vault.ts`. Cumplimiento estricto del *Shield Protocol* y *Llave #3*: Los tokens (Access & Refresh de Salesforce/Zoom) nunca viajan en claro al frontend, se almacenan encriptados en `pmo_integration_tokens` usando Supabase Server-Side.
+- **Salesforce OAuth & Sync:** Integrado en `app/api/integrations/salesforce/`. La autenticación cruza los datos con la DB y el servicio `pushTaskToSalesforce` y `fetchSalesforceTaskForSync` preparan el terreno para el *Mirror Sync Protocol (Llave #4)* con resolución de conflictos de forma bidireccional.
+
 ---
-*Certificado por el Agente Antigravity en nombre del Director.*
+*Certificado por el Arquitecto de Antigravity en nombre del Director.*

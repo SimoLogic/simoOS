@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { PrismaClient } from '@prisma/client';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOPSI H-OS · Supabase Infrastructure
@@ -31,3 +32,23 @@ export const setTenantSession = async (tenantId: string | null) => {
     // to subsequent queries, so it's a no-op here.
     return Promise.resolve();
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Prisma Client Singleton (HR Module)
+// Prevents multiple PrismaClient instances during Next.js hot-reload in dev.
+// ─────────────────────────────────────────────────────────────────────────────
+
+declare global {
+    // eslint-disable-next-line no-var
+    var __prisma: PrismaClient | undefined;
+}
+
+export const prisma: PrismaClient =
+    global.__prisma ??
+    new PrismaClient({
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
+
+if (process.env.NODE_ENV !== 'production') {
+    global.__prisma = prisma;
+}
