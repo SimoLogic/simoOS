@@ -4,7 +4,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
     LayoutGrid, 
     Trello, 
@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BoardView } from "@/types/pmo.types";
+import { GridView } from "@/components/pmo/views/GridView";
+import { useSessionStore } from "@/lib/session-store";
+import { getBoardsAction } from "@/app/actions/pmo/board-actions";
+import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
 
 // ─── VIBE TOKENS (no hardcodear — usar estos constants) ─────────────
 const VIBE = {
@@ -56,6 +60,35 @@ const PLACEHOLDER_BOARD = {
 export const MyPlanShell: React.FC = () => {
     const [activeView, setActiveView] = useState<BoardView>("grid");
     const [isViewLocked, setIsViewLocked] = useState(false);
+    const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+    const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
+    const [boardTitle, setBoardTitle] = useState(PLACEHOLDER_BOARD.title);
+    const [isPlaybook, setIsPlaybook] = useState(false);
+    const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const { tenant_id } = useSessionStore();
+    const orgId = tenant_id || 'TNT-001';
+
+    // Auto-discover the first available board for this org
+    useEffect(() => {
+        async function discoverBoard() {
+            try {
+                const boards = await getBoardsAction(orgId);
+                if (boards.length > 0) {
+                    setActiveBoardId(boards[0].id);
+                    setBoardTitle(boards[0].title);
+                    setIsPlaybook(boards[0].isPlaybookBoard);
+                    // Use the first group as default for new task creation
+                    if (boards[0].groups && boards[0].groups.length > 0) {
+                        setDefaultGroupId(boards[0].groups[0].id);
+                    }
+                }
+            } catch (e) {
+                console.error('[MyPlanShell] Failed to discover boards:', e);
+            }
+        }
+        discoverBoard();
+    }, [orgId]);
 
     return (
         <div className="flex flex-col h-full bg-white">
@@ -67,11 +100,11 @@ export const MyPlanShell: React.FC = () => {
                 <div className="flex items-center gap-3 mb-4">
                     <div className="flex items-center gap-2">
                         <LayoutGrid className="w-5 h-5" style={{ color: VIBE.purple }} />
-                        <h1 className="text-xl font-semibold text-[#323338]">{PLACEHOLDER_BOARD.title}</h1>
+                        <h1 className="text-xl font-semibold text-[#323338]">{boardTitle}</h1>
                     </div>
 
                     {/* Simo IS Badge — visible only on Playbook boards */}
-                    {PLACEHOLDER_BOARD.isPlaybookBoard && (
+                    {isPlaybook && (
                         <span 
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase"
                             style={{ backgroundColor: `${VIBE.blue}18`, color: VIBE.blue }}
@@ -130,6 +163,7 @@ export const MyPlanShell: React.FC = () => {
                         </button>
 
                         <button
+                            onClick={() => setIsNewTaskOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white transition-all duration-[70ms] hover:opacity-90"
                             style={{ backgroundColor: VIBE.purple, borderRadius: "4px" }}
                         >
@@ -142,9 +176,25 @@ export const MyPlanShell: React.FC = () => {
             </div>
 
             {/* ── View Area ── */}
-            <div className="flex-1 overflow-auto">
-                <ViewPlaceholder view={activeView} />
+            <div className="flex-1 overflow-hidden relative">
+                {activeView === 'grid' && activeBoardId ? (
+                    <GridView key={refreshKey} boardId={activeBoardId} orgId={orgId} />
+                ) : (
+                    <ViewPlaceholder view={activeView} />
+                )}
             </div>
+
+            {/* ── New Task Modal ── */}
+            {activeBoardId && defaultGroupId && (
+                <NewTaskModal
+                    boardId={activeBoardId}
+                    groupId={defaultGroupId}
+                    orgId={orgId}
+                    isOpen={isNewTaskOpen}
+                    onClose={() => setIsNewTaskOpen(false)}
+                    onTaskCreated={() => setRefreshKey((k) => k + 1)}
+                />
+            )}
         </div>
     );
 };

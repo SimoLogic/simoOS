@@ -15,8 +15,11 @@ import {
   updateBoardService,
   deleteBoardService,
 } from "@/lib/services/pmo/board.service";
+import { getGroupsService } from "@/lib/services/pmo/group.service";
+import { getTasksService } from "@/lib/services/pmo/task.service";
 import { seedDefaultColumnsService } from "@/lib/services/pmo/column.service";
 import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
+
 
 // ─── ZOD SCHEMAS (Triple Shield — Shield 2) ────────────────────────────────────
 
@@ -103,7 +106,20 @@ export async function getBoardAction(
   try {
     const board = await getBoardByIdService(boardId, orgId);
     if (!board) return { success: false, error: "Board not found" };
-    return { success: true, data: board };
+
+    // ── HYDRATE: Fetch groups + tasks (services return them separately) ──
+    const [groups, tasks] = await Promise.all([
+      getGroupsService(boardId, orgId),
+      getTasksService(boardId, orgId),
+    ]);
+
+    // Nest tasks under their parent group
+    const hydratedGroups = groups.map((g) => ({
+      ...g,
+      tasks: tasks.filter((t) => t.groupId === g.id),
+    }));
+
+    return { success: true, data: { ...board, groups: hydratedGroups } };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
   }

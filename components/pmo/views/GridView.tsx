@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -29,6 +29,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidePeek } from "@/components/pmo/grid/SidePeek";
 import { PresenceProvider } from "@/components/pmo/shared/PresenceProvider";
+import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
 import { useSessionStore } from "@/lib/session-store";
 
 interface GridViewProps {
@@ -59,6 +60,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [activePeekTaskId, setActivePeekTaskId] = useState<string | null>(null);
+  const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -74,6 +76,48 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   const filterAssignee = usePmoStore(s => s.filterAssignee);
   const globalSearchQuery = usePmoStore(s => s.globalSearchQuery);
   const optimisticTasks = usePmoStore(s => s.optimisticTasks);
+
+  // ── DATA FETCH (FIX 1 — Critical: getBoardAction was imported but never called) ──
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBoard() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const result = await getBoardAction(boardId, orgId);
+
+        if (cancelled) return;
+
+        if (result.success) {
+          setBoard(result.data);
+          // Auto-expand all groups on first load for immediate data visibility
+          const expanded: Record<string, boolean> = {};
+          result.data.groups?.forEach((g) => { expanded[g.id] = true; });
+          setExpandedGroups(expanded);
+        } else {
+          setError(result.error || "Failed to load board");
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unexpected error loading board");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    if (boardId && orgId) {
+      loadBoard();
+    } else {
+      // No boardId/orgId yet — show empty state, not infinite spinner
+      setLoading(false);
+      setError("No board selected. Create or select a board to get started.");
+    }
+
+    return () => { cancelled = true; };
+  }, [boardId, orgId]);
 
   const activePeekTask = useMemo(() => {
     if (!activePeekTaskId || !board) return null;
@@ -143,6 +187,21 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   const clearSelection = () => setRowSelection({});
   const selectedCount = Object.keys(rowSelection).length;
 
+  // Reload board data (called after task creation)
+  const reloadBoard = useCallback(async () => {
+    try {
+      const result = await getBoardAction(boardId, orgId);
+      if (result.success) {
+        setBoard(result.data);
+        const expanded: Record<string, boolean> = {};
+        result.data.groups?.forEach((g) => { expanded[g.id] = true; });
+        setExpandedGroups(expanded);
+      }
+    } catch { /* silent */ }
+  }, [boardId, orgId]);
+
+  const defaultGroupId = board?.groups?.[0]?.id || "";
+
   if (loading) {
     return (
       <div className="flex w-full h-full items-center justify-center bg-white absolute inset-0">
@@ -169,7 +228,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
         boardId={boardId}
         orgId={orgId}
         boardName={board?.title || "Board"} 
-        onNewTaskClick={() => console.log("New Task")}
+        onNewTaskClick={() => setIsNewTaskOpen(true)}
         onNewGroupClick={() => console.log("New Group")}
         isReadOnly={isReadOnly}
       />
@@ -331,6 +390,18 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
         </>
       )}
       </div>
+
+      {/* New Task Modal */}
+      {defaultGroupId && (
+        <NewTaskModal
+          boardId={boardId}
+          groupId={defaultGroupId}
+          orgId={orgId}
+          isOpen={isNewTaskOpen}
+          onClose={() => setIsNewTaskOpen(false)}
+          onTaskCreated={reloadBoard}
+        />
+      )}
     </PresenceProvider>
   );
 };
