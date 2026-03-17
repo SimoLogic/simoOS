@@ -13,18 +13,28 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import { guardDelete, guardBatchDelete, type DeleteVector } from "@/lib/pmo/task-guard";
 import { triggerOutgoingWebhook } from "@/lib/pmo/outgoing-webhook";
 import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
-import { Queue } from "bullmq";
 
-// ─── QUEUE INJECTION ─────────────────────────────────────────────────────────
-// Redis connection is defined globally in our bullmq worker/queue setup. 
-// Standard setup assumes REDIS_URL from Env.
-const automationQueue = new Queue("pmo-automations", {
-  connection: {
-    url: process.env.REDIS_URL,
-    // Upstash specific tls if rediss
-    tls: process.env.REDIS_URL?.startsWith("rediss") ? { rejectUnauthorized: false } : undefined
+// ─── QUEUE INJECTION (LAZY) ──────────────────────────────────────────────────
+// Using a lazy getter to prevent BullMQ from connecting to Redis eagerly
+// at module-load time (which crashes `next build` on Vercel).
+// The Queue is only created on first actual use (runtime, not build time).
+let _automationQueue: import("bullmq").Queue | null = null;
+
+function getAutomationQueue() {
+  if (!_automationQueue) {
+    const { Queue } = require("bullmq");
+    _automationQueue = new Queue("pmo-automations", {
+      connection: {
+        url: process.env.REDIS_URL,
+        tls: process.env.REDIS_URL?.startsWith("rediss")
+          ? { rejectUnauthorized: false }
+          : undefined,
+        lazyConnect: true,
+      },
+    });
   }
-});
+  return _automationQueue!;
+}
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
@@ -299,7 +309,7 @@ export async function updateTaskService(
   // If anything meaningful changed, enqueue a trigger evaluation job.
   // This keeps "If A then B" computation OFF the main response thread.
   if (Object.keys(patch).length > 1) { // more than just updated_at
-    automationQueue.add(
+    getAutomationQueue().add(
       "evaluate_triggers",
       {
         taskId,
