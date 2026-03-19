@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   X, 
   Clock, 
@@ -10,11 +10,14 @@ import {
   History,
   FileText,
   MessageSquare,
-  CheckCircle2
+  CheckCircle2,
+  Video,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PmoTask } from "@/types/pmo.types";
 import { VibeTokens } from "@/packages/ui-kit/src/tokens";
+import CrmSidebarSection from "@/components/pmo/integrations/CrmSidebarSection";
 
 /**
  * SidePeek — High-Fidelity Task Detail Panel
@@ -35,6 +38,18 @@ export const SidePeek: React.FC<SidePeekProps> = ({
   onUpdate
 }) => {
   const [activeTab, setActiveTab] = React.useState<'details' | 'history'>('details');
+  const [joinUrl, setJoinUrl] = useState<string | null>((task as any).joinUrl || null);
+
+  // Listen for real-time Zoom URL from BullMQ via Supabase Realtime or socket
+  useEffect(() => {
+    const handleZoomReady = (event: CustomEvent) => {
+      if (event.detail?.pmoEventId === task.id) {
+        setJoinUrl(event.detail.joinUrl);
+      }
+    };
+    window.addEventListener('event:zoom_url_ready', handleZoomReady as EventListener);
+    return () => window.removeEventListener('event:zoom_url_ready', handleZoomReady as EventListener);
+  }, [task.id]);
 
   if (!isOpen) return null;
 
@@ -158,6 +173,68 @@ export const SidePeek: React.FC<SidePeekProps> = ({
                 placeholder="Añade una descripción técnica..."
               />
             </div>
+
+            {/* Zoom Section — for events with type=ZOOM */}
+            {(task as any).eventType === 'ZOOM' && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-[var(--vibe-text-muted)]">
+                  <Video className="w-4 h-4" />
+                  <span className="text-[12px] font-bold uppercase tracking-wider">Zoom Meeting</span>
+                </div>
+                {joinUrl ? (
+                  <a
+                    href={joinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 16px',
+                      backgroundColor: '#2D8CFF',
+                      color: '#fff',
+                      borderRadius: 4,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      width: 'fit-content',
+                      transition: 'opacity 100ms ease-in-out',
+                    }}
+                  >
+                    <Video className="w-4 h-4" /> Join Zoom Meeting
+                  </a>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 16px',
+                      backgroundColor: 'var(--vibe-surface-2, #F5F6F8)',
+                      borderRadius: 4,
+                      color: 'var(--vibe-text-muted, #676879)',
+                      fontSize: 13,
+                    }}
+                  >
+                    <Loader2 className="w-4 h-4 animate-spin" /> Obtaining Zoom link...
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CRM Sidebar — Salesforce integration */}
+            <CrmSidebarSection
+              taskId={task.id}
+              sfExternalId={(task as any).sfExternalId || null}
+              sfExternalUrl={(task as any).sfExternalUrl || null}
+              sfObjectName={(task as any).sfObjectName || null}
+              onLink={async (sfObjectId, sfObjectType) => {
+                await onUpdate({ ...task, sfExternalId: sfObjectId } as any);
+              }}
+              onUnlink={async () => {
+                await onUpdate({ ...task, sfExternalId: null } as any);
+              }}
+            />
           </div>
         ) : (
           <div className="flex flex-col gap-4 animate-fade-in">

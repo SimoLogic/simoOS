@@ -107,9 +107,23 @@ export const KanbanView: React.FC<KanbanViewProps> = ({ board, optimisticTasks, 
                             )}
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-xs font-medium text-gray-900 line-clamp-2">
-                                {task.title}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-gray-900 line-clamp-2">
+                                  {task.title}
+                                </span>
+                                {(task as any).sfExternalId && (
+                                  <span
+                                    title="Vinculada a Salesforce"
+                                    style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: "50%",
+                                      backgroundColor: "#0086C0",
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )}
+                              </div>
                               {task.isProtected && (
                                 <Lock className="w-3 h-3 text-vibe-purple shrink-0" />
                               )}

@@ -15,7 +15,8 @@ import {
     Filter,
     ChevronDown,
     Zap,
-    Lock
+    Lock,
+    Plug
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BoardView } from "@/types/pmo.types";
@@ -23,6 +24,7 @@ import { GridView } from "@/components/pmo/views/GridView";
 import { useSessionStore } from "@/lib/session-store";
 import { getBoardsAction } from "@/app/actions/pmo/board-actions";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
+import IntegrationsPanel from "@/components/pmo/integrations/IntegrationsPanel";
 
 // ─── VIBE TOKENS (no hardcodear — usar estos constants) ─────────────
 const VIBE = {
@@ -34,18 +36,21 @@ const VIBE = {
     mirage: "#181B34",
 } as const;
 
+type PmoView = BoardView | 'integrations';
+
 interface ViewTab {
-    id: BoardView;
+    id: PmoView;
     label: string;
     icon: React.ElementType;
 }
 
 const viewTabs: ViewTab[] = [
-    { id: "grid",      label: "Grid",      icon: LayoutGrid },
-    { id: "kanban",    label: "Kanban",    icon: Trello },
-    { id: "gantt",     label: "Gantt",     icon: GanttChartSquare },
-    { id: "calendar",  label: "Calendar",  icon: CalendarDays },
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "grid",          label: "Grid",         icon: LayoutGrid },
+    { id: "kanban",        label: "Kanban",       icon: Trello },
+    { id: "gantt",         label: "Gantt",        icon: GanttChartSquare },
+    { id: "calendar",      label: "Calendar",     icon: CalendarDays },
+    { id: "dashboard",     label: "Dashboard",    icon: LayoutDashboard },
+    { id: "integrations",  label: "Integrations", icon: Plug },
 ];
 
 // Placeholder data — replaced by real DB data in Sprint 2+
@@ -58,7 +63,7 @@ const PLACEHOLDER_BOARD = {
 };
 
 export const MyPlanShell: React.FC = () => {
-    const [activeView, setActiveView] = useState<BoardView>("grid");
+    const [activeView, setActiveView] = useState<PmoView>("grid");
     const [isViewLocked, setIsViewLocked] = useState(false);
     const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
@@ -177,10 +182,12 @@ export const MyPlanShell: React.FC = () => {
 
             {/* ── View Area ── */}
             <div className="flex-1 overflow-hidden relative">
-                {activeView === 'grid' && activeBoardId ? (
+                {activeView === 'integrations' ? (
+                    <IntegrationsPanel />
+                ) : activeView === 'grid' && activeBoardId ? (
                     <GridView key={refreshKey} boardId={activeBoardId} orgId={orgId} />
                 ) : (
-                    <ViewPlaceholder view={activeView} />
+                    <ViewPlaceholder view={activeView as BoardView} />
                 )}
             </div>
 

@@ -117,6 +117,8 @@ model IntegrationToken {
   provider             String    // 'salesforce', 'outlook', 'zoom'
   accessToken          String    @map("access_token")
   refreshToken         String?   @map("refresh_token")
+  scopes               String[]  @default([])
+  isActive             Boolean   @default(true) @map("is_active")
   expiresAt            DateTime? @map("expires_at")
   metadata             Json?     @map("metadata")
   createdAt            DateTime  @default(now()) @map("created_at")
@@ -124,6 +126,32 @@ model IntegrationToken {
 
   @@unique([orgId, userId, provider])
   @@map("pmo_integration_tokens")
+}
+
+// ─── Mirror Sync Protocol (Llave #4) ─────────────────────────────────────────
+// Maps every PMO entity to its counterpart in Salesforce / Outlook / Zoom.
+// Coexists with pmo_sync_events (conflict log); this table is the persistent mapping.
+
+model PmoSyncMapping {
+  id                String   @id @default(uuid())
+  orgId             String   @map("org_id")
+  pmoEntityType     String   @map("pmo_entity_type")   // "TASK" | "EVENT" | "NOTE"
+  pmoEntityId       String   @map("pmo_entity_id")     // ID of the PMO task/event
+  provider          String                              // "SALESFORCE" | "OUTLOOK" | "ZOOM"
+  externalId        String   @map("external_id")        // SF Task ID / SF Event ID
+  externalUrl       String?  @map("external_url")       // deep link to the object in SF
+  lastSyncDirection String   @map("last_sync_direction") // "PMO_TO_EXT" | "EXT_TO_PMO" | "CONFLICT"
+  lastSyncAt        DateTime @map("last_sync_at")
+  syncStatus        String   @default("OK") @map("sync_status") // "OK"|"PENDING"|"ERROR"|"CONFLICT"
+  conflictData      Json?    @map("conflict_data")      // snapshot for manual resolution
+  metadata          Json?    @map("metadata")            // join_url Zoom, meeting_id, zoomEventId
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([pmoEntityId, provider])
+  @@index([provider, externalId])
+  @@index([orgId])
+  @@map("pmo_sync_mappings")
 }
 
 model Organization {
@@ -390,4 +418,18 @@ model HrPerformanceReview {
   @@index([orgId])
   @@index([employeeId])
   @@map("hr_performance_reviews")
+}
+
+model PmoIcalFeedToken {
+  id           String    @id @default(uuid())
+  userId       String    @unique @map("user_id")
+  orgId        String    @map("org_id")
+  token        String    @unique @default(uuid())
+  isActive     Boolean   @default(true) @map("is_active")
+  lastAccessAt DateTime? @map("last_access_at")
+  filters      Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([token])
+  @@map("pmo_ical_feed_tokens")
 }

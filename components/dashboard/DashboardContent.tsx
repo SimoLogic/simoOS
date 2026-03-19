@@ -10,7 +10,7 @@ import { HCMaestro } from "../hr/HCMaestro";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
 import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
 import { GrowthifyModule } from "../business-plan/GrowthifyModule";
-import { BPAssignerModule } from "../business-plan/BPAssignerModule";
+
 import { BranchMasterApp } from "../operations/branches/BranchMasterApp";
 import { HierarchyMapApp } from "../operations/branches/HierarchyMapApp";
 import { ProformasApp } from "../operations/proformas/ProformasApp";
@@ -92,8 +92,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <PerformanceModule />
                 ) : activeSubModule === "hr-metrics" ? (
                     <HRMetricsDashboard />
-                ) : activeSubModule === "bp-assigner" ? (
-                    <BPAssignerModule />
+
                 ) : activeSubModule === "branches-master" ? (
                     <BranchMasterApp />
                 ) : activeSubModule === "hierarchy-map" ? (

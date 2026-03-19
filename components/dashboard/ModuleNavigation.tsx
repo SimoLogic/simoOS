@@ -11,7 +11,7 @@ export type SubModule = {
 
 export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     "business-plan": [
-        { id: "bp-assigner", label: "BP Assigner" },
+
         { id: "existing-accounts", label: "Existing Accounts" },
         { id: "new-business", label: "New Business" },
         { id: "playbooks", label: "Playbooks" },

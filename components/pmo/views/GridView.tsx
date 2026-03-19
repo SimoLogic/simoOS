@@ -326,6 +326,20 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                         {/* Task Data */}
                         <div className="w-80 h-full border-r border-[var(--vibe-border)] shrink-0 flex items-center px-2">
                            <TextCell task={row.task} />
+                           {(row.task as any).sfExternalId && (
+                             <span
+                               title="Vinculada a Salesforce"
+                               style={{
+                                 width: 8,
+                                 height: 8,
+                                 borderRadius: "50%",
+                                 backgroundColor: "#0086C0",
+                                 marginLeft: 6,
+                                 flexShrink: 0,
+                                 display: "inline-block",
+                               }}
+                             />
+                           )}
                         </div>
                         <div className="w-40 h-full border-r border-[var(--vibe-border)] shrink-0 flex items-center justify-center p-1">
                            <PersonCell task={row.task} />
