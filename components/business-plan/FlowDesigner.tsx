@@ -84,7 +84,7 @@ export const FlowDesigner: React.FC<FlowDesignerProps> = ({ onDesignsChange }) =
             } else {
                 setEmployees(filtered.map((e) => ({
                     eid: e.eid,
-                    name: `${e.maestro.primer_nombre} ${e.maestro.primer_apellido}`,
+                    name: `${e.maestro.firstName} ${e.maestro.lastName}`,
                 })));
             }
         };

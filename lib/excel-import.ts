@@ -9,8 +9,9 @@ import {
     EPS_OPTIONS, AFP_OPTIONS, ARL_OPTIONS, CCF_OPTIONS,
     ENTIDADES_LEGALES,
 } from "./hr-types";
-import { getEmployees } from "./hr-store";
+import { getEmployeesAction as getEmployees } from "../app/actions/hr-actions";
 import { getLocalLegalEntitiesAction } from "../app/actions/legal-entity-actions";
+import { JobTitleRef } from "./job-title-types";
 
 // ─── Rejection Reason Bank ────────────────────────────────────────────────────
 
@@ -71,8 +72,12 @@ export const REJECTION_REASONS = {
         `Contract type is required. Avoid blanks.`, // Added
     INVALID_ENTITY: (val: string) => // Added
         `"${val}" is not a recognized Local Entity. Must be one of: ${ENTIDADES_LEGALES.join(", ")}.`, // Added
-    MISSING_SALARY_TYPE: () => // Added
-        `Salary type is required. Avoid blanks.`, // Added
+    MISSING_SALARY_TYPE: () =>
+        `Salary type is required. Avoid blanks.`,
+    INVALID_JOB_TITLE: (val: string) =>
+        `"${val}" is not a recognized Job Title in the Active library.`,
+    INVALID_ROLE_TITLE: (val: string, jobTitle: string) =>
+        `"${val}" is not a recognized Role Title for Job Title "${jobTitle}".`,
 };
 
 // ─── Type Definitions ─────────────────────────────────────────────────────────
@@ -128,22 +133,22 @@ export interface ImportAuditResult {
 
 const LOCKED_FIELD_KEYS = new Set<string>([
     "eid",
-    "maestro.numero_identificacion",
-    "maestro.tipo_documento_id",
-    "maestro.primer_nombre",
-    "maestro.primer_apellido",
-    "maestro.segundo_apellido",
-    "maestro.fecha_nacimiento",
+    "maestro.identificationNumber",
+    "maestro.documentTypeId",
+    "maestro.firstName",
+    "maestro.lastName",
+    "maestro.secondLastName",
+    "maestro.birthDate",
 ]);
 
 const LOCKED_FIELD_LABELS: Record<string, string> = {
     "eid": "EID",
-    "maestro.numero_identificacion": "ID Number",
-    "maestro.tipo_documento_id": "Document Type",
-    "maestro.primer_nombre": "First Name",
-    "maestro.primer_apellido": "First Last Name",
-    "maestro.segundo_apellido": "Second Last Name",
-    "maestro.fecha_nacimiento": "Date of Birth",
+    "maestro.identificationNumber": "ID Number",
+    "maestro.documentTypeId": "Document Type",
+    "maestro.firstName": "First Name",
+    "maestro.lastName": "First Last Name",
+    "maestro.secondLastName": "Second Last Name",
+    "maestro.birthDate": "Date of Birth",
 };
 
 // ─── Excel Column → Field Mapping ─────────────────────────────────────────────
@@ -152,106 +157,106 @@ const LOCKED_FIELD_LABELS: Record<string, string> = {
 export const EXCEL_COLUMN_MAP: Record<string, { key: string; label: string }> = {
     "eid": { key: "eid", label: "EID" },
     "tenant code": { key: "tenant_id", label: "Tenant Code" },
-    "first name": { key: "maestro.primer_nombre", label: "First Name" },
-    "middle name": { key: "maestro.otros_nombres", label: "Middle Name" },
-    "first last name": { key: "maestro.primer_apellido", label: "First Last Name" },
-    "second last name": { key: "maestro.segundo_apellido", label: "Second Last Name" },
-    "job title": { key: "historialLaboral.job_title", label: "Job Title" },
-    "role title": { key: "historialLaboral.role_title", label: "Role Title" },
-    "document type": { key: "maestro.tipo_documento_id", label: "Document Type" },
-    "id number": { key: "maestro.numero_identificacion", label: "ID Number" },
-    "date of birth": { key: "maestro.fecha_nacimiento", label: "Date of Birth" },
-    "gender": { key: "maestro.genero", label: "Gender" },
-    "personal email": { key: "maestro.email_personal", label: "Personal Email" },
-    "municipality": { key: "maestro.municipio_dane", label: "Municipality" },
-    "address": { key: "maestro.direccion_residencia", label: "Home Address" },
-    "hire date": { key: "historialLaboral.fecha_inicio", label: "Hire Date" },
-    "contract type": { key: "historialLaboral.tipo_contrato", label: "Contract Type" },
-    "local entity": { key: "historialLaboral.entidad_legal", label: "Local Entity" },
-    "salary type": { key: "historialLaboral.tipo_salario", label: "Salary Type" },
-    "base salary": { key: "historialLaboral.salario_base", label: "Base Salary" },
-    "tax procedure": { key: "historialLaboral.procedimiento_renta", label: "Tax Procedure" },
+    "first name": { key: "maestro.firstName", label: "First Name" },
+    "middle name": { key: "maestro.middleNames", label: "Middle Name" },
+    "first last name": { key: "maestro.lastName", label: "First Last Name" },
+    "second last name": { key: "maestro.secondLastName", label: "Second Last Name" },
+    "job title": { key: "historialLaboral.jobTitleName", label: "Job Title" },
+    "role title": { key: "historialLaboral.roleTitleName", label: "Role Title" },
+    "document type": { key: "maestro.documentTypeId", label: "Document Type" },
+    "id number": { key: "maestro.identificationNumber", label: "ID Number" },
+    "date of birth": { key: "maestro.birthDate", label: "Date of Birth" },
+    "gender": { key: "maestro.gender", label: "Gender" },
+    "personal email": { key: "maestro.personalEmail", label: "Personal Email" },
+    "municipality": { key: "maestro.municipalityCode", label: "Municipality" },
+    "address": { key: "maestro.residenceAddress", label: "Home Address" },
+    "hire date": { key: "historialLaboral.startDate", label: "Hire Date" },
+    "contract type": { key: "historialLaboral.contractType", label: "Contract Type" },
+    "local entity": { key: "historialLaboral.legalEntity", label: "Local Entity" },
+    "salary type": { key: "historialLaboral.salaryType", label: "Salary Type" },
+    "base salary": { key: "historialLaboral.baseSalary", label: "Base Salary" },
+    "tax procedure": { key: "historialLaboral.taxProcedure", label: "Tax Procedure" },
     "area": { key: "historialLaboral.area", label: "Area" },
-    "sub-area": { key: "historialLaboral.sub_area", label: "Sub-Area" },
-    "cost center": { key: "historialLaboral.centro_costo", label: "Cost Center" },
-    "cost center name": { key: "historialLaboral.nombre_centro_costo", label: "Cost Center Name" },
+    "sub-area": { key: "historialLaboral.subArea", label: "Sub-Area" },
+    "cost center": { key: "historialLaboral.costCenter", label: "Cost Center" },
+    "cost center name": { key: "historialLaboral.costCenterName", label: "Cost Center Name" },
     "branch": { key: "historialLaboral.branch", label: "Branch" },
-    "client": { key: "historialLaboral.cliente", label: "Client" },
+    "client": { key: "historialLaboral.client", label: "Client" },
     "project": { key: "historialLaboral.project", label: "Project" },
-    "dedication %": { key: "historialLaboral.digito_dedicacion", label: "Dedication %" },
-    "direct leader": { key: "historialLaboral.direct_leader", label: "Direct Leader" },
-    "eps": { key: "afiliaciones.eps_nombre", label: "EPS" },
-    "afp": { key: "afiliaciones.afp_nombre", label: "AFP" },
-    "arl": { key: "afiliaciones.arl_nombre", label: "ARL" },
-    "ccf": { key: "afiliaciones.ccf_nombre", label: "CCF" },
-    "arl risk level": { key: "afiliaciones.nivel_riesgo_arl", label: "ARL Risk Level" },
-    "pila subtype": { key: "afiliaciones.subtipo_cotizante", label: "PILA Subtype" },
-    "shirt size": { key: "sst.talla_camisa", label: "Shirt Size" },
-    "pants size": { key: "sst.talla_pantalon", label: "Pants Size" },
-    "shoe size": { key: "sst.talla_calzado", label: "Shoe Size" },
-    "blood type": { key: "sst.tipo_sangre", label: "Blood Type" },
-    "emergency contact": { key: "sst.contacto_emergencia", label: "Emergency Contact" },
-    "emergency phone": { key: "sst.telefono_emergencia", label: "Emergency Phone" },
+    "dedication %": { key: "historialLaboral.dedicationPercentage", label: "Dedication %" },
+    "direct leader": { key: "historialLaboral.directLeader", label: "Direct Leader" },
+    "eps": { key: "afiliaciones.epsName", label: "EPS" },
+    "afp": { key: "afiliaciones.afpName", label: "AFP" },
+    "arl": { key: "afiliaciones.arlName", label: "ARL" },
+    "ccf": { key: "afiliaciones.ccfName", label: "CCF" },
+    "arl risk level": { key: "afiliaciones.arlRiskLevel", label: "ARL Risk Level" },
+    "pila subtype": { key: "afiliaciones.contributorSubtype", label: "PILA Subtype" },
+    "shirt size": { key: "sst.shirtSize", label: "Shirt Size" },
+    "pants size": { key: "sst.pantsSize", label: "Pants Size" },
+    "shoe size": { key: "sst.shoeSize", label: "Shoe Size" },
+    "blood type": { key: "sst.bloodType", label: "Blood Type" },
+    "emergency contact": { key: "sst.emergencyContact", label: "Emergency Contact" },
+    "emergency phone": { key: "sst.emergencyPhone", label: "Emergency Phone" },
     "corporate email": { key: "email_corporativo", label: "Corporate Email" },
     "status": { key: "status", label: "Status" },
     "continent": { key: "continent_id", label: "Continent" },
     "country": { key: "country_id", label: "Country" },
     "city": { key: "city_id", label: "City" },
-    "currency": { key: "salary_currency", label: "Salary Currency" },
-    "direct leader id": { key: "direct_leader_id", label: "Direct Leader ID" },
+    "currency": { key: "salaryCurrency", label: "Salary Currency" },
+    "direct leader id": { key: "historialLaboral.directLeaderId", label: "Direct Leader ID" },
 };
 
 // ─── Required Fields for New Hires ───────────────────────────────────────────
 
 const REQUIRED_FOR_NEW: string[] = [
-    "maestro.primer_nombre",
-    "maestro.primer_apellido",
-    "maestro.segundo_apellido",
-    "maestro.tipo_documento_id",
-    "maestro.numero_identificacion",
-    "maestro.fecha_nacimiento",
-    "maestro.genero",
-    "maestro.email_personal",
-    "maestro.municipio_dane",
-    "maestro.direccion_residencia",
-    "historialLaboral.fecha_inicio",
-    "historialLaboral.tipo_contrato",
-    "historialLaboral.entidad_legal", // Added
-    "historialLaboral.tipo_salario",
-    "historialLaboral.salario_base",
+    "maestro.firstName",
+    "maestro.lastName",
+    "maestro.secondLastName",
+    "maestro.documentTypeId",
+    "maestro.identificationNumber",
+    "maestro.birthDate",
+    "maestro.gender",
+    "maestro.personalEmail",
+    "maestro.municipalityCode",
+    "maestro.residenceAddress",
+    "historialLaboral.startDate",
+    "historialLaboral.contractType",
+    "historialLaboral.legalEntity", // Added
+    "historialLaboral.salaryType",
+    "historialLaboral.baseSalary",
     "historialLaboral.area",
-    "historialLaboral.sub_area",
-    "historialLaboral.centro_costo",
-    "historialLaboral.direct_leader",
-    "afiliaciones.eps_nombre",
-    "afiliaciones.afp_nombre",
-    "afiliaciones.arl_nombre",
-    "afiliaciones.ccf_nombre",
-    "afiliaciones.nivel_riesgo_arl",
-    "afiliaciones.subtipo_cotizante",
-    "sst.talla_camisa",
-    "sst.talla_pantalon",
-    "sst.talla_calzado",
-    "sst.tipo_sangre",
-    "sst.contacto_emergencia",
-    "sst.telefono_emergencia",
+    "historialLaboral.subArea",
+    "historialLaboral.costCenter",
+    "historialLaboral.directLeader",
+    "afiliaciones.epsName",
+    "afiliaciones.afpName",
+    "afiliaciones.arlName",
+    "afiliaciones.ccfName",
+    "afiliaciones.arlRiskLevel",
+    "afiliaciones.contributorSubtype",
+    "sst.shirtSize",
+    "sst.pantsSize",
+    "sst.shoeSize",
+    "sst.bloodType",
+    "sst.emergencyContact",
+    "sst.emergencyPhone",
 ];
 
 // ─── Valid Closed-List Values ─────────────────────────────────────────────────
 
 const VALID_VALUES: Record<string, Set<string>> = {
-    "maestro.tipo_documento_id": new Set(TIPOS_DOCUMENTO.filter(t => t.value).map(t => t.value)),
-    "maestro.genero": new Set(["M", "F", "X"]),
-    "historialLaboral.tipo_contrato": new Set(TIPOS_CONTRATO.filter(t => t.value).map(t => t.value)),
-    "historialLaboral.tipo_salario": new Set(TIPOS_SALARIO.filter(t => t.value).map(t => t.value)),
-    "afiliaciones.eps_nombre": new Set(EPS_OPTIONS.map(o => o.nombre)),
-    "afiliaciones.afp_nombre": new Set(AFP_OPTIONS.map(o => o.nombre)),
-    "afiliaciones.arl_nombre": new Set(ARL_OPTIONS.map(o => o.nombre)),
-    "afiliaciones.ccf_nombre": new Set(CCF_OPTIONS.map(o => o.nombre)),
-    "sst.talla_camisa": new Set(["XS", "S", "M", "L", "XL", "XXL"]),
-    "sst.talla_pantalon": new Set(["28", "30", "32", "34", "36", "38", "40", "42"]),
-    "sst.tipo_sangre": new Set(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]),
-    // historialLaboral.entidad_legal is validated dynamically in parseImportFile (see below)
+    "maestro.documentTypeId": new Set(TIPOS_DOCUMENTO.filter(t => t.value).map(t => t.value)),
+    "maestro.gender": new Set(["M", "F", "X"]),
+    "historialLaboral.contractType": new Set(TIPOS_CONTRATO.filter(t => t.value).map(t => t.value)),
+    "historialLaboral.salaryType": new Set(TIPOS_SALARIO.filter(t => t.value).map(t => t.value)),
+    "afiliaciones.epsName": new Set(EPS_OPTIONS.map(o => o.nombre)),
+    "afiliaciones.afpName": new Set(AFP_OPTIONS.map(o => o.nombre)),
+    "afiliaciones.arlName": new Set(ARL_OPTIONS.map(o => o.nombre)),
+    "afiliaciones.ccfName": new Set(CCF_OPTIONS.map(o => o.nombre)),
+    "sst.shirtSize": new Set(["XS", "S", "M", "L", "XL", "XXL"]),
+    "sst.pantsSize": new Set(["28", "30", "32", "34", "36", "38", "40", "42"]),
+    "sst.bloodType": new Set(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]),
+    // historialLaboral.legalEntity is validated dynamically in parseImportFile (see below)
     "status": new Set(["Active", "Inactive", "On Leave", "Terminated"]),
 };
 
@@ -272,7 +277,7 @@ export const genEID = (() => {
 
 // ─── Core Validator ───────────────────────────────────────────────────────────
 
-function validateNewHireRow(row: Record<string, string>, validEntities?: Set<string>): FieldError[] {
+function validateNewHireRow(row: Record<string, string>, validEntities?: Set<string>, jobTitles?: JobTitleRef[]): FieldError[] {
     const errors: FieldError[] = [];
 
     const get = (key: string): string => {
@@ -380,12 +385,28 @@ function validateNewHireRow(row: Record<string, string>, validEntities?: Set<str
         errors.push({ field: "ID Number", reason: REJECTION_REASONS.ID_FORMAT_INVALID() });
     }
 
+    // Job Title validation
+    if (jobTitles) {
+        const jtStr = get("historialLaboral.jobTitleName").trim();
+        if (jtStr) {
+            const foundJt = jobTitles.find(j => j.title.toLowerCase() === jtStr.toLowerCase());
+            if (!foundJt) {
+                errors.push({ field: "Job Title", reason: REJECTION_REASONS.INVALID_JOB_TITLE(jtStr) });
+            } else {
+                const rtStr = get("historialLaboral.roleTitleName").trim();
+                if (rtStr && !foundJt.role_titles?.find(r => r.role_title.toLowerCase() === rtStr.toLowerCase())) {
+                    errors.push({ field: "Role Title", reason: REJECTION_REASONS.INVALID_ROLE_TITLE(rtStr, foundJt.title) });
+                }
+            }
+        }
+    }
+
     return errors;
 }
 
 // ─── Diff Computation for Existing Employees ──────────────────────────────────
 
-function computeDiffs(existing: FullEmployeeRecord, incoming: Record<string, string>): FieldDiff[] {
+function computeDiffs(existing: FullEmployeeRecord, incoming: Record<string, string>, jobTitles?: JobTitleRef[]): FieldDiff[] {
     const diffs: FieldDiff[] = [];
 
     for (const [colHeader, { key, label }] of Object.entries(EXCEL_COLUMN_MAP)) {
@@ -398,15 +419,27 @@ function computeDiffs(existing: FullEmployeeRecord, incoming: Record<string, str
         if (currentStr === rawIncoming) continue; // no change
 
         const isLocked = LOCKED_FIELD_KEYS.has(key);
-        const lockedLabel = LOCKED_FIELD_LABELS[key] ?? label;
+        let rejectionReason = isLocked ? REJECTION_REASONS.LOCKED_FIELD(LOCKED_FIELD_LABELS[key] ?? key) : undefined;
+
+        if (key === "historialLaboral.jobTitleName" && jobTitles) {
+            const foundJt = jobTitles.find(j => j.title.toLowerCase() === rawIncoming.toLowerCase());
+            if (!foundJt) rejectionReason = REJECTION_REASONS.INVALID_JOB_TITLE(rawIncoming);
+        }
+        if (key === "historialLaboral.roleTitleName" && jobTitles) {
+            const newJtStr = incoming["job title"]?.trim() || existing.historialLaboral.jobTitleName || "";
+            const foundJt = jobTitles.find(j => j.title.toLowerCase() === newJtStr.toLowerCase());
+            if (!foundJt || !foundJt.role_titles?.find(r => r.role_title.toLowerCase() === rawIncoming.toLowerCase())) {
+                rejectionReason = REJECTION_REASONS.INVALID_ROLE_TITLE(rawIncoming, newJtStr);
+            }
+        }
 
         diffs.push({
             key,
             label,
             oldValue: currentStr,
             newValue: rawIncoming,
-            isLocked,
-            rejectionReason: isLocked ? REJECTION_REASONS.LOCKED_FIELD(lockedLabel) : undefined,
+            isLocked: isLocked || !!rejectionReason,
+            rejectionReason,
         });
     }
 
@@ -432,6 +465,8 @@ export async function parseImportFile(file: File, currentTenantId?: string): Pro
     const validEntities = new Set(
         (dbEntities.length > 0 ? dbEntities.map(e => e.entity_name) : ENTIDADES_LEGALES)
     );
+    const { getActiveJobTitlesAction } = await import("../app/actions/job-title-actions");
+    const jobTitles = await getActiveJobTitlesAction(currentTenantId || "");
 
     const existingRows: AuditedExistingRow[] = [];
     const newRows: AuditedNewRow[] = [];
@@ -466,8 +501,8 @@ export async function parseImportFile(file: File, currentTenantId?: string): Pro
             if (currentTenantId && existing.tenant_id !== currentTenantId) {
                 existingRows.push({
                     eid: existing.eid,
-                    firstName: existing.maestro.primer_nombre,
-                    lastName: existing.maestro.primer_apellido,
+                    firstName: existing.maestro.firstName,
+                    lastName: existing.maestro.lastName,
                     diffs: [{
                         key: "tenant_id",
                         label: "Tenant Code",
@@ -482,13 +517,13 @@ export async function parseImportFile(file: File, currentTenantId?: string): Pro
                 return;
             }
 
-            const diffs = computeDiffs(existing, row);
+            const diffs = computeDiffs(existing, row, jobTitles);
             const hasLockedChanges = diffs.some((d) => d.isLocked);
 
             existingRows.push({
                 eid: existing.eid,
-                firstName: existing.maestro.primer_nombre,
-                lastName: existing.maestro.primer_apellido,
+                firstName: existing.maestro.firstName,
+                lastName: existing.maestro.lastName,
                 diffs,
                 overallStatus: diffs.length === 0
                     ? "valid"
@@ -501,7 +536,7 @@ export async function parseImportFile(file: File, currentTenantId?: string): Pro
             });
         } else {
             // ─── New hire row
-            const errors = validateNewHireRow(row, validEntities);
+            const errors = validateNewHireRow(row, validEntities, jobTitles);
             newRows.push({
                 rowIndex: idx + 2,
                 raw: row,
@@ -597,69 +632,69 @@ export function buildNewRecord(row: AuditedNewRow, tenantId?: string): FullEmplo
         continent_id: r["continent"] ?? null,
         country_id: r["country"] ?? null,
         city_id: r["city"] ?? null,
-        salary_currency: r["currency"] ?? null,
-        direct_leader_id: r["direct leader id"] ?? null,
+        salaryCurrency: r["currency"] ?? null,
+        directLeaderId: r["direct leader id"] ?? null,
         maestro: {
-            numero_identificacion: (r["id number"] ?? "").trim().slice(0, 20),
-            tipo_documento_id: (r["document type"] ?? "").trim() as FullEmployeeRecord["maestro"]["tipo_documento_id"],
-            primer_nombre: firstName,
-            otros_nombres: r["middle name"]?.trim() || "",
-            primer_apellido: lastName,
-            segundo_apellido: (r["second last name"] ?? "").trim(),
-            fecha_nacimiento: parseExcelDate(r["date of birth"]) ?? "",
-            genero: (r["gender"] ?? "").trim() as FullEmployeeRecord["maestro"]["genero"],
-            email_personal: (r["personal email"] ?? "").trim(),
-            municipio_dane: (r["municipality"] ?? "").trim().slice(0, 10),
-            direccion_residencia: (r["address"] ?? "").trim(),
+            identificationNumber: (r["id number"] ?? "").trim().slice(0, 20),
+            documentTypeId: (r["document type"] ?? "").trim() as FullEmployeeRecord["maestro"]["documentTypeId"],
+            firstName: firstName,
+            middleNames: r["middle name"]?.trim() || "",
+            lastName: lastName,
+            secondLastName: (r["second last name"] ?? "").trim(),
+            birthDate: parseExcelDate(r["date of birth"]) ?? "",
+            gender: (r["gender"] ?? "").trim() as FullEmployeeRecord["maestro"]["gender"],
+            personalEmail: (r["personal email"] ?? "").trim(),
+            municipalityCode: (r["municipality"] ?? "").trim().slice(0, 5),
+            residenceAddress: (r["address"] ?? "").trim(),
             created_at: now,
             updated_at: now,
         },
         historialLaboral: {
-            empleado_id: (r["id number"] ?? "").trim(),
-            fecha_inicio: parseExcelDate(r["hire date"]) ?? "",
-            fecha_fin: "",          // new hire — no end date
-            tipo_contrato: (r["contract type"] ?? "") as FullEmployeeRecord["historialLaboral"]["tipo_contrato"],
-            tipo_salario: (r["salary type"] ?? "") as FullEmployeeRecord["historialLaboral"]["tipo_salario"],
-            salario_base: parseFloat(String(r["base salary"] ?? "0").replace(/[^0-9.]/g, "")) || 0,
-            procedimiento_renta: parseInt(r["tax procedure"] ?? "1") as 1 | 2 | 0,
-            entidad_legal: r["local entity"] ?? "",
+            employeeId: (r["id number"] ?? "").trim(),
+            startDate: parseExcelDate(r["hire date"]) ?? "",
+            endDate: "",          // new hire — no end date
+            contractType: (r["contract type"] ?? "") as FullEmployeeRecord["historialLaboral"]["contractType"],
+            salaryType: (r["salary type"] ?? "") as FullEmployeeRecord["historialLaboral"]["salaryType"],
+            baseSalary: parseFloat(String(r["base salary"] ?? "0").replace(/[^0-9.]/g, "")) || 0,
+            taxProcedure: parseInt(r["tax procedure"] ?? "1") as 1 | 2 | 0,
+            legalEntity: r["local entity"] ?? "",
             area: r["area"] ?? "",
-            sub_area: r["sub-area"] ?? "",
-            centro_costo: r["cost center"] ?? "",
-            nombre_centro_costo: r["cost center name"] ?? "",
-            sub_centro_costo: "",
-            nombre_sub_centro_costo: "",
+            subArea: r["sub-area"] ?? "",
+            costCenter: r["cost center"] ?? "",
+            costCenterName: r["cost center name"] ?? "",
+            subCostCenter: "",
+            subCostCenterName: "",
             branch: r["branch"] ?? "",
-            cliente: r["client"] ?? "",
+            client: r["client"] ?? "",
             project: r["project"] ?? "",
-            digito_dedicacion: parseInt(r["dedication %"] ?? "100") || 100,
-            direct_leader: r["direct leader"] ?? "",
-            job_title: r["job title"] ?? "",
-            role_title: r["role title"] ?? "",
+            dedicationPercentage: parseInt(r["dedication %"] ?? "100") || 100,
+            directLeader: r["direct leader"] ?? "",
+            jobTitleName: r["job title"] ?? "",
+            roleTitleName: r["role title"] ?? "",
             created_at: now,
         },
         afiliaciones: {
-            empleado_id: r["id number"] ?? "",
+            employeeId: r["id number"] ?? "",
             eps_id: "",
-            eps_nombre: r["eps"] ?? "",
+            epsName: r["eps"] ?? "",
             afp_id: "",
-            afp_nombre: r["afp"] ?? "",
+            afpName: r["afp"] ?? "",
             arl_id: "",
-            arl_nombre: r["arl"] ?? "",
+            arlName: r["arl"] ?? "",
             ccf_id: "",
-            ccf_nombre: r["ccf"] ?? "",
-            nivel_riesgo_arl: (parseInt(r["arl risk level"] ?? "0") || 0) as FullEmployeeRecord["afiliaciones"]["nivel_riesgo_arl"],
-            subtipo_cotizante: r["pila subtype"] ?? "",
+            ccfName: r["ccf"] ?? "",
+            arlRiskLevel: (parseInt(r["arl risk level"] ?? "0") || 0) as FullEmployeeRecord["afiliaciones"]["arlRiskLevel"],
+            contributorSubtype: r["pila subtype"] ?? "",
             updated_at: now,
         },
         sst: {
-            empleado_id: r["id number"] ?? "",
-            talla_camisa: (r["shirt size"] ?? "") as FullEmployeeRecord["sst"]["talla_camisa"],
-            talla_pantalon: (r["pants size"] ?? "") as FullEmployeeRecord["sst"]["talla_pantalon"],
-            talla_calzado: parseInt(r["shoe size"] ?? "0") || 0,
-            tipo_sangre: (r["blood type"] ?? "") as FullEmployeeRecord["sst"]["tipo_sangre"],
-            contacto_emergencia: r["emergency contact"] ?? "",
-            telefono_emergencia: r["emergency phone"] ?? "",
+            employeeId: r["id number"] ?? "",
+            shirtSize: (r["shirt size"] ?? "") as FullEmployeeRecord["sst"]["shirtSize"],
+            pantsSize: (r["pants size"] ?? "") as FullEmployeeRecord["sst"]["pantsSize"],
+            shoeSize: parseInt(r["shoe size"] ?? "0") || 0,
+            bloodType: (r["blood type"] ?? "") as FullEmployeeRecord["sst"]["bloodType"],
+            emergencyContact: r["emergency contact"] ?? "",
+            emergencyPhone: r["emergency phone"] ?? "",
         },
     };
 }

@@ -22,6 +22,8 @@ import { ImportReviewModal } from "./ImportReviewModal";
 import * as XLSX from "xlsx";
 import { useTenant } from "@/lib/tenant-context";
 import { getActiveTenants } from "@/lib/tenant-store";
+import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
+import { JobTitleRef } from "@/lib/job-title-types";
 
 // ─── Non-editable locked keys (identity / legal data) ────────────────────────
 
@@ -50,8 +52,8 @@ const TABLE_COLUMNS: { key: string; label: string; locked: boolean; type?: "text
     { key: "maestro.primer_apellido", label: "First Last Name", locked: true },
     { key: "maestro.segundo_apellido", label: "Second Last Name", locked: true },
     // Job Title immediately after names (R3)
-    { key: "historialLaboral.job_title", label: "Job Title", locked: false, type: "text" },
-    { key: "historialLaboral.role_title", label: "Role Title", locked: false, type: "text" },
+    { key: "historialLaboral.jobTitleName", label: "Job Title", locked: false, type: "select" },
+    { key: "historialLaboral.roleTitleName", label: "Role Title", locked: false, type: "select" },
     // Remaining identity (locked)
     { key: "maestro.tipo_documento_id", label: "Doc Type", locked: true },
     { key: "maestro.numero_identificacion", label: "ID Number", locked: true },
@@ -312,6 +314,7 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
     const hasActiveTenant = !!currentTenant;
     const [anyTenantExists, setAnyTenantExists] = useState(false);
     const [employees, setEmployees] = useState<FullEmployeeRecord[]>([]);
+    const [jobTitles, setJobTitles] = useState<JobTitleRef[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [fxRates, setFxRates] = useState<Record<string, number>>({ COP: 0.000245, EUR: 1.09, PEN: 0.27 });
 
@@ -339,8 +342,12 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
             if (!currentTenant) {
                 setEmployees([]);
             } else {
-                const all = await getEmployees(currentTenant.tenant_id);
+                const [all, jts] = await Promise.all([
+                    getEmployees(currentTenant.tenant_id),
+                    getActiveJobTitlesAction(currentTenant.tenant_id)
+                ]);
                 setEmployees(all);
+                setJobTitles(jts);
             }
             setIsLoading(false);
         };
@@ -376,12 +383,19 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
         const draft = editingRows[eid] ?? {};
         const updated = applyEdits(emp, draft);
 
+        if (updated.historialLaboral.jobTitleName) {
+            const jt = jobTitles.find(j => j.title === updated.historialLaboral.jobTitleName);
+            updated.historialLaboral.jobTitleId = jt?.id || null;
+            const rt = jt?.role_titles?.find(r => r.role_title === updated.historialLaboral.roleTitleName);
+            updated.historialLaboral.roleTitleId = rt?.id || null;
+        }
+
         setSavingRows(prev => new Set(prev).add(eid));
         try {
             const result = await updateEmployee(updated, currentTenant.tenant_id);
             if (result.success && result.data) {
                 setEmployees(result.data);
-                showToast(`✓ ${emp.maestro.primer_nombre} saved successfully`);
+                showToast(`✓ ${emp.maestro.firstName} saved successfully`);
             }
             setEditingRows(prev => { const n = { ...prev }; delete n[eid]; return n; });
             setSavedRows(prev => new Set(prev).add(eid));
@@ -447,14 +461,14 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
 
     const optStatus = ["Active", "Inactive", "On Leave", "Terminated"];
     const optArea = useMemo(() => distinctVals(e => e.historialLaboral.area), [distinctVals]);
-    const optSubArea = useMemo(() => distinctVals(e => e.historialLaboral.sub_area), [distinctVals]);
-    const optCC = useMemo(() => distinctVals(e => e.historialLaboral.centro_costo), [distinctVals]);
-    const optCCName = useMemo(() => distinctVals(e => e.historialLaboral.nombre_centro_costo), [distinctVals]);
-    const optLeader = useMemo(() => distinctVals(e => e.historialLaboral.direct_leader), [distinctVals]);
-    const optJobTitle = useMemo(() => distinctVals(e => e.historialLaboral.job_title), [distinctVals]);
-    const optEPS = useMemo(() => distinctVals(e => e.afiliaciones?.eps_nombre ?? ""), [distinctVals]);
-    const optARL = useMemo(() => distinctVals(e => e.afiliaciones?.arl_nombre ?? ""), [distinctVals]);
-    const optCCF = useMemo(() => distinctVals(e => e.afiliaciones?.ccf_nombre ?? ""), [distinctVals]);
+    const optSubArea = useMemo(() => distinctVals(e => e.historialLaboral.subArea), [distinctVals]);
+    const optCC = useMemo(() => distinctVals(e => e.historialLaboral.costCenter), [distinctVals]);
+    const optCCName = useMemo(() => distinctVals(e => e.historialLaboral.costCenterName), [distinctVals]);
+    const optLeader = useMemo(() => distinctVals(e => e.historialLaboral.directLeader || ""), [distinctVals]);
+    const optJobTitle = useMemo(() => distinctVals(e => e.historialLaboral.jobTitleName || ""), [distinctVals]);
+    const optEPS = useMemo(() => distinctVals(e => e.afiliaciones?.epsName ?? ""), [distinctVals]);
+    const optARL = useMemo(() => distinctVals(e => e.afiliaciones?.arlName ?? ""), [distinctVals]);
+    const optCCF = useMemo(() => distinctVals(e => e.afiliaciones?.ccfName ?? ""), [distinctVals]);
 
     // ── Filtered data (combined multi-select AND/OR logic) ────────────────────
     const filtered = useMemo(() => {
@@ -462,28 +476,28 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
         return employees.filter(emp => {
             if (fStatus.length > 0 && !fStatus.includes(emp.status)) return false;
             if (fArea.length > 0 && !fArea.includes(emp.historialLaboral.area)) return false;
-            if (fSubArea.length > 0 && !fSubArea.includes(emp.historialLaboral.sub_area)) return false;
-            if (fCostCenter.length > 0 && !fCostCenter.includes(emp.historialLaboral.centro_costo)) return false;
-            if (fCostCenterName.length > 0 && !fCostCenterName.includes(emp.historialLaboral.nombre_centro_costo)) return false;
-            if (fDirectLeader.length > 0 && !fDirectLeader.includes(emp.historialLaboral.direct_leader)) return false;
-            if (fJobTitle.length > 0 && !fJobTitle.includes(emp.historialLaboral.job_title)) return false;
-            if (fEPS.length > 0 && !fEPS.includes(emp.afiliaciones?.eps_nombre ?? "")) return false;
-            if (fARL.length > 0 && !fARL.includes(emp.afiliaciones?.arl_nombre ?? "")) return false;
-            if (fCCF.length > 0 && !fCCF.includes(emp.afiliaciones?.ccf_nombre ?? "")) return false;
+            if (fSubArea.length > 0 && !fSubArea.includes(emp.historialLaboral.subArea)) return false;
+            if (fCostCenter.length > 0 && !fCostCenter.includes(emp.historialLaboral.costCenter)) return false;
+            if (fCostCenterName.length > 0 && !fCostCenterName.includes(emp.historialLaboral.costCenterName)) return false;
+            if (fDirectLeader.length > 0 && !fDirectLeader.includes(emp.historialLaboral.directLeader)) return false;
+            if (fJobTitle.length > 0 && !fJobTitle.includes(emp.historialLaboral.jobTitleName ?? "")) return false;
+            if (fEPS.length > 0 && !fEPS.includes(emp.afiliaciones?.epsName ?? "")) return false;
+            if (fARL.length > 0 && !fARL.includes(emp.afiliaciones?.arlName ?? "")) return false;
+            if (fCCF.length > 0 && !fCCF.includes(emp.afiliaciones?.ccfName ?? "")) return false;
             if (q) {
                 const hay = [
                     emp.eid,
-                    emp.maestro.primer_nombre,
-                    emp.maestro.otros_nombres,
-                    emp.maestro.primer_apellido,
-                    emp.maestro.segundo_apellido,
-                    emp.maestro.numero_identificacion,
+                    emp.maestro.firstName,
+                    emp.maestro.middleNames,
+                    emp.maestro.lastName,
+                    emp.maestro.secondLastName,
+                    emp.maestro.identificationNumber,
                     emp.historialLaboral.area,
-                    emp.historialLaboral.direct_leader,
-                    emp.historialLaboral.job_title,
+                    emp.historialLaboral.directLeader,
+                    emp.historialLaboral.jobTitleName,
                     emp.email_corporativo ?? "",
                     emp.country_id ?? "",
-                    emp.direct_leader_id ?? "",
+                    emp.directLeaderId ?? "",
                 ].join(" ").toLowerCase();
                 if (!hay.includes(q)) return false;
             }
@@ -757,7 +771,7 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                                         // Merge draft onto emp for display
                                         const display = editing ? applyEdits(emp, draft) : emp;
                                         const fotoDisplay = (draft["foto_url"] as string | undefined) ?? emp.foto_url;
-                                        const initials = (emp.maestro.primer_nombre?.[0] ?? "") + (emp.maestro.primer_apellido?.[0] ?? "");
+                                        const initials = (emp.maestro.firstName?.[0] ?? "") + (emp.maestro.lastName?.[0] ?? "");
 
                                         return (
                                             <tr
@@ -825,28 +839,39 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                                                 </td>
 
                                                 {/* Data cells */}
-                                                {TABLE_COLUMNS.map(col => (
-                                                    <td
-                                                        key={col.key}
-                                                        className={cn(
-                                                            "px-2 py-1.5 align-middle",
-                                                            editing && !col.locked ? "min-w-[140px]" : ""
-                                                        )}
-                                                    >
-                                                        <EditCell
-                                                            col={col}
-                                                            value={getVal(display, col.key)}
-                                                            editing={editing}
-                                                            onChange={(path, val) => updateDraft(emp.eid, path, val)}
-                                                        />
-                                                    </td>
-                                                ))}
+                                                {TABLE_COLUMNS.map(col => {
+                                                    let dynamicCol = col;
+                                                    if (editing && col.key === "historialLaboral.jobTitleName") {
+                                                        dynamicCol = { ...col, options: jobTitles.map(j => j.title) };
+                                                    } else if (editing && col.key === "historialLaboral.roleTitleName") {
+                                                        const currentJt = (draft["historialLaboral.jobTitleName"] as string) ?? emp.historialLaboral?.jobTitleName ?? "";
+                                                        const jt = jobTitles.find(j => j.title === currentJt);
+                                                        dynamicCol = { ...col, options: jt ? (jt.role_titles || []).map(r => r.role_title) : [] };
+                                                    }
+
+                                                    return (
+                                                        <td
+                                                            key={col.key}
+                                                            className={cn(
+                                                                "px-2 py-1.5 align-middle",
+                                                                editing && !col.locked ? "min-w-[140px]" : ""
+                                                            )}
+                                                        >
+                                                            <EditCell
+                                                                col={dynamicCol}
+                                                                value={getVal(display, col.key)}
+                                                                editing={editing}
+                                                                onChange={(path, val) => updateDraft(emp.eid, path, val)}
+                                                            />
+                                                        </td>
+                                                    );
+                                                })}
                                                 {/* Computed Salary [Reporting Currency] — read-only */}
                                                 <td className="px-2 py-1.5 align-middle border-l border-slate-50 min-w-[120px]">
                                                     <span className="text-[11px] font-mono font-semibold text-emerald-700">
                                                         {computeReportingSalary(
-                                                            display.historialLaboral?.salario_base,
-                                                            display.salary_currency ?? undefined,
+                                                            display.historialLaboral?.baseSalary,
+                                                            display.salaryCurrency ?? undefined,
                                                             fxRates
                                                         )}
                                                     </span>

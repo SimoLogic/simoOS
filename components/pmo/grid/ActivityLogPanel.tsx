@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { getTaskActivityLogsAction, ActivityLog } from "@/app/actions/pmo/activity-actions";
 import { Loader2, Clock, CheckCircle2, Type } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale"; // assuming Spanish, if not we can use en-US
+import { enUS } from "date-fns/locale";
 
 export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: string }) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -37,7 +37,7 @@ export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: str
     if (logs.length === 0) {
         return (
             <div className="py-6 text-center">
-                <p className="text-gray-400 text-sm font-medium">No hay actividad registrada aún.</p>
+                <p className="text-gray-400 text-sm font-medium">No activity log found yet.</p>
             </div>
         );
     }
@@ -62,21 +62,21 @@ export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: str
                             <p className="text-xs text-gray-500 mt-1">
                                 {isStatus && (
                                     <>
-                                        Cambió el estado de <span className="font-semibold">{log.oldValue || "ninguno"}</span> a <span className="font-semibold text-vibe-dark">{log.newValue}</span>
+                                        Changed status from <span className="font-semibold">{log.oldValue || "none"}</span> to <span className="font-semibold text-vibe-dark">{log.newValue}</span>
                                     </>
                                 )}
                                 {isTitle && (
                                     <>
-                                        Cambió el título de <span className="line-through">{log.oldValue}</span> a <span className="font-semibold text-vibe-dark">{log.newValue}</span>
+                                        Changed title from <span className="line-through">{log.oldValue}</span> to <span className="font-semibold text-vibe-dark">{log.newValue}</span>
                                     </>
                                 )}
                                 {!isStatus && !isTitle && (
-                                    <span>Realizó un {log.actionType}</span>
+                                    <span>Performed a {log.actionType}</span>
                                 )}
                             </p>
                             <div className="flex items-center gap-1 mt-2 text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
                                 <Clock className="w-3 h-3" />
-                                <span>{formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: es })}</span>
+                                <span>{formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: enUS })}</span>
                             </div>
                         </div>
                     </div>

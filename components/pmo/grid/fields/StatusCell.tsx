@@ -13,11 +13,11 @@ interface StatusCellProps {
 }
 
 const statusConfig: Record<TaskStatus, { label: string; colorClass: string }> = {
-  not_started: { label: "No Iniciado", colorClass: "bg-gray-200 text-gray-700" },
-  in_progress: { label: "Trabajando", colorClass: "bg-vibe-blue text-white" },
-  done: { label: "Listo", colorClass: "bg-green-500 text-white" },
-  stuck: { label: "Estancado", colorClass: "bg-vibe-red text-white" },
-  pending_review: { label: "En Revisión", colorClass: "bg-yellow-400 text-black" },
+  not_started: { label: "Not Started", colorClass: "bg-gray-200 text-gray-700" },
+  in_progress: { label: "Working", colorClass: "bg-vibe-blue text-white" },
+  done: { label: "Done", colorClass: "bg-green-500 text-white" },
+  stuck: { label: "Stuck", colorClass: "bg-vibe-red text-white" },
+  pending_review: { label: "Review", colorClass: "bg-yellow-400 text-black" },
 };
 
 export const StatusCell: React.FC<StatusCellProps> = ({ task }) => {

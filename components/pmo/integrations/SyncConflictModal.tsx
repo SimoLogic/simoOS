@@ -47,11 +47,11 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 flex flex-col gap-4 border border-vibe-dark/10">
         <div className="flex gap-3 items-center text-vibe-dark">
           <AlertCircle className="w-6 h-6 text-yellow-500" />
-          <h2 className="text-xl font-semibold">Resuelve Conflicto de Sincronización</h2>
+          <h2 className="text-xl font-semibold">Resolve Synchronization Conflict</h2>
         </div>
 
         <p className="text-sm text-gray-600">
-          Simo Intellisense intentó actualizar la tarea <strong>"{taskTitle}"</strong> pero detectó que tú habías hecho cambios manuales previamente. Por la <i>Regla de Oro #2</i>, debes decidir qué versión prevalece.
+          Simo Intellisense attempted to update the task <strong>"{taskTitle}"</strong> but detected that you had previously made manual changes. Per <i>Golden Rule #2</i>, you must decide which version takes precedence.
         </p>
 
         {error && (
@@ -66,7 +66,7 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
               <span className="font-medium text-gray-700 capitalize">{c.field}</span>
               <div className="flex gap-4 text-sm">
                 <div className="flex flex-col items-end">
-                  <span className="text-xs text-gray-500">Tu Carga (Actual)</span>
+                  <span className="text-xs text-gray-500">Your Version (Current)</span>
                   <span className="font-semibold text-vibe-dark">{c.currentValue}</span>
                 </div>
                 <div className="flex flex-col items-start border-l pl-4">
@@ -84,7 +84,7 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md disabled:opacity-50"
           >
-            Cancelar
+            Cancel
           </button>
           
           <button
@@ -93,7 +93,7 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-vibe-dark hover:bg-gray-800 rounded-md disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-            Mantener Mi Versión
+            Keep My Version
           </button>
 
           <button
@@ -102,7 +102,7 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-vibe-blue hover:bg-blue-600 rounded-md shadow-md disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-            Aplicar Simo IS
+            Apply Simo IS
           </button>
         </div>
       </div>

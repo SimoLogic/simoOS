@@ -187,7 +187,7 @@ export default function HRCommandCenterPage() {
                             icon={<TrendingUp className="w-5 h-5" />}
                             title="Payroll"
                             description="Create periods, WorkdayHelper calculations, lock & process"
-                            badge="Llave #2"
+                            badge="Key #2"
                             badgeColor="bg-navy-blue"
                         />
                         <NavCard

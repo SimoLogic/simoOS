@@ -14,42 +14,45 @@ import {
 // ─── Zod Schemas (Triple Shield Validation) ─────────────────────────────────
 
 const MaestroSchema = z.object({
-    numero_identificacion: z.string().min(1).max(20),
-    tipo_documento_id: z.string().min(1).max(10),
-    primer_nombre: z.string().min(1).max(100),
-    otros_nombres: z.string().max(100).optional().nullable(),
-    primer_apellido: z.string().min(1).max(100),
-    segundo_apellido: z.string().min(1).max(100),
-    fecha_nacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format YYYY-MM-DD"),
-    genero: z.string().max(1),
-    email_personal: z.string().email().max(255),
-    municipio_dane: z.string().max(10),
-    direccion_residencia: z.string(),
+    identificationNumber: z.string().min(1).max(20),
+    documentTypeId: z.string().min(1).max(10),
+    firstName: z.string().min(1).max(100),
+    middleNames: z.string().max(100).optional().nullable(),
+    lastName: z.string().min(1).max(100),
+    secondLastName: z.string().min(1).max(100),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format YYYY-MM-DD"),
+    gender: z.string().max(1),
+    personalEmail: z.string().email().max(255),
+    municipalityCode: z.string().max(10),
+    residenceAddress: z.string(),
     created_at: z.string().optional(),
     updated_at: z.string().optional()
 });
 
 const HistorialLaboralSchema = z.object({
-    empleado_id: z.string(),
-    fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format YYYY-MM-DD"),
-    fecha_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-    tipo_contrato: z.string().max(50),
-    tipo_salario: z.string().max(50),
-    salario_base: z.number().min(0),
-    procedimiento_renta: z.union([z.literal(1), z.literal(2), z.literal(0)]),
-    entidad_legal: z.string().optional().nullable(),
+    employeeId: z.string(),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format YYYY-MM-DD"),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+    contractType: z.string().max(50),
+    salaryType: z.string().max(50),
+    baseSalary: z.number().min(0),
+    taxProcedure: z.union([z.literal(1), z.literal(2), z.literal(0)]),
+    legalEntity: z.string().optional().nullable(),
     area: z.string().max(100),
-    sub_area: z.string().max(100),
-    centro_costo: z.string().max(20),
-    nombre_centro_costo: z.string().max(255).optional().nullable(),
-    sub_centro_costo: z.string().max(20).optional().nullable(),
-    nombre_sub_centro_costo: z.string().max(255).optional().nullable(),
+    subArea: z.string().max(100),
+    costCenter: z.string().max(20),
+    costCenterName: z.string().max(255).optional().nullable(),
+    subCostCenter: z.string().max(20).optional().nullable(),
+    subCostCenterName: z.string().max(255).optional().nullable(),
     branch: z.string().max(100).optional().nullable(),
     cliente: z.string().max(100).optional().nullable(),
     project: z.string().max(255).optional().nullable(),
-    digito_dedicacion: z.number().min(0).max(100),
-    direct_leader: z.string().max(255).optional().nullable(),
-    job_title: z.string().max(255).optional().nullable(),
+    dedicationPercentage: z.number().min(0).max(100),
+    directLeader: z.string().max(255).optional().nullable(),
+    jobTitleId: z.string().uuid("Invalid Job Title ID").optional().nullable(),
+    jobTitleName: z.string().optional(),
+    roleTitleId: z.string().uuid("Invalid Role Title ID").optional().nullable(),
+    roleTitleName: z.string().optional(),
     created_at: z.string().optional()
 });
 
@@ -140,5 +143,27 @@ export async function processJobDescriptionAudio(base64Audio: string): Promise<{
     } catch (error: any) {
         console.error('[HR Action] processJobDescriptionAudio error:', error);
         return { success: false, message: error.message || "Failed to process audio with AI." };
+    }
+}
+
+export async function updateRoleTitleAction(eid: string, tenantId: string, roleTitleId: string | null): Promise<{ success: boolean; message?: string }> {
+    try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey;
+        const supabase = createClient(supabaseUrl, serviceKey);
+        
+        const { error } = await supabase
+            .from('dim_employee')
+            .update({ role_title_id: roleTitleId })
+            .eq('eid', eid)
+            .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error: any) {
+        console.error('[HR Action] updateRoleTitleAction error:', error);
+        return { success: false, message: error.message };
     }
 }
