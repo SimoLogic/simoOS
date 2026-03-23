@@ -54,12 +54,16 @@ import {
   upsertPlaybookStepsAction,
   getPlaybooksAction,
   getPlaybookDetailAction,
+  getActiveRoleTitlesForPlaybookAction,
+  getActiveExternalRolesAction,
+  getActiveEmployeesForPlaybookAction,
 } from '@/app/actions/business-plan-actions';
 import { MetadataField } from './SubComponents';
 import { EditorArea, injectedStyles } from './EditorArea';
 import { LibraryAssets } from './LibraryAssets';
 import { FlowInspectorBPMN } from './FlowInspectorBPMN';
 import { WarningModal, SystemModal, DescriptionModal } from './Modals';
+import { ExternalRoleSettingsModal } from './ExternalRoleSettingsModal';
 import { usePlaybookSchedule } from './usePlaybookSchedule';
 
 // ─── UID Generator ────────────────────────────────────────────────────────────
@@ -68,18 +72,11 @@ const generateUID = () => Math.random().toString(36).substring(2, 8).toUpperCase
 
 // ─── Static Reference Data ────────────────────────────────────────────────────
 
-const internalRoles = ['Business Developer', 'Sales Manager', 'Training Mgr', 'Compliance Officer'];
-const externalRoles = ['Realtor', 'Broker', 'Lender', 'Client'];
 const frequencyOptions: FrequencyOption[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
 const activityLibrary = [
   { type: 'CALL', options: ['Cold call to new realtor', 'Follow-up previous meeting', 'Mortgage quote follow-up'] },
   { type: 'EMAIL', options: ['Initial intro campaign', 'Optimized follow-up', 'Quote delivery email'] },
 ];
-const employeeList = [
-  { id: '1', name: 'Carlos Rodriguez', role: 'Training Mgr' },
-  { id: '2', name: 'Ana Martinez', role: 'Operations Lead' },
-];
-
 // ─── Default Playbook State ───────────────────────────────────────────────────
 
 const defaultStep: PlaybookStep = {
@@ -136,8 +133,13 @@ export const PlaybookDesignerApp: React.FC = () => {
     steps: [defaultStep],
   });
   const [repeatableActivities, setRepeatableActivities] = useState<PlaybookStep[]>([]);
+  const [internalRoles, setInternalRoles] = useState<string[]>([]);
+  const [externalRoles, setExternalRoles] = useState<string[]>([]);
+  const [employeeList, setEmployeeList] = useState<EmployeeRef[]>([]);
 
   // ── Modal States ──
+  const [showExternalRolesModal, setShowExternalRolesModal] = useState(false);
+
   const [warningModal, setWarningModal] = useState<WarningModalState>({
     open: false, type: '', data: null, message: '', title: '',
   });
@@ -149,10 +151,29 @@ export const PlaybookDesignerApp: React.FC = () => {
   });
   const [flowInspectorStep, setFlowInspectorStep] = useState<PlaybookStep | null>(null);
 
+  const refreshData = async () => {
+    if (!orgId) return;
+    const [intRoles, extRoles, emps] = await Promise.all([
+      getActiveRoleTitlesForPlaybookAction(orgId),
+      getActiveExternalRolesAction(orgId),
+      getActiveEmployeesForPlaybookAction(orgId)
+    ]);
+    setInternalRoles(intRoles.map(r => r.role_title));
+    setExternalRoles(extRoles.filter(r => r.status === 'Active').map(r => r.name));
+    setEmployeeList(emps.map((e: any) => ({
+      id: e.eid,
+      name: `${e.primer_nombre} ${e.primer_apellido}`,
+      role: e.role_title
+    })));
+  };
+
   // ── Deep Fetch: load latest playbook + all steps on mount ──
   React.useEffect(() => {
     if (!orgId) return;
     const load = async () => {
+      // Step 0: Fetch Roles
+      await refreshData();
+
       // Step 1: Get the most recently updated playbook header
       const list = await getPlaybooksAction(orgId);
       if (list.length === 0) return;
@@ -441,7 +462,11 @@ export const PlaybookDesignerApp: React.FC = () => {
               <div className={`px-3 py-1 rounded-full text-[8px] font-black border uppercase ${status === 'SUBMITTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
                 {status}
               </div>
-              <Settings size={14} className="text-slate-300 cursor-pointer hover:text-indigo-600 transition-colors" />
+              <Settings 
+                size={14} 
+                className="text-slate-300 cursor-pointer hover:text-indigo-600 transition-colors" 
+                onClick={() => setShowExternalRolesModal(true)} 
+              />
             </div>
           </div>
 
@@ -596,6 +621,13 @@ export const PlaybookDesignerApp: React.FC = () => {
           employeeList={employeeList}
           playbookPurpose={playbookPurpose}
           onClose={() => setFlowInspectorStep(null)}
+        />
+      )}
+
+      {showExternalRolesModal && (
+        <ExternalRoleSettingsModal 
+          onClose={() => setShowExternalRolesModal(false)}
+          onUpdate={refreshData}
         />
       )}
     </div>

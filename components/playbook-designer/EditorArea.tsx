@@ -380,8 +380,8 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                   className="pb-text-9 font-bold bg-white border border-slate-100 rounded-lg outline-none h-9 w-full shadow-sm px-2 cursor-pointer focus:border-indigo-300 transition-all text-slate-900"
                 >
                   <option value="">Select Employee</option>
-                  {empList.map(e => (
-                    <option key={e.id} value={e.id}>{e.name} - {e.role}</option>
+                  {empList.map((e, index) => (
+                    <option key={e.id || index} value={e.role}>{e.name} — {e.role}</option>
                   ))}
                 </select>
               </div>
