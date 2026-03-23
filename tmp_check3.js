@@ -1,0 +1,24 @@
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+console.log('Using URL:', supabaseUrl);
+console.log('Using Key:', supabaseKey ? supabaseKey.substring(0, 15) + '...' : 'NONE');
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function check() {
+  console.log('STARTING CHECK...');
+  const { data: jobTitles, error: e1 } = await supabase.from('dim_job_title').select('id, title, status, created_at').order('created_at', { ascending: false }).limit(10);
+  console.log('--- DIM_JOB_TITLE ---');
+  if (e1) console.log('ERROR:', e1);
+  else console.log('DATA:', jobTitles);
+
+  const { data: roleTitles, error: e2 } = await supabase.from('dim_role_title').select('*').limit(1);
+  console.log('--- DIM_ROLE_TITLE ---');
+  if (e2) console.log('ERROR:', e2);
+  else console.log('DATA:', roleTitles);
+}
+check();

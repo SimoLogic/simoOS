@@ -9,6 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 import { FullEmployeeRecord, AREAS_EMPRESA, EPS_OPTIONS, ARL_OPTIONS, AFP_OPTIONS, CCF_OPTIONS, TIPOS_CONTRATO } from "@/lib/hr-types";
 import { getEmployeesAction as getEmployees, saveEmployeesAction as saveEmployees } from "@/app/actions/hr-actions";
+import { getBranchesAction } from "@/app/actions/branch-actions";
+import { Branch } from "@/types/branch.types";
 import { useTenant } from "@/lib/tenant-context";
 import * as XLSX from "xlsx";
 
@@ -55,6 +57,7 @@ const COLUMNS: ColumnDef[] = [
 
     // Professional
     { key: "status", label: "Status", width: "w-32", type: "select", options: [{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }, { value: "On Leave", label: "On Leave" }, { value: "Terminated", label: "Terminated" }], badge: true, group: "Professional" },
+    { key: "manager_branches", label: "Branches", locked: true, width: "w-40", group: "Professional" },
     { key: "historialLaboral.area", label: "Area", width: "w-36", type: "select", options: AREAS_EMPRESA.map(a => ({ value: a, label: a })), group: "Professional" },
     { key: "historialLaboral.subArea", label: "Sub-Area", width: "w-36", group: "Professional" },
     { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
@@ -226,6 +229,7 @@ const InlineCell: React.FC<CellProps> = ({ col, record, onChange, isEditing, onS
 export const HCMaestro: React.FC = () => {
     const { currentTenant } = useTenant();
     const [employees, setEmployees] = useState<FullEmployeeRecord[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
     const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
     const [savedRows, setSavedRows] = useState<Set<string>>(new Set());
     const [editingCell, setEditingCell] = useState<{ eid: string; key: string } | null>(null);
@@ -269,8 +273,12 @@ export const HCMaestro: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                const data = await getEmployees(currentTenant.tenant_id);
+                const [data, bData] = await Promise.all([
+                    getEmployees(currentTenant.tenant_id),
+                    getBranchesAction(currentTenant.tenant_id)
+                ]);
                 setEmployees(data);
+                setBranches(bData);
             } catch (err: any) {
                 console.error("Failed to fetch employees:", err);
                 setError(err.message || "Unknown Database Connection Error");
@@ -489,8 +497,21 @@ export const HCMaestro: React.FC = () => {
                                 </td>
                                 {COLUMNS.map(col => (
                                     <td key={col.key} data-cell="true" className={cn("px-2 py-1 align-middle border-l border-slate-50", col.width, col.locked && "bg-slate-50/40")}>
-                                        <InlineCell col={col} record={emp} isEditing={editingCell?.eid === emp.eid && editingCell?.key === col.key}
-                                            onStartEdit={() => setEditingCell({ eid: emp.eid, key: col.key })} onChange={val => handleCellChange(emp.eid, col.key, val)} />
+                                        {col.key === "manager_branches" ? (
+                                            <div title="Asignado desde Operations → Branch Master" className="flex flex-wrap gap-1">
+                                                {branches.filter(b => b.manager_employee_eid === emp.eid).length > 0
+                                                    ? branches.filter(b => b.manager_employee_eid === emp.eid).map(b => (
+                                                        <span key={b.id} className="text-[10px] font-bold bg-cobalt-blue/10 text-cobalt-blue border border-cobalt-blue/20 px-1.5 py-0.5 rounded cursor-help">
+                                                            {b.branch_code}
+                                                        </span>
+                                                    ))
+                                                    : <span className="text-slate-300 italic text-xs">—</span>
+                                                }
+                                            </div>
+                                        ) : (
+                                            <InlineCell col={col} record={emp} isEditing={editingCell?.eid === emp.eid && editingCell?.key === col.key}
+                                                onStartEdit={() => setEditingCell({ eid: emp.eid, key: col.key })} onChange={val => handleCellChange(emp.eid, col.key, val)} />
+                                        )}
                                     </td>
                                 ))}
                                 {/* Computed Salary [Reporting Currency] — read-only */}

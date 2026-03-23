@@ -167,6 +167,26 @@ export async function getBranchManagersAction(tenantId: string): Promise<{ eid: 
     }
 }
 
+/** TAREA 3 - Fetch eligible managers for Branch Master dropdown */
+export async function getEligibleBranchManagersAction(tenantId: string): Promise<{ eid: string; primer_nombre: string; primer_apellido: string; role_title: string }[]> {
+    if (!tenantId?.trim()) return [];
+    try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+            .from("dim_employee")
+            .select("eid, primer_nombre, primer_apellido, role_title")
+            .eq("tenant_id", tenantId)
+            .eq("status", "Active")
+            .in("role_title", ['Branch Manager', 'Non-Producing Branch Manager', 'Producing Branch Manager', 'Market Leader']);
+
+        if (error) throw error;
+        return (data || []) as any;
+    } catch (err: any) {
+        console.error("[Branch] getEligibleBranchManagersAction error:", err.message);
+        return [];
+    }
+}
+
 // ─── CIRCULAR REFERENCE CHECK ─────────────────────────────────────────────────
 
 /**
@@ -231,7 +251,8 @@ export async function saveBranchAction(
         tenant_id: sanitizeStr(branch.tenant_id, 20),
         branch_code: sanitizeStr(branch.branch_code, 20).toUpperCase(),
         branch_name: sanitizeOptStr(branch.branch_name, 255),
-        branch_manager_eid: sanitizeOptStr(branch.branch_manager_eid, 20),
+        manager_employee_eid: sanitizeOptStr(branch.manager_employee_eid, 20),
+        manager_role_title: sanitizeOptStr(branch.manager_role_title, 100),
         states_licensed: Array.isArray(branch.states_licensed) ? branch.states_licensed : [],
         field_office_type: branch.field_office_type ?? "Physical",
         office_address: sanitizeOptStr(branch.office_address),
