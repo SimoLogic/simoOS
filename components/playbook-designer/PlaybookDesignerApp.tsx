@@ -46,7 +46,7 @@ import {
   PlaybookStep, PlaybookState,
   PlaybookType, PlaybookFamily, PlaybookStrategy, PlaybookStatus, ActiveTab,
   WarningModalState, ReplaceModalState, DescModalState,
-  FrequencyOption,
+  FrequencyOption, EmployeeRef
 } from './types';
 import { useTenant } from '@/lib/tenant-context';
 import {
