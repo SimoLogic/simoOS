@@ -40,3 +40,7 @@ Este documento es la "Constitución Tecnológica" de Simo Intellisense. Todo age
 
 ## 8. Sincronización Obligatoria (Frontend / BD)
 - Cada vez que hagas un cambio en el frontend, debes también ejecutar el SQL correspondiente en Supabase para que ambos queden sincronizados. Al final de cada tarea, confírmame explícitamente: (a) qué cambió en el código frontend, (b) qué SQL se ejecutó en Supabase, y (c) si la tabla afectada en Supabase refleja ahora el cambio. Si no puedes confirmar los tres puntos, detente y dímelo antes de continuar.
+
+## 9. Archivos de Diagnóstico
+- **REGLA PERMANENTE:** Nunca incluyas archivos temporales de diagnóstico (`tmp_*.js`, `query.sql`, `.tmp`) en commits. Antes de cada commit, verifica que solo se incluyan archivos de código de la aplicación. Si necesitas crear scripts temporales de diagnóstico, créalos en una carpeta `/tmp/` que ya esté en `.gitignore`.
+

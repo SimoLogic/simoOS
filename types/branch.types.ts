@@ -28,7 +28,8 @@ export interface Branch {
     tenant_id: string;
     branch_code: string;
     branch_name: string | null;
-    branch_manager_eid: string | null;
+    manager_employee_eid: string | null;
+    manager_role_title: string | null;
     branch_manager_name?: string;          // denormalized for display
     states_licensed: string[];             // ["CA", "TX", "FL"]
     field_office_type: FieldOfficeType;
@@ -67,7 +68,8 @@ export function blankBranch(tenantId: string): Omit<Branch, "id" | "created_at" 
         tenant_id: tenantId,
         branch_code: "",
         branch_name: null,
-        branch_manager_eid: null,
+        manager_employee_eid: null,
+        manager_role_title: null,
         states_licensed: [],
         field_office_type: "Physical",
         office_address: null,

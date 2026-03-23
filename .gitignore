@@ -55,3 +55,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# ─── Diagnóstico ──────────────────────────────────────────────────────────────
+tmp_*.js
+query*.sql
