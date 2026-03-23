@@ -8,9 +8,6 @@
 // For direct access, import from the specific store file instead.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ─── HR ──────────────────────────────────────────────────────────────────────
-export { getEmployees, addEmployee, updateEmployee, saveEmployees } from './hr.store';
-
 // ─── Tenant ───────────────────────────────────────────────────────────────────
 export {
     generateTCODE, getTenants, addTenant, updateTenant,

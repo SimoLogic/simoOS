@@ -11,7 +11,7 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, AreaChart, Area
 } from "recharts";
 import { useTenant } from "@/lib/tenant-context";
-import { getEmployees } from "@/lib/hr-store";
+import { getEmployeesAction } from "@/app/actions/hr-actions";
 import { FullEmployeeRecord } from "@/lib/hr-types";
 
 // ─── Constants & Types ────────────────────────────────────────────────────────
@@ -62,13 +62,13 @@ const DeepDiveModal: React.FC<{
                                 {data.map(emp => (
                                     <tr key={emp.eid} className="hover:bg-slate-50/80 transition-colors">
                                         <td className="px-4 py-3 font-medium text-navy-blue">
-                                            {emp.maestro.primer_nombre} {emp.maestro.primer_apellido}
+                                            {emp.maestro.firstName} {emp.maestro.lastName}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 text-xs font-mono">{emp.maestro.numero_identificacion}</td>
+                                        <td className="px-4 py-3 text-slate-500 text-xs font-mono">{emp.maestro.identificationNumber}</td>
                                         <td className="px-4 py-3 text-slate-600 text-xs">{emp.historialLaboral.area}</td>
-                                        <td className="px-4 py-3 text-slate-600 text-xs">{emp.historialLaboral.job_title || "N/A"}</td>
+                                        <td className="px-4 py-3 text-slate-600 text-xs">{emp.historialLaboral.jobTitleName || "N/A"}</td>
                                         <td className="px-4 py-3 text-right font-mono text-emerald-600 text-xs font-semibold">
-                                            ${(emp.historialLaboral.salario_base || 0).toLocaleString()}
+                                            ${(emp.historialLaboral.baseSalary || 0).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={cn(
@@ -135,7 +135,7 @@ export const HRMetricsDashboard: React.FC = () => {
         if (!tenantCode) return;
         setLoading(true);
         try {
-            const data = await getEmployees(tenantCode);
+            const data = await getEmployeesAction(tenantCode);
             setEmployees(data);
         } catch (error) {
             console.error("Failed to load HR metrics data", error);
@@ -165,19 +165,19 @@ export const HRMetricsDashboard: React.FC = () => {
         const inactiveEmp = employees.filter(e => e.status !== "Active");
 
         const totalActive = activeEmp.length;
-        const rosterValue = activeEmp.reduce((sum, emp) => sum + (Number(emp.historialLaboral.salario_base) || 0), 0);
+        const rosterValue = activeEmp.reduce((sum, emp) => sum + (Number(emp.historialLaboral.baseSalary) || 0), 0);
 
         // Current Month calc (simplistic approach for demo)
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
 
         const newHires = activeEmp.filter(e => {
-            const d = new Date(e.historialLaboral.fecha_inicio || "");
+            const d = new Date(e.historialLaboral.startDate || "");
             return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         }).length;
 
         const attritionCount = inactiveEmp.filter(e => {
-            const d = new Date(e.historialLaboral.fecha_fin || "");
+            const d = new Date(e.historialLaboral.endDate || "");
             return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         }).length;
 
@@ -205,7 +205,7 @@ export const HRMetricsDashboard: React.FC = () => {
         const costs: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
         filteredEmployees.forEach(emp => {
             const area = emp.historialLaboral.area || "Unassigned";
-            const salary = Number(emp.historialLaboral.salario_base) || 0;
+            const salary = Number(emp.historialLaboral.baseSalary) || 0;
             if (!costs[area]) {
                 costs[area] = { name: area, value: 0, employees: [] };
             }
@@ -243,7 +243,7 @@ export const HRMetricsDashboard: React.FC = () => {
     const demographicsByGender = useMemo(() => {
         const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
         filteredEmployees.forEach(emp => {
-            const gender = emp.maestro.genero || "Unknown";
+            const gender = emp.maestro.gender || "Unknown";
             if (!counts[gender]) counts[gender] = { name: gender, value: 0, employees: [] };
             counts[gender].value += 1;
             counts[gender].employees.push(emp);
@@ -254,7 +254,7 @@ export const HRMetricsDashboard: React.FC = () => {
     const demographicsByContract = useMemo(() => {
         const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
         filteredEmployees.forEach(emp => {
-            const contract = emp.historialLaboral.tipo_contrato || "Unknown";
+            const contract = emp.historialLaboral.contractType || "Unknown";
             if (!counts[contract]) counts[contract] = { name: contract, value: 0, employees: [] };
             counts[contract].value += 1;
             counts[contract].employees.push(emp);
@@ -265,7 +265,7 @@ export const HRMetricsDashboard: React.FC = () => {
     const socialSecurityRisk = useMemo(() => {
         const counts: Record<string, { name: string, value: number, employees: FullEmployeeRecord[] }> = {};
         filteredEmployees.forEach(emp => {
-            const risk = `Risk Level ${emp.afiliaciones?.nivel_riesgo_arl || 0}`;
+            const risk = `Risk Level ${emp.afiliaciones?.arlRiskLevel || 0}`;
             if (!counts[risk]) counts[risk] = { name: risk, value: 0, employees: [] };
             counts[risk].value += 1;
             counts[risk].employees.push(emp);
@@ -282,8 +282,8 @@ export const HRMetricsDashboard: React.FC = () => {
         return months.map((m, idx) => {
             // Count how many people were active in that month
             const activeInMonth = employees.filter(e => {
-                const startDate = e.historialLaboral.fecha_inicio ? new Date(e.historialLaboral.fecha_inicio) : new Date();
-                const endDate = e.historialLaboral.fecha_fin ? new Date(e.historialLaboral.fecha_fin) : new Date("2099-01-01");
+                const startDate = e.historialLaboral.startDate ? new Date(e.historialLaboral.startDate) : new Date();
+                const endDate = e.historialLaboral.endDate ? new Date(e.historialLaboral.endDate) : new Date("2099-01-01");
                 const monthDate = new Date(currentYear, idx, 28);
                 return startDate <= monthDate && endDate >= monthDate;
             });
@@ -291,8 +291,8 @@ export const HRMetricsDashboard: React.FC = () => {
                 name: m,
                 active_hc: activeInMonth.length,
                 attrition: employees.filter(e => {
-                    if (!e.historialLaboral.fecha_fin) return false;
-                    const d = new Date(e.historialLaboral.fecha_fin);
+                    if (!e.historialLaboral.endDate) return false;
+                    const d = new Date(e.historialLaboral.endDate);
                     return d.getFullYear() === currentYear && d.getMonth() === idx;
                 }).length
             };

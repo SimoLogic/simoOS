@@ -3,11 +3,11 @@
 /**
  * HR SERVER ACTIONS — Prisma-Powered (New Sub-Modules)
  *
- * Arquitectura:
- *  • All queries filter by orgId (Llave #1 — multi-tenant isolation)
- *  • Salaries & IDs encrypted/decrypted via lib/security/hr-vault.ts (Llave #4)
- *  • isLocked enforced by assertNotLocked() before any write (Llave #3)
- *  • WorkdayHelper used in payroll + vacation calculations (Llave #2)
+ * Architecture:
+ *  • All queries filter by orgId (Key #1 — multi-tenant isolation)
+ *  • Salaries & IDs encrypted/decrypted via lib/security/hr-vault.ts (Key #4)
+ *  • isLocked enforced by assertNotLocked() before any write (Key #3)
+ *  • WorkdayHelper used in payroll + vacation calculations (Key #2)
  *
  * This file coexists with the legacy hr-actions.ts (which handles dim_employee /
  * Supabase CRUD for the existing HCMaestro table). Migrate when ready.
@@ -54,17 +54,17 @@ export interface HrEmployeeProfile {
     emailCorporate: string | null;
     photoUrl: string | null;
     // Decrypted identity
-    identificacion: string;
-    tipoDocumento: string;
-    primerNombre: string;
-    otrosNombres: string | null;
-    primerApellido: string;
-    segundoApellido: string;
-    fechaNacimiento: string;
-    genero: string;
-    emailPersonal: string;
-    municipioDane: string;
-    direccionResidencia: string;
+    identification: string;
+    documentType: string;
+    firstName: string;
+    middleName: string | null;
+    lastName: string;
+    secondLastName: string;
+    birthDate: string;
+    gender: string;
+    personalEmail: string;
+    municipalityCode: string;
+    address: string;
     // Deep fetch relations
     activeContract: HrContractView | null;
     recentPayrolls: HrPayrollView[];
@@ -74,15 +74,15 @@ export interface HrEmployeeProfile {
 
 export interface HrContractView {
     id: string;
-    fechaInicio: string;
-    fechaFin: string | null;
-    tipoContrato: string;
-    tipoSalario: string;
-    salarioBase: number;        // decrypted
+    startDate: string;
+    endDate: string | null;
+    contractType: string;
+    salaryType: string;
+    baseSalary: number;        // decrypted
     salaryCurrencyCode: string;
     area: string;
     subArea: string;
-    entidadLegal: string | null;
+    legalEntity: string | null;
     jobTitle: string | null;
     directLeaderId: string | null;
     isLocked: boolean;
@@ -165,15 +165,15 @@ export async function getEmployeeProfileAction(
         const activeContract = emp.contracts[0]
             ? {
                 id: emp.contracts[0].id,
-                fechaInicio: emp.contracts[0].fechaInicio,
-                fechaFin: emp.contracts[0].fechaFin,
-                tipoContrato: emp.contracts[0].tipoContrato,
-                tipoSalario: emp.contracts[0].tipoSalario,
-                salarioBase: await decryptSalary(emp.contracts[0].salarioBaseEnc),
+                startDate: emp.contracts[0].fechaInicio,
+                endDate: emp.contracts[0].fechaFin,
+                contractType: emp.contracts[0].tipoContrato,
+                salaryType: emp.contracts[0].tipoSalario,
+                baseSalary: await decryptSalary(emp.contracts[0].salarioBaseEnc),
                 salaryCurrencyCode: emp.contracts[0].salaryCurrencyCode,
                 area: emp.contracts[0].area,
                 subArea: emp.contracts[0].subArea,
-                entidadLegal: emp.contracts[0].entidadLegal,
+                legalEntity: emp.contracts[0].entidadLegal,
                 jobTitle: emp.contracts[0].jobTitle,
                 directLeaderId: emp.contracts[0].directLeaderId,
                 isLocked: emp.contracts[0].isLocked,
@@ -221,17 +221,17 @@ export async function getEmployeeProfileAction(
             status: emp.status,
             emailCorporate: emp.emailCorporate,
             photoUrl: emp.photoUrl,
-            identificacion,
-            tipoDocumento: emp.tipoDocumento,
-            primerNombre: emp.primerNombre,
-            otrosNombres: emp.otrosNombres,
-            primerApellido: emp.primerApellido,
-            segundoApellido: emp.segundoApellido,
-            fechaNacimiento: emp.fechaNacimiento,
-            genero: emp.genero,
-            emailPersonal: emp.emailPersonal,
-            municipioDane: emp.municipioDane,
-            direccionResidencia: emp.direccionResidencia,
+            identification: identificacion,
+            documentType: emp.tipoDocumento,
+            firstName: emp.primerNombre,
+            middleName: emp.otrosNombres,
+            lastName: emp.primerApellido,
+            secondLastName: emp.segundoApellido,
+            birthDate: emp.fechaNacimiento,
+            gender: emp.genero,
+            personalEmail: emp.emailPersonal,
+            municipalityCode: emp.municipioDane,
+            address: emp.direccionResidencia,
             activeContract,
             recentPayrolls,
             pendingVacations,
@@ -283,7 +283,7 @@ export async function createPayrollPeriodAction(
         // Decrypt salary for calculation
         const salarioBase = await decryptSalary(contract.salarioBaseEnc);
 
-        // Calculate payroll using WorkdayHelper (Llave #2)
+        // Calculate payroll using WorkdayHelper (Key #2)
         const calcInput: PayrollInput = {
             salarioBase,
             periodStart: new Date(periodStart),
@@ -385,7 +385,7 @@ export async function createVacationRequestAction(
         const start = new Date(startDate);
         const end = new Date(endDate);
 
-        // Use WorkdayHelper (Llave #2) for accurate count
+        // Use WorkdayHelper (Key #2) for accurate count
         const calc = calculateVacationDays({
             startDate: start,
             endDate: end,

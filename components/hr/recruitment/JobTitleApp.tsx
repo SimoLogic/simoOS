@@ -307,7 +307,7 @@ export const JobTitleApp: React.FC = () => {
             getEmployeesAction(currentTenant.tenant_id),
         ]);
         setJobTitles(jts);
-        setEmployees(emps.map(e => ({ eid: e.eid, name: `${e.maestro.primer_nombre} ${e.maestro.primer_apellido}` })));
+        setEmployees(emps.map(e => ({ eid: e.eid, name: `${e.maestro.firstName} ${e.maestro.lastName}` })));
         setLoading(false);
     }, [currentTenant]);
 

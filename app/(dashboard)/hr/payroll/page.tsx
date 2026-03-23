@@ -55,7 +55,7 @@ function PayrollPreview() {
             <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-4 h-4 text-cobalt-blue" />
                 <h3 className="text-sm font-bold text-navy-blue">WorkdayHelper Live Calculator</h3>
-                <span className="text-[10px] font-bold bg-navy-blue text-white px-2 py-0.5 rounded-full">Llave #2</span>
+                <span className="text-[10px] font-bold bg-navy-blue text-white px-2 py-0.5 rounded-full">Key #2</span>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-4">

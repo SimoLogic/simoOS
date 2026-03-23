@@ -133,15 +133,15 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   // We use the table for individual tasks, but the Virtualizer handles the flat list.
   const columns = useMemo(() => [
     columnHelper.accessor("title", {
-      header: "Tarea",
+      header: "Task",
       cell: info => <TextCell task={info.row.original} />,
     }),
     columnHelper.accessor("assigneeId", {
-      header: "Responsable",
+      header: "Assignee",
       cell: info => <PersonCell task={info.row.original} />,
     }),
     columnHelper.accessor("status", {
-      header: "Estado",
+      header: "Status",
       cell: info => <StatusCell task={info.row.original} />,
     }),
   ], []);
@@ -353,6 +353,14 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                   </div>
                 );
               })}
+              {flatRows.filter(r => r.type === 'task').length === 0 && (
+                <div className="flex items-center justify-center p-20 text-slate-400">
+                  <div className="text-center">
+                    <p className="text-lg font-bold">No tasks found</p>
+                    <p className="text-sm">Try changing filters or adding a new task.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "new-business", label: "New Business" },
         { id: "playbooks", label: "Playbooks" },
         { id: "playbook-designer", label: "Playbook Designer" },
-        { id: "performance", label: "HR Metrics" },
+        { id: "performance", label: "SOP Designer" },
     ],
     growthify: [
         { id: "race-now", label: "Race Track LIVE" },

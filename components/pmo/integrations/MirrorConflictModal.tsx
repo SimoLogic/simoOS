@@ -66,8 +66,8 @@ export const MirrorConflictModal: React.FC<MirrorConflictModalProps> = ({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-[16px] font-bold text-[var(--vibe-text-prime)]">Conflicto de Sincronización</h2>
-              <p className="text-[12px] text-[var(--vibe-text-muted)]">Tarea: <span className="font-semibold">{taskTitle}</span></p>
+              <h2 className="text-[16px] font-bold text-[var(--vibe-text-prime)]">Synchronization Conflict</h2>
+              <p className="text-[12px] text-[var(--vibe-text-muted)]">Task: <span className="font-semibold">{taskTitle}</span></p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[var(--vibe-surface-2)] rounded-full transition-colors">
@@ -80,7 +80,7 @@ export const MirrorConflictModal: React.FC<MirrorConflictModalProps> = ({
           <div className="p-4 bg-[var(--vibe-surface-2)] rounded-[var(--radius-md)] border border-[var(--vibe-border)]">
             <p className="text-[14px] text-[var(--vibe-text-prime)] flex gap-2">
               <Clock className="w-4 h-4 text-[var(--vibe-orange)] shrink-0 mt-0.5" />
-              <span>Simo IS ha intentado actualizar esta tarea, pero hemos detectado cambios manuales realizados por ti. Por favor, elige qué versión conservar para cada campo.</span>
+              <span>Simo IS attempted to update this task, but manual changes were detected. Please choose which version to keep for each field.</span>
             </p>
           </div>
 
@@ -100,7 +100,7 @@ export const MirrorConflictModal: React.FC<MirrorConflictModalProps> = ({
                     )}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-[var(--vibe-text-muted)]">Tu versión</span>
+                      <span className="text-[11px] font-bold text-[var(--vibe-text-muted)]">Your Version</span>
                       {resolutions[conflict.field] === 'employee' && <CheckCircle2 className="w-4 h-4 text-[var(--vibe-purple)]" />}
                     </div>
                     <div className="text-[14px] font-medium text-[var(--vibe-text-prime)]">{String(conflict.employeeValue)}</div>
@@ -117,7 +117,7 @@ export const MirrorConflictModal: React.FC<MirrorConflictModalProps> = ({
                     )}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-[var(--vibe-text-muted)]">Versión Simo IS</span>
+                      <span className="text-[11px] font-bold text-[var(--vibe-text-muted)]">Simo IS Version</span>
                       {resolutions[conflict.field] === 'simo' && <CheckCircle2 className="w-4 h-4 text-[var(--vibe-purple)]" />}
                     </div>
                     <div className="text-[14px] font-medium text-[var(--vibe-text-prime)]">{String(conflict.simoValue)}</div>
@@ -134,13 +134,13 @@ export const MirrorConflictModal: React.FC<MirrorConflictModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-[14px] font-medium text-[var(--vibe-text-prime)] hover:bg-[var(--vibe-surface-3)] rounded-[var(--radius-sm)] transition-colors"
           >
-            Cancelar
+            Cancel
           </button>
           <button 
             onClick={handleConfirm}
             className="px-6 py-2 bg-[var(--vibe-purple)] text-white text-[14px] font-bold rounded-[var(--radius-sm)] shadow-lg shadow-[var(--vibe-purple)]/20 hover:brightness-110 active:scale-95 transition-all"
           >
-            Guardar Resoluciones
+            Save Resolutions
           </button>
         </div>
       </div>

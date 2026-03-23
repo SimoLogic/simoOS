@@ -1,6 +1,6 @@
-// ⚠️ Lee ARCHITECTURE.md antes de modificar este módulo
+// ⚠️ Read ARCHITECTURE.md before modifying this module
 // PMO Module — My Plan Shell (Sprint 0 Placeholder)
-// Este componente evoluciona con cada prompt del Plan Maestro PMO
+// This component evolves with each PMO Master Plan prompt.
 
 "use client";
 

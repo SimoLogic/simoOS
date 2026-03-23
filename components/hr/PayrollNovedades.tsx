@@ -22,6 +22,9 @@ import { FullEmployeeRecord } from "@/lib/hr-types";
 import { addEmployeeAction as addEmployee, getEmployeesAction } from "@/app/actions/hr-actions";
 import { getApproverMap, saveApproverMap, EmployeeApproverMap } from "@/lib/approval-store";
 import { useTenant } from "@/lib/tenant-context";
+import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
+import { updateRoleTitleAction } from "@/app/actions/hr-actions";
+import { JobTitleRef, RoleTitleRef } from "@/lib/job-title-types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +34,9 @@ interface Employee {
     firstName: string;
     lastName: string;
     jobTitle: string;
+    jobTitleId: string | null;
+    roleTitleId: string | null;
+    roleTitleName: string;
     foto_url: string;
     position: string;
     area: string;
@@ -55,6 +61,7 @@ const ApprovalFlowApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const [openDropdown, setOpenDropdown] = useState<{ eid: string; col: number } | null>(null);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [rowErrors, setRowErrors] = useState<Record<string, string[]>>({});
+    const [jobTitles, setJobTitles] = useState<JobTitleRef[]>([]);
 
     React.useEffect(() => {
         const loadData = async () => {
@@ -67,21 +74,28 @@ const ApprovalFlowApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 return {
                     eid: emp.eid,
                     tenant_id: emp.tenant_id || currentTenant.tenant_id,
-                    firstName: emp.maestro?.primer_nombre || "",
-                    lastName: emp.maestro?.primer_apellido || "",
-                    jobTitle: emp.historialLaboral?.job_title || "",
+                    firstName: emp.maestro?.firstName || "",
+                    lastName: emp.maestro?.lastName || "",
+                    jobTitle: emp.historialLaboral?.jobTitleName || "",
+                    jobTitleId: emp.historialLaboral?.jobTitleId || null,
+                    roleTitleId: emp.historialLaboral?.roleTitleId || null,
+                    roleTitleName: emp.historialLaboral?.roleTitleName || "",
                     foto_url: emp.foto_url || "",
-                    position: emp.historialLaboral?.tipo_contrato || "Employee",
+                    position: emp.historialLaboral?.contractType || "Employee",
                     area: emp.historialLaboral?.area || "Unassigned",
-                    subArea: emp.historialLaboral?.sub_area || "",
-                    costCenter: emp.historialLaboral?.centro_costo || "",
-                    directLeader: emp.historialLaboral?.direct_leader || "",
+                    subArea: emp.historialLaboral?.subArea || "",
+                    costCenter: emp.historialLaboral?.costCenter || "",
+                    directLeader: emp.historialLaboral?.directLeader || "",
                     approver1Id: mapData?.approver1Id || "",
                     approver2Id: mapData?.approver2Id || "",
                     approver3Id: mapData?.approver3Id || ""
                 };
             });
             setEmployees(mapped);
+            
+            const jts = await getActiveJobTitlesAction(currentTenant.tenant_id);
+            setJobTitles(jts);
+            
             setLoading(false);
         };
         loadData();
@@ -282,6 +296,7 @@ const ApprovalFlowApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50/95 backdrop-blur-sm">EID</th>
                                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50/95 backdrop-blur-sm">Full Name</th>
                                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50/95 backdrop-blur-sm">Area</th>
+                                <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50/95 backdrop-blur-sm">Role Title</th>
                                 <th className="text-left px-4 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap bg-slate-50/95 backdrop-blur-sm text-center border-l border-slate-200">
                                     <div className="flex items-center justify-center gap-1.5 text-cobalt-blue">
                                         <span className="w-2 h-2 rounded-full bg-cobalt-blue" />
@@ -350,6 +365,33 @@ const ApprovalFlowApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="text-xs text-slate-500 font-medium">{emp.area}</span>
+                                        </td>
+                                        
+                                        {/* Role Title inline assignment */}
+                                        <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
+                                            <div className="flex items-center">
+                                                <select
+                                                    value={emp.roleTitleId || ""}
+                                                    onChange={async (e) => {
+                                                        const newVal = e.target.value;
+                                                        setEmployees(prev => prev.map(p => p.eid === emp.eid ? { ...p, roleTitleId: newVal, roleTitleName: jobTitles.flatMap(j=>j.role_titles || []).find(r=>r?.id===newVal)?.role_title || '' } : p));
+                                                        if (currentTenant) {
+                                                            await updateRoleTitleAction(emp.eid, currentTenant.tenant_id, newVal);
+                                                        }
+                                                    }}
+                                                    className="w-full text-xs border border-transparent hover:border-slate-200 rounded px-2 py-1 bg-transparent hover:bg-slate-50 focus:outline-none focus:border-cobalt-blue focus:ring-1 focus:ring-cobalt-blue transition-colors cursor-pointer text-slate-600 appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_4px_center] bg-no-repeat pr-5"
+                                                    disabled={!emp.jobTitleId}
+                                                >
+                                                    <option value="" className="text-slate-400 italic">{emp.jobTitleId ? "— Pick —" : "No Job Title"}</option>
+                                                    {(() => {
+                                                        const jt = jobTitles.find(j => j.id === emp.jobTitleId);
+                                                        const roles = jt?.role_titles || [];
+                                                        return roles.map(r => (
+                                                            <option key={r.id} value={r.id} className="text-slate-700">{r.role_title}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
                                         </td>
 
                                         {/* Column 1: Mandatory Approver 1 */}

@@ -15,12 +15,12 @@ import * as XLSX from "xlsx";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const LOCKED_FIELDS = new Set([
-    "maestro.numero_identificacion",
-    "maestro.tipo_documento_id",
-    "maestro.primer_nombre",
-    "maestro.primer_apellido",
-    "maestro.segundo_apellido",
-    "maestro.fecha_nacimiento",
+    "maestro.identificationNumber",
+    "maestro.documentTypeId",
+    "maestro.firstName",
+    "maestro.lastName",
+    "maestro.secondLastName",
+    "maestro.birthDate",
     "eid"
 ]);
 
@@ -48,43 +48,43 @@ interface ColumnDef {
 const COLUMNS: ColumnDef[] = [
     // Identity (locked)
     { key: "eid", label: "EID", locked: true, width: "w-28", group: "Identity" },
-    { key: "maestro.primer_nombre", label: "First Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.primer_apellido", label: "Last Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.numero_identificacion", label: "ID (CC)", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.fecha_nacimiento", label: "DOB", locked: true, width: "w-32", type: "date", group: "Identity" },
+    { key: "maestro.firstName", label: "First Name", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.lastName", label: "Last Name", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.identificationNumber", label: "ID (CC)", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.birthDate", label: "DOB", locked: true, width: "w-32", type: "date", group: "Identity" },
 
     // Professional
     { key: "status", label: "Status", width: "w-32", type: "select", options: [{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }, { value: "On Leave", label: "On Leave" }, { value: "Terminated", label: "Terminated" }], badge: true, group: "Professional" },
     { key: "historialLaboral.area", label: "Area", width: "w-36", type: "select", options: AREAS_EMPRESA.map(a => ({ value: a, label: a })), group: "Professional" },
-    { key: "historialLaboral.sub_area", label: "Sub-Area", width: "w-36", group: "Professional" },
-    { key: "historialLaboral.centro_costo", label: "Cost Center", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.direct_leader", label: "Direct Leader", width: "w-40", group: "Professional" },
+    { key: "historialLaboral.subArea", label: "Sub-Area", width: "w-36", group: "Professional" },
+    { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
+    { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
     { key: "direct_leader_id", label: "Leader EID", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.tipo_contrato", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
-    { key: "historialLaboral.fecha_inicio", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
+    { key: "historialLaboral.contractType", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
+    { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
     { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
     { key: "historialLaboral.role_title", label: "Role Title", width: "w-44", group: "Professional" },
 
     // Benefits
-    { key: "afiliaciones.eps_nombre", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.arl_nombre", label: "ARL", width: "w-40", type: "select", options: ARL_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.afp_nombre", label: "AFP", width: "w-40", type: "select", options: AFP_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.ccf_nombre", label: "CCF", width: "w-40", type: "select", options: CCF_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.epsName", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.arlName", label: "ARL", width: "w-40", type: "select", options: ARL_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.afpName", label: "AFP", width: "w-40", type: "select", options: AFP_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.ccfName", label: "CCF", width: "w-40", type: "select", options: CCF_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
 
     // SST
-    { key: "sst.talla_camisa", label: "Shirt", width: "w-20", group: "SST" },
-    { key: "sst.talla_pantalon", label: "Pants", width: "w-20", group: "SST" },
-    { key: "sst.tipo_sangre", label: "Blood", width: "w-20", group: "SST" },
+    { key: "sst.shirtSize", label: "Shirt", width: "w-20", group: "SST" },
+    { key: "sst.pantsSize", label: "Pants", width: "w-20", group: "SST" },
+    { key: "sst.bloodType", label: "Blood", width: "w-20", group: "SST" },
 
     // Contact & Geography
-    { key: "maestro.email_personal", label: "Personal Email", width: "w-48", group: "Contact" },
+    { key: "maestro.personalEmail", label: "Personal Email", width: "w-48", group: "Contact" },
     { key: "email_corporativo", label: "Corp Email", width: "w-48", group: "Contact" },
     { key: "continent_id", label: "Continent", width: "w-32", group: "Contact" },
     { key: "country_id", label: "Country", width: "w-32", group: "Contact" },
     { key: "city_id", label: "City", width: "w-32", group: "Contact" },
 
     // Payroll
-    { key: "historialLaboral.salario_base", label: "Salary [Local Currency]", width: "w-44", type: "number", format: (v) => `$${Number(v).toLocaleString("es-CO")}`, group: "Payroll" },
+    { key: "historialLaboral.baseSalary", label: "Salary [Local Currency]", width: "w-44", type: "number", format: (v) => `$${Number(v).toLocaleString("es-CO")}`, group: "Payroll" },
     { key: "salary_currency", label: "Currency", width: "w-24", group: "Payroll" },
     // Salary [Reporting Currency] is a computed column — rendered separately in the table
 ];
@@ -93,15 +93,15 @@ const COLUMNS: ColumnDef[] = [
 // Reads from dim_fx_rates: from_currency = employee.salary_currency, to_currency = USD
 // Falls back to — if no rate is found
 const computeReportingSalary = (
-    salario_base: number | undefined,
+    baseSalary: number | undefined,
     salary_currency: string | undefined,
     fxRates: Record<string, number>
 ): string => {
-    if (!salario_base || !salary_currency) return "—";
-    if (salary_currency === "USD") return `$${Number(salario_base).toFixed(2)}`;
+    if (!baseSalary || !salary_currency) return "—";
+    if (salary_currency === "USD") return `$${Number(baseSalary).toFixed(2)}`;
     const rate = fxRates[salary_currency];
     if (!rate) return "—";
-    return `$${(salario_base * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${(baseSalary * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -124,8 +124,8 @@ function exportToExcel(employees: FullEmployeeRecord[], fxRates: Record<string, 
         });
         // Computed column
         row["Salary [Reporting Currency] (USD)"] = computeReportingSalary(
-            emp.historialLaboral?.salario_base,
-            emp.salary_currency ?? undefined,
+            emp.historialLaboral?.baseSalary,
+            emp.salaryCurrency ?? undefined,
             fxRates
         );
         return row;
@@ -273,7 +273,7 @@ export const HCMaestro: React.FC = () => {
                 setEmployees(data);
             } catch (err: any) {
                 console.error("Failed to fetch employees:", err);
-                setError(err.message || "Error Desconocido de Conexión a Base de Datos");
+                setError(err.message || "Unknown Database Connection Error");
             } finally {
                 setLoading(false);
             }
@@ -326,9 +326,9 @@ export const HCMaestro: React.FC = () => {
         if (q) {
             list = list.filter(e =>
                 (e.eid ?? "").toLowerCase().includes(q) ||
-                (e.maestro?.primer_nombre ?? "").toLowerCase().includes(q) ||
-                (e.maestro?.primer_apellido ?? "").toLowerCase().includes(q) ||
-                String(e.maestro?.numero_identificacion ?? "").includes(q)
+                (e.maestro?.firstName ?? "").toLowerCase().includes(q) ||
+                (e.maestro?.lastName ?? "").toLowerCase().includes(q) ||
+                String(e.maestro?.identificationNumber ?? "").includes(q)
             );
         }
         if (filterArea) list = list.filter(e => e.historialLaboral.area === filterArea);
@@ -457,13 +457,13 @@ export const HCMaestro: React.FC = () => {
                                             <ShieldAlert className="w-6 h-6 text-action-red" />
                                         </div>
                                         <div className="max-w-md mx-auto">
-                                            <h3 className="text-sm font-bold text-navy-blue uppercase tracking-widest">Error de Conexión a Base de Datos</h3>
+                                            <h3 className="text-sm font-bold text-navy-blue uppercase tracking-widest">Database Connection Error</h3>
                                             <p className="text-xs text-action-red/80 font-medium mt-1 leading-relaxed">
                                                 {error}
                                             </p>
                                         </div>
                                         <button onClick={() => window.location.reload()} className="mt-2 px-4 py-1.5 text-xs font-bold text-white bg-action-red rounded-lg hover:bg-action-red/90 transition-all shadow-lg shadow-action-red/10">
-                                            Reintentar Conexión
+                                            Retry Connection
                                         </button>
                                     </div>
                                 </td>
@@ -497,8 +497,8 @@ export const HCMaestro: React.FC = () => {
                                 <td className="px-2 py-1 align-middle border-l border-slate-50 w-48">
                                     <span className="text-xs font-mono text-emerald-700 font-semibold">
                                         {computeReportingSalary(
-                                            emp.historialLaboral?.salario_base,
-                                            emp.salary_currency ?? undefined,
+                                            emp.historialLaboral?.baseSalary,
+                                            emp.salaryCurrency ?? undefined,
                                             fxRates
                                         )}
                                     </span>

@@ -22,18 +22,18 @@ export type TipoSangre = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-"
 
 export interface EmpleadoMaestro {
     // PK
-    numero_identificacion: string;           // VARCHAR – PK, sin puntos ni guiones
-    tipo_documento_id: TipoDocumento;        // VARCHAR(5) – Códigos DIAN
+    identificationNumber: string;           // VARCHAR – PK, no dots or dashes
+    documentTypeId: TipoDocumento;          // VARCHAR(5) – DIAN Codes
     // Personal
-    primer_nombre: string;                   // VARCHAR(50) – REQUIRED
-    otros_nombres: string;                   // VARCHAR(50) – Optional
-    primer_apellido: string;                 // VARCHAR(50) – REQUIRED
-    segundo_apellido: string;                // VARCHAR(50) – REQUIRED
-    fecha_nacimiento: string;                // DATE (ISO string) – REQUIRED
-    genero: Genero;                          // VARCHAR(1) – REQUIRED
-    email_personal: string;                  // VARCHAR(100) – REQUIRED
-    municipio_dane: string;                  // VARCHAR(5) – Código DANE 5 dígitos
-    direccion_residencia: string;            // TEXT – REQUIRED
+    firstName: string;                      // VARCHAR(50) – REQUIRED
+    middleNames: string;                    // VARCHAR(50) – Optional
+    lastName: string;                       // VARCHAR(50) – REQUIRED
+    secondLastName: string;                 // VARCHAR(50) – REQUIRED
+    birthDate: string;                      // DATE (ISO string) – REQUIRED
+    gender: Genero;                         // VARCHAR(1) – REQUIRED
+    personalEmail: string;                  // VARCHAR(100) – REQUIRED
+    municipalityCode: string;               // VARCHAR(5) – 5-digit DANE Code
+    residenceAddress: string;               // TEXT – REQUIRED
     // Geography (linked to dim_continent, dim_country, dim_city)
     continent_id?: string | null;
     country_id?: string | null;
@@ -49,34 +49,36 @@ export interface EmpleadoMaestro {
 // Each row = one job/salary snapshot. New row on every change = full history.
 
 export interface HistorialLaboral {
-    id_historial?: number;                   // INT – PK autoincremental
-    empleado_id: string;                     // FK → EmpleadoMaestro
+    historyId?: number;                      // INT – PK autoincremental
+    employeeId: string;                      // FK → EmpleadoMaestro
     // Dates
-    fecha_inicio: string;                    // DATE – REQUIRED
-    fecha_fin: string;                       // DATE – null = current record
+    startDate: string;                       // DATE – REQUIRED
+    endDate: string;                         // DATE – null = current record
     // Contract
-    tipo_contrato: TipoContrato;             // VARCHAR(20) – REQUIRED
-    tipo_salario: TipoSalario;              // VARCHAR(20) – REQUIRED
-    salario_base: number;                    // DECIMAL(18,2) – REQUIRED (mensual)
-    procedimiento_renta: ProcedimientoRenta; // INT – 1 or 2
+    contractType: TipoContrato;              // VARCHAR(20) – REQUIRED
+    salaryType: TipoSalario;                 // VARCHAR(20) – REQUIRED
+    baseSalary: number;                      // DECIMAL(18,2) – REQUIRED (monthly)
+    taxProcedure: ProcedimientoRenta;        // INT – 1 or 2
     // Org structure
-    entidad_legal: string;                   // VARCHAR(100) – REQUIRED (e.g. HOMESI SAS)
+    legalEntity: string;                     // VARCHAR(100) – REQUIRED (e.g. HOMESI SAS)
     area: string;                            // VARCHAR(50) – REQUIRED
-    sub_area: string;                        // VARCHAR(50) – REQUIRED
-    centro_costo: string;                    // VARCHAR(10) – REQUIRED
-    nombre_centro_costo: string;             // VARCHAR(100)
-    sub_centro_costo: string;               // VARCHAR(10)
-    nombre_sub_centro_costo: string;        // VARCHAR(100)
+    subArea: string;                         // VARCHAR(50) – REQUIRED
+    costCenter: string;                      // VARCHAR(10) – REQUIRED
+    costCenterName: string;                  // VARCHAR(100)
+    subCostCenter: string;                  // VARCHAR(10)
+    subCostCenterName: string;              // VARCHAR(100)
     branch: string;                          // VARCHAR(10) – Sede
-    cliente: string;                         // VARCHAR(15)
+    client: string;                         // VARCHAR(15)
     project: string;                         // VARCHAR(100)
-    digito_dedicacion: number;               // INT – % dedicación (0-100)
-    direct_leader: string;                   // VARCHAR(100) – REQUIRED
-    direct_leader_id?: string | null;        // FK → dim_employee.eid (optional)
-    job_title: string;                       // VARCHAR(100) – Optional, role label
-    role_title: string;                      // VARCHAR(100) – Optional, granular role
+    dedicationPercentage: number;           // INT – % dedication (0-100)
+    directLeader: string;                    // VARCHAR(100) – REQUIRED
+    directLeaderId?: string | null;         // FK → dim_employee.eid (optional)
+    jobTitleId?: string | null;             // UUID FK → dim_job_title.id
+    jobTitleName?: string;                  // Resolved string name
+    roleTitleId?: string | null;            // UUID FK → dim_role_title.id
+    roleTitleName?: string;                 // Resolved string name
     // Monetary
-    salary_currency?: string | null;         // "COP", "USD", "EUR", "PEN"
+    salaryCurrency?: string | null;         // "COP", "USD", "EUR", "PEN"
     // System
     created_at?: string;
 }
@@ -86,19 +88,19 @@ export interface HistorialLaboral {
 // Colombia mandatory social security affiliations
 
 export interface EmpleadoAfiliaciones {
-    empleado_id: string;                     // FK – REQUIRED
-    // Entidades
+    employeeId: string;                      // FK – REQUIRED
+    // Entities
     eps_id: string;                          // FK → Maestro EPS – REQUIRED
-    eps_nombre: string;                      // Denormalized for display
+    epsName: string;                         // Denormalized for display
     afp_id: string;                          // FK → Maestro AFP – REQUIRED
-    afp_nombre: string;
+    afpName: string;
     arl_id: string;                          // FK → Maestro ARL – REQUIRED
-    arl_nombre: string;
+    arlName: string;
     ccf_id: string;                          // FK → Caja Compensación – REQUIRED
-    ccf_nombre: string;
+    ccfName: string;
     // Risk & Contribution
-    nivel_riesgo_arl: NivelRiesgoARL;        // INT – Clase I a V – REQUIRED
-    subtipo_cotizante: string;               // VARCHAR(2) – Códigos PILA – REQUIRED
+    arlRiskLevel: NivelRiesgoARL;           // INT – Class I to V – REQUIRED
+    contributorSubtype: string;             // VARCHAR(2) – PILA Codes – REQUIRED
     // System
     updated_at?: string;
 }
@@ -107,16 +109,16 @@ export interface EmpleadoAfiliaciones {
 // FK: empleado_id → EmpleadoMaestro.numero_identificacion
 
 export interface EmpleadoSST {
-    empleado_id: string;                     // FK – REQUIRED
+    employeeId: string;                      // FK – REQUIRED
     // Dotación
-    talla_camisa: TallaCamisa;              // VARCHAR(5) – REQUIRED (legal)
-    talla_pantalon: TallaPantalon;          // VARCHAR(5) – REQUIRED (legal)
-    talla_calzado: number;                   // INT – REQUIRED (legal)
+    shirtSize: TallaCamisa;                 // VARCHAR(5) – REQUIRED (legal)
+    pantsSize: TallaPantalon;               // VARCHAR(5) – REQUIRED (legal)
+    shoeSize: number;                        // INT – REQUIRED (legal)
     // Medical
-    tipo_sangre: TipoSangre;               // VARCHAR(5) – REQUIRED
+    bloodType: TipoSangre;                  // VARCHAR(5) – REQUIRED
     // Emergency contact
-    contacto_emergencia: string;             // VARCHAR(100) – REQUIRED
-    telefono_emergencia: string;             // VARCHAR(20) – REQUIRED
+    emergencyContact: string;                // VARCHAR(100) – REQUIRED
+    emergencyPhone: string;                  // VARCHAR(20) – REQUIRED
 }
 
 // ── Composite: Full Employee Record (all 5 tables joined) ─────────────────────
@@ -136,8 +138,8 @@ export interface FullEmployeeRecord {
     continent_id?: string | null;
     country_id?: string | null;
     city_id?: string | null;
-    salary_currency?: string | null;
-    direct_leader_id?: string | null;
+    salaryCurrency?: string | null;
+    directLeaderId?: string | null;
 }
 
 // ── Reference Data (Lookup Tables) ───────────────────────────────────────────
@@ -278,68 +280,70 @@ export const SUB_AREAS: Record<string, string[]> = {
 // ── Blank form initializers ───────────────────────────────────────────────────
 
 export const blankMaestro = (): Omit<EmpleadoMaestro, "created_at" | "updated_at"> => ({
-    numero_identificacion: "",
-    tipo_documento_id: "",
-    primer_nombre: "",
-    otros_nombres: "",
-    primer_apellido: "",
-    segundo_apellido: "",
-    fecha_nacimiento: "",
-    genero: "",
-    email_personal: "",
-    municipio_dane: "",
-    direccion_residencia: "",
+    identificationNumber: "",
+    documentTypeId: "",
+    firstName: "",
+    middleNames: "",
+    lastName: "",
+    secondLastName: "",
+    birthDate: "",
+    gender: "",
+    personalEmail: "",
+    municipalityCode: "",
+    residenceAddress: "",
     continent_id: null,
     country_id: null,
     city_id: null,
 });
 
-export const blankHistorial = (empleado_id = ""): Omit<HistorialLaboral, "id_historial" | "created_at"> => ({
-    empleado_id,
-    fecha_inicio: new Date().toISOString().split("T")[0],
-    fecha_fin: "",
-    tipo_contrato: "",
-    tipo_salario: "",
-    salario_base: 0,
-    procedimiento_renta: 0,
-    entidad_legal: "",
+export const blankHistorial = (employeeId = ""): Omit<HistorialLaboral, "historyId" | "created_at"> => ({
+    employeeId,
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: "",
+    contractType: "",
+    salaryType: "",
+    baseSalary: 0,
+    taxProcedure: 0,
+    legalEntity: "",
     area: "",
-    sub_area: "",
-    centro_costo: "",
-    nombre_centro_costo: "",
-    sub_centro_costo: "",
-    nombre_sub_centro_costo: "",
+    subArea: "",
+    costCenter: "",
+    costCenterName: "",
+    subCostCenter: "",
+    subCostCenterName: "",
     branch: "",
-    cliente: "",
+    client: "",
     project: "",
-    digito_dedicacion: 100,
-    direct_leader: "",
-    direct_leader_id: null,
-    job_title: "",
-    role_title: "",
-    salary_currency: null,
+    dedicationPercentage: 100,
+    directLeader: "",
+    directLeaderId: null,
+    jobTitleId: null,
+    jobTitleName: "",
+    roleTitleId: null,
+    roleTitleName: "",
+    salaryCurrency: null,
 });
 
-export const blankAfiliaciones = (empleado_id = ""): EmpleadoAfiliaciones => ({
-    empleado_id,
+export const blankAfiliaciones = (employeeId = ""): EmpleadoAfiliaciones => ({
+    employeeId,
     eps_id: "",
-    eps_nombre: "",
+    epsName: "",
     afp_id: "",
-    afp_nombre: "",
+    afpName: "",
     arl_id: "",
-    arl_nombre: "",
+    arlName: "",
     ccf_id: "",
-    ccf_nombre: "",
-    nivel_riesgo_arl: 0,
-    subtipo_cotizante: "",
+    ccfName: "",
+    arlRiskLevel: 0,
+    contributorSubtype: "",
 });
 
-export const blankSST = (empleado_id = ""): EmpleadoSST => ({
-    empleado_id,
-    talla_camisa: "",
-    talla_pantalon: "",
-    talla_calzado: 0,
-    tipo_sangre: "",
-    contacto_emergencia: "",
-    telefono_emergencia: "",
+export const blankSST = (employeeId = ""): EmpleadoSST => ({
+    employeeId,
+    shirtSize: "",
+    pantsSize: "",
+    shoeSize: 0,
+    bloodType: "",
+    emergencyContact: "",
+    emergencyPhone: "",
 });

@@ -34,7 +34,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
             <span className="bg-vibe-blue w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
               {selectedCount}
             </span>
-            <span className="text-sm font-medium">Items seleccionados</span>
+            <span className="text-sm font-medium">Items selected</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -43,26 +43,26 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 onClick={() => onUpdateStatus("done")}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white/5 hover:bg-vibe-green/20 hover:text-vibe-green transition-colors rounded-md border border-white/5"
             >
-                <CheckCircle2 className="w-3.5 h-3.5" /> Listo
+                <CheckCircle2 className="w-3.5 h-3.5" /> Done
             </button>
 
             <button 
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white/5 hover:bg-vibe-blue/20 hover:text-vibe-blue transition-colors rounded-md border border-white/5"
             >
-                <ChevronDown className="w-3.5 h-3.5" /> Prioridad
+                <ChevronDown className="w-3.5 h-3.5" /> Priority
             </button>
 
             <button 
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white/5 hover:bg-vibe-orange/20 hover:text-vibe-orange transition-colors rounded-md border border-white/5"
             >
-                <Calendar className="w-3.5 h-3.5" /> Fecha
+                <Calendar className="w-3.5 h-3.5" /> Date
             </button>
 
             <button 
                 onClick={onDelete}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-white/5 hover:bg-vibe-pink/20 hover:text-vibe-pink transition-colors rounded-md border border-white/5"
             >
-                <Trash2 className="w-3.5 h-3.5" /> Borrar
+                <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
           </div>
 

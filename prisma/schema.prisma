@@ -433,3 +433,25 @@ model PmoIcalFeedToken {
   @@index([token])
   @@map("pmo_ical_feed_tokens")
 }
+
+// ─── My Queue Notifications ────────────────────────────────────────────────────
+
+model SimoNotification {
+  id              String    @id @default(uuid())
+  orgId           String    @map("org_id")
+  userId          String    @map("user_id")
+  type            String
+  module          String
+  title           String
+  summary         String?
+  actionUrl       String    @map("action_url")
+  entityId        String?   @map("entity_id")
+  entityType      String?   @map("entity_type")
+  status          String    @default("PENDING")
+  priority        String    @default("NORMAL")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  resolvedAt      DateTime? @map("resolved_at")
+
+  @@index([orgId, userId, status])
+  @@map("simo_notifications")
+}

@@ -24,12 +24,12 @@ import { useTenant } from "@/lib/tenant-context";
 const LOCKED_KEYS = new Set([
     "eid",
     "tenant_id",
-    "maestro.numero_identificacion",
-    "maestro.tipo_documento_id",
-    "maestro.primer_nombre",
-    "maestro.primer_apellido",
-    "maestro.segundo_apellido",
-    "maestro.fecha_nacimiento",
+    "maestro.identificationNumber",
+    "maestro.documentTypeId",
+    "maestro.firstName",
+    "maestro.lastName",
+    "maestro.secondLastName",
+    "maestro.birthDate",
 ]);
 
 const STATUS_STYLES: Record<string, string> = {
@@ -57,12 +57,12 @@ const COLUMNS: ColumnDef[] = [
     // Identity
     { key: "eid", label: "EID", locked: true, width: "w-28", group: "Identity" },
     { key: "tenant_id", label: "Tenant ID", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.primer_nombre", label: "First Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.primer_apellido", label: "Last Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.numero_identificacion", label: "ID (CC)", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.fecha_nacimiento", label: "DOB", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.tipo_documento_id", label: "Doc Type", locked: true, width: "w-28", group: "Identity" },
-    { key: "maestro.genero", label: "Gender", width: "w-24", type: "select", options: [{ value: "M", label: "M" }, { value: "F", label: "F" }, { value: "X", label: "X" }], group: "Identity" },
+    { key: "maestro.firstName", label: "First Name", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.lastName", label: "Last Name", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.identificationNumber", label: "ID (CC)", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.birthDate", label: "DOB", locked: true, width: "w-32", group: "Identity" },
+    { key: "maestro.documentTypeId", label: "Doc Type", locked: true, width: "w-28", group: "Identity" },
+    { key: "maestro.gender", label: "Gender", width: "w-24", type: "select", options: [{ value: "M", label: "M" }, { value: "F", label: "F" }, { value: "X", label: "X" }], group: "Identity" },
 
     // Professional
     {
@@ -74,60 +74,60 @@ const COLUMNS: ColumnDef[] = [
         key: "historialLaboral.area", label: "Area", width: "w-36", type: "select",
         options: AREAS_EMPRESA.map(a => ({ value: a, label: a })), group: "Professional"
     },
-    { key: "historialLaboral.sub_area", label: "Sub-Area", width: "w-36", group: "Professional" },
+    { key: "historialLaboral.subArea", label: "Sub-Area", width: "w-36", group: "Professional" },
     // entidad_legal options injected dynamically — set below after DB load
-    { key: "historialLaboral.entidad_legal", label: "Local Entity", width: "w-40", type: "select", options: [], group: "Professional" },
-    { key: "historialLaboral.centro_costo", label: "Cost Center", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.direct_leader", label: "Direct Leader", width: "w-40", group: "Professional" },
+    { key: "historialLaboral.legalEntity", label: "Local Entity", width: "w-40", type: "select", options: [], group: "Professional" },
+    { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
+    { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
     { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
     {
-        key: "historialLaboral.tipo_contrato", label: "Contract", width: "w-44", type: "select",
+        key: "historialLaboral.contractType", label: "Contract", width: "w-44", type: "select",
         options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value || "", label: t.label })),
         group: "Professional"
     },
-    { key: "historialLaboral.fecha_inicio", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
+    { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
     { key: "historialLaboral.branch", label: "Branch", width: "w-32", group: "Professional" },
     { key: "historialLaboral.cliente", label: "Client", width: "w-32", group: "Professional" },
     { key: "historialLaboral.project", label: "Project", width: "w-32", group: "Professional" },
 
     // Benefits
-    { key: "afiliaciones.eps_nombre", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.arl_nombre", label: "ARL", width: "w-40", type: "select", options: ARL_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.afp_nombre", label: "AFP", width: "w-40", type: "select", options: AFP_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.ccf_nombre", label: "CCF", width: "w-40", type: "select", options: CCF_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.subtipo_cotizante", label: "PILA Subtype", width: "w-40", group: "Benefits" },
+    { key: "afiliaciones.epsName", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.arlName", label: "ARL", width: "w-40", type: "select", options: ARL_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.afpName", label: "AFP", width: "w-40", type: "select", options: AFP_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.ccfName", label: "CCF", width: "w-40", type: "select", options: CCF_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
+    { key: "afiliaciones.contributorSubtype", label: "PILA Subtype", width: "w-40", group: "Benefits" },
 
     // Contact
-    { key: "maestro.email_personal", label: "Personal Email", width: "w-48", group: "Contact" },
+    { key: "maestro.personalEmail", label: "Personal Email", width: "w-48", group: "Contact" },
     { key: "email_corporativo", label: "Corp Email", width: "w-48", group: "Contact" },
-    { key: "maestro.direccion_residencia", label: "Address", width: "w-64", group: "Contact" },
+    { key: "maestro.residenceAddress", label: "Address", width: "w-64", group: "Contact" },
 
     // Payroll
     {
-        key: "historialLaboral.salario_base", label: "Base Salary", width: "w-44", type: "number",
-        format: (v) => `$ ${Number(v).toLocaleString("es-CO")}`, group: "Payroll"
+        key: "historialLaboral.baseSalary", label: "Base Salary", width: "w-44", type: "number",
+        format: (v) => `$ ${Number(v).toLocaleString("en-US")}`, group: "Payroll"
     },
-    { key: "historialLaboral.tipo_salario", label: "Salary Type", width: "w-32", group: "Payroll" },
+    { key: "historialLaboral.salaryType", label: "Salary Type", width: "w-32", group: "Payroll" },
 
     // SST
-    { key: "sst.talla_camisa", label: "Shirt Size", width: "w-24", group: "Contact" },
-    { key: "sst.talla_pantalon", label: "Pants Size", width: "w-24", group: "Contact" },
-    { key: "sst.talla_calzado", label: "Shoe Size", width: "w-24", group: "Contact" },
-    { key: "sst.tipo_sangre", label: "Blood Type", width: "w-24", group: "Contact" },
+    { key: "sst.shirtSize", label: "Shirt Size", width: "w-24", group: "Contact" },
+    { key: "sst.pantsSize", label: "Pants Size", width: "w-24", group: "Contact" },
+    { key: "sst.shoeSize", label: "Shoe Size", width: "w-24", group: "Contact" },
+    { key: "sst.bloodType", label: "Blood Type", width: "w-24", group: "Contact" },
 ];
 
 const ESSENTIAL_KEYS = new Set([
     "eid",
     "tenant_id",
-    "maestro.primer_nombre",
-    "maestro.primer_apellido",
-    "maestro.numero_identificacion",
+    "maestro.firstName",
+    "maestro.lastName",
+    "maestro.identificationNumber",
     "status",
     "historialLaboral.area",
     "historialLaboral.job_title",
-    "historialLaboral.entidad_legal",
-    "historialLaboral.direct_leader",
-    "historialLaboral.salario_base",
+    "historialLaboral.legalEntity",
+    "historialLaboral.directLeader",
+    "historialLaboral.baseSalary",
     "email_corporativo"
 ]);
 
@@ -262,12 +262,12 @@ export const HCMaestro: React.FC = () => {
     const [filters, setFilters] = useState({
         // Maestro (Personal)
         tenant_id: "",
-        genero: "",
-        tipoDoc: "",
+        gender: "",
+        documentType: "",
 
         // Laboral (Professional)
         status: "",
-        entidad_legal: "",
+        legalEntity: "",
         area: "",
         subArea: "",
         leader: "",
@@ -353,7 +353,7 @@ export const HCMaestro: React.FC = () => {
 
     const activeColumnsWithEntities = useMemo(() => {
         return activeColumns.map(col =>
-            col.key === "historialLaboral.entidad_legal" ? { ...col, options: entityOptions } : col
+            col.key === "historialLaboral.legalEntity" ? { ...col, options: entityOptions } : col
         );
     }, [activeColumns, entityOptions]);
 
@@ -365,39 +365,39 @@ export const HCMaestro: React.FC = () => {
             list = list.filter(
                 (e) =>
                     (e.eid ?? "").toLowerCase().includes(q) ||
-                    (e.maestro?.primer_nombre ?? "").toLowerCase().includes(q) ||
-                    (e.maestro?.primer_apellido ?? "").toLowerCase().includes(q) ||
-                    String(e.maestro?.numero_identificacion ?? "").includes(q)
+                    (e.maestro?.firstName ?? "").toLowerCase().includes(q) ||
+                    (e.maestro?.lastName ?? "").toLowerCase().includes(q) ||
+                    String(e.maestro?.identificationNumber ?? "").includes(q)
             );
         }
 
         // Maestro Filters
         if (filters.tenant_id) list = list.filter(e => e.tenant_id === filters.tenant_id);
-        if (filters.genero) list = list.filter(e => e.maestro.genero === filters.genero);
-        if (filters.tipoDoc) list = list.filter(e => e.maestro.tipo_documento_id === filters.tipoDoc);
+        if (filters.gender) list = list.filter(e => e.maestro.gender === filters.gender);
+        if (filters.documentType) list = list.filter(e => e.maestro.documentTypeId === filters.documentType);
 
         // Laboral Filters
         if (filters.status) list = list.filter(e => e.status === filters.status);
-        if (filters.entidad_legal) list = list.filter(e => e.historialLaboral.entidad_legal === filters.entidad_legal);
+        if (filters.legalEntity) list = list.filter(e => e.historialLaboral.legalEntity === filters.legalEntity);
         if (filters.area) list = list.filter(e => e.historialLaboral.area === filters.area);
-        if (filters.subArea) list = list.filter(e => (e.historialLaboral.sub_area || "").toLowerCase().includes(filters.subArea.toLowerCase()));
-        if (filters.leader) list = list.filter(e => (e.historialLaboral.direct_leader || "").toLowerCase().includes(filters.leader.toLowerCase()));
-        if (filters.costCenter) list = list.filter(e => e.historialLaboral.centro_costo?.includes(filters.costCenter));
-        if (filters.contract) list = list.filter(e => e.historialLaboral.tipo_contrato === filters.contract);
-        if (filters.salaryType) list = list.filter(e => e.historialLaboral.tipo_salario === filters.salaryType);
+        if (filters.subArea) list = list.filter(e => (e.historialLaboral.subArea || "").toLowerCase().includes(filters.subArea.toLowerCase()));
+        if (filters.leader) list = list.filter(e => (e.historialLaboral.directLeader || "").toLowerCase().includes(filters.leader.toLowerCase()));
+        if (filters.costCenter) list = list.filter(e => e.historialLaboral.costCenter?.includes(filters.costCenter));
+        if (filters.contract) list = list.filter(e => e.historialLaboral.contractType === filters.contract);
+        if (filters.salaryType) list = list.filter(e => e.historialLaboral.salaryType === filters.salaryType);
         if (filters.branch) list = list.filter(e => e.historialLaboral.branch === filters.branch);
-        if (filters.client) list = list.filter(e => e.historialLaboral.cliente === filters.client);
+        if (filters.client) list = list.filter(e => e.historialLaboral.client === filters.client);
         if (filters.project) list = list.filter(e => e.historialLaboral.project === filters.project);
 
         // Afiliaciones Filters
-        if (filters.eps) list = list.filter(e => e.afiliaciones.eps_nombre === filters.eps);
-        if (filters.afp) list = list.filter(e => e.afiliaciones.afp_nombre === filters.afp);
-        if (filters.arl) list = list.filter(e => e.afiliaciones.arl_nombre === filters.arl);
-        if (filters.ccf) list = list.filter(e => e.afiliaciones.ccf_nombre === filters.ccf);
+        if (filters.eps) list = list.filter(e => e.afiliaciones.epsName === filters.eps);
+        if (filters.afp) list = list.filter(e => e.afiliaciones.afpName === filters.afp);
+        if (filters.arl) list = list.filter(e => e.afiliaciones.arlName === filters.arl);
+        if (filters.ccf) list = list.filter(e => e.afiliaciones.ccfName === filters.ccf);
 
         // SST Filters
-        if (filters.bloodType) list = list.filter(e => e.sst.tipo_sangre === filters.bloodType);
-        if (filters.shirtSize) list = list.filter(e => e.sst.talla_camisa === filters.shirtSize);
+        if (filters.bloodType) list = list.filter(e => e.sst.bloodType === filters.bloodType);
+        if (filters.shirtSize) list = list.filter(e => e.sst.shirtSize === filters.shirtSize);
 
         if (sortField) {
             list.sort((a, b) => {
@@ -549,7 +549,7 @@ export const HCMaestro: React.FC = () => {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Gender</label>
-                                    <select value={filters.genero} onChange={e => setFilters(p => ({ ...p, genero: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
+                                    <select value={filters.gender} onChange={e => setFilters(p => ({ ...p, gender: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
                                         <option value="">All Genders</option>
                                         <option value="M">Male (M)</option>
                                         <option value="F">Female (F)</option>
@@ -558,12 +558,12 @@ export const HCMaestro: React.FC = () => {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Document Type</label>
-                                    <select value={filters.tipoDoc} onChange={e => setFilters(p => ({ ...p, tipoDoc: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
+                                    <select value={filters.documentType} onChange={e => setFilters(p => ({ ...p, documentType: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
                                         <option value="">All Types</option>
-                                        <option value="ID">Cédula (ID)</option>
+                                        <option value="ID">National ID (CC/CE)</option>
                                         <option value="PPT">PPT</option>
                                         <option value="SSN">SSN</option>
-                                        <option value="PA">Pasaporte</option>
+                                        <option value="PA">Passport</option>
                                     </select>
                                 </div>
                             </div>
@@ -586,7 +586,7 @@ export const HCMaestro: React.FC = () => {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Local Entity</label>
-                                    <select value={filters.entidad_legal} onChange={e => setFilters(p => ({ ...p, entidad_legal: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
+                                    <select value={filters.legalEntity} onChange={e => setFilters(p => ({ ...p, legalEntity: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
                                         <option value="">All Entities</option>
                                         {entityOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
@@ -632,11 +632,11 @@ export const HCMaestro: React.FC = () => {
                             </div>
                         </section>
 
-                        {/* 3. AFILIACIONES MODULE */}
+                        {/* 3. BENEFITS MODULE */}
                         <section className="relative">
                             <div className="flex items-center gap-3 mb-5">
                                 <span className="flex items-center justify-center w-6 h-6 rounded bg-emerald-600 text-white text-[10px] font-bold">03</span>
-                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Benefits Module: Afiliaciones</h3>
+                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Benefits Module: Affiliations</h3>
                                 <div className="flex-1 h-[1px] bg-slate-100 min-w-[20px]" />
                             </div>
                             <div className="grid grid-cols-5 gap-x-6 gap-y-4 ml-9">
@@ -693,7 +693,7 @@ export const HCMaestro: React.FC = () => {
                                 <div className="col-start-5 flex items-end">
                                     <button
                                         onClick={() => setFilters({
-                                            tenant_id: "", genero: "", tipoDoc: "", status: "", entidad_legal: "", area: "", subArea: "", leader: "", costCenter: "", contract: "",
+                                            tenant_id: "", gender: "", documentType: "", status: "", legalEntity: "", area: "", subArea: "", leader: "", costCenter: "", contract: "",
                                             salaryType: "", branch: "", client: "", project: "", eps: "", afp: "", arl: "", ccf: "", bloodType: "", shirtSize: ""
                                         })}
                                         className="w-full py-2.5 text-[10px] font-bold text-action-red border border-action-red/20 rounded hover:bg-action-red/5 transition-all uppercase tracking-[0.1em]"
@@ -766,7 +766,7 @@ export const HCMaestro: React.FC = () => {
                                             <img src={emp.foto_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
                                             <span className="text-[9px] font-bold text-slate-400">
-                                                {(emp.maestro.primer_nombre?.[0] || "") + (emp.maestro.primer_apellido?.[0] || "")}
+                                                {(emp.maestro.firstName?.[0] || "") + (emp.maestro.lastName?.[0] || "")}
                                             </span>
                                         )}
                                     </div>
