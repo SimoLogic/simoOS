@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 /**
  * ============================================================================
@@ -331,4 +331,39 @@ export async function toggleExternalRoleStatusAction(orgId: string, id: string, 
   
   if (error) return { success: false, error: error.message };
   return { success: true };
+}
+
+/**
+ * Fetch all PUBLISHED Playbooks with their Steps (for the Marketplace)
+ */
+export async function getPublishedPlaybooksAction(orgId: string) {
+  if (!orgId) return [];
+  const { data, error } = await supabase
+    .from("bp_playbooks")
+    .select(`
+      id, name, type, family, strategy, mission, expected_outcomes, status, created_at, global_owners,
+      bp_playbook_steps (
+        id, uid, step_num, name, type_of_activity, purpose, activity_description,
+        deliverable, deliverable_description, stakeholder, frequency, repetitions, freq_notes,
+        scheduler_value, supporting_task, counteraction_description, requested_to, sla, sla_description,
+        is_locked, is_repeatable
+      )
+    `)
+    .eq("tenant_id", orgId)
+    .eq("status", "PUBLISHED")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[BP Action] getPublishedPlaybooks:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Alias: Fetch a single playbook with all its steps by ID (Marketplace Preview).
+ * Delegates to getPlaybookDetailAction � no logic duplication.
+ */
+export async function getPlaybookByIdAction(playbookId: string, orgId: string) {
+  return getPlaybookDetailAction(playbookId, orgId);
 }

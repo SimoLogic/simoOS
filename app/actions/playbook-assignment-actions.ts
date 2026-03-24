@@ -1,0 +1,50 @@
+"use server";
+
+/**
+ * Assignment-specific server actions for the PlaybookAssignmentPanel.
+ * Kept in a separate file to avoid encoding issues with the main actions file.
+ */
+
+import { supabase } from "@/lib/database";
+
+/**
+ * Fetch employees eligible for a specific playbook.
+ * Extracts responsible role_titles from bp_playbook_steps
+ * (stakeholder + requested_to), then returns matching active employees.
+ */
+export async function getEligibleEmployeesForPlaybookAction(
+  playbookId: string,
+  orgId: string
+) {
+  if (!playbookId || !orgId) return [];
+
+  const { data: steps, error: stepsErr } = await supabase
+    .from("bp_playbook_steps")
+    .select("stakeholder, requested_to")
+    .eq("playbook_id", playbookId)
+    .eq("org_id", orgId);
+
+  if (stepsErr || !steps?.length) return [];
+
+  const roleTitlesSet = new Set<string>();
+  steps.forEach((s) => {
+    if (s.stakeholder) roleTitlesSet.add(s.stakeholder as string);
+    if (s.requested_to) roleTitlesSet.add(s.requested_to as string);
+  });
+  const roleTitles = Array.from(roleTitlesSet);
+  if (!roleTitles.length) return [];
+
+  const { data: employees, error: empErr } = await supabase
+    .from("dim_employee")
+    .select("eid, primer_nombre, primer_apellido, role_title, assigned_branch_code")
+    .eq("tenant_id", orgId)
+    .eq("status", "Active")
+    .in("role_title", roleTitles)
+    .order("primer_apellido", { ascending: true });
+
+  if (empErr) {
+    console.error("[BP Action] getEligibleEmployees:", empErr.message);
+    return [];
+  }
+  return employees ?? [];
+}
