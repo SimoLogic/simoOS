@@ -22,6 +22,12 @@ export default function BusinessPlanLayout({ children }: { children: React.React
       icon: Zap,
       isActive: pathname.startsWith("/business-plan/playbook-designer"),
     },
+    {
+      name: "PLAYBOOKS",
+      href: "/business-plan/playbooks",
+      icon: Zap, // Or a better icon like BookOpen later if needed
+      isActive: pathname.startsWith("/business-plan/playbooks"),
+    },
   ];
 
   return (

@@ -25,6 +25,7 @@ import { useSessionStore } from "@/lib/session-store";
 import { getBoardsAction } from "@/app/actions/pmo/board-actions";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
 import IntegrationsPanel from "@/components/pmo/integrations/IntegrationsPanel";
+import { PlaybookAssignmentPanel } from "@/components/shared/PlaybookAssignmentPanel";
 
 // ─── VIBE TOKENS (no hardcodear — usar estos constants) ─────────────
 const VIBE = {
@@ -70,6 +71,7 @@ export const MyPlanShell: React.FC = () => {
     const [boardTitle, setBoardTitle] = useState(PLACEHOLDER_BOARD.title);
     const [isPlaybook, setIsPlaybook] = useState(false);
     const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+    const [isAssignPanelOpen, setIsAssignPanelOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const { tenant_id } = useSessionStore();
     const orgId = tenant_id || 'TNT-001';
@@ -168,6 +170,15 @@ export const MyPlanShell: React.FC = () => {
                         </button>
 
                         <button
+                            onClick={() => setIsAssignPanelOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all duration-[70ms] hover:opacity-90"
+                            style={{ backgroundColor: `${VIBE.blue}18`, color: VIBE.blue, borderRadius: "4px" }}
+                        >
+                            <Zap className="w-4 h-4" />
+                            Asignar Playbook
+                        </button>
+
+                        <button
                             onClick={() => setIsNewTaskOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white transition-all duration-[70ms] hover:opacity-90"
                             style={{ backgroundColor: VIBE.purple, borderRadius: "4px" }}
@@ -200,6 +211,15 @@ export const MyPlanShell: React.FC = () => {
                     isOpen={isNewTaskOpen}
                     onClose={() => setIsNewTaskOpen(false)}
                     onTaskCreated={() => setRefreshKey((k) => k + 1)}
+                />
+            )}
+
+            {/* Playbook Assignment Panel — employee-first mode */}
+            {isAssignPanelOpen && (
+                <PlaybookAssignmentPanel
+                    mode="employee-first"
+                    orgId={orgId}
+                    onClose={() => setIsAssignPanelOpen(false)}
                 />
             )}
         </div>
