@@ -18,6 +18,7 @@ import { JobTitleApp } from "../hr/recruitment/JobTitleApp";
 import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
 import { MyPlanShell } from "../pmo/MyPlan/MyPlanShell";
 import { PlaybookDesignerApp } from "../playbook-designer/PlaybookDesignerApp";
+import { PlaybookMarketplaceApp } from "../business-plan/playbooks/PlaybookMarketplaceApp";
 import {
     LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
 } from "lucide-react";
@@ -103,6 +104,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <JobTitleApp />
                 ) : activeSubModule === "fx-manager" ? (
                     <FxManagerApp />
+                ) : activeSubModule === "playbooks" ? (
+                    <PlaybookMarketplaceApp />
                 ) : activeSubModule === "playbook-designer" ? (
                     <PlaybookDesignerApp />
                 ) : (
