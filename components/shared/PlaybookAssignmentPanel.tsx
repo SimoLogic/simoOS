@@ -9,6 +9,7 @@ import {
   getEligibleEmployeesForPlaybookAction,
   getPublishedPlaybooksAction,
 } from "@/app/actions/playbook-assignment-actions";
+import { assignPlaybookAction } from "@/app/actions/pmo-actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,7 +91,9 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
   const [playbookSearch, setPlaybookSearch] = useState("");
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [tasksCreatedCount, setTasksCreatedCount] = useState(0);
 
   // PMO mode: step tracking (0 = select employees, 1 = select playbook, 2 = date)
   const [pmoStep, setPmoStep] = useState<0 | 1 | 2>(0);
@@ -154,10 +157,28 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
     });
   };
 
-  const handleConfirm = () => {
-    // Phase 2+: write to bp_assignments table (PROMPT 3)
-    setConfirmed(true);
-    setTimeout(onClose, 1800);
+  const handleConfirm = async () => {
+    if (!canConfirm) return;
+    setIsSubmitting(true);
+    try {
+      const result = await assignPlaybookAction({
+        playbookId: selectedPlaybook.id,
+        employeeEids: Array.from(selectedEids),
+        startDate: startDateObj!,
+        orgId,
+        assignedByEid: "SYS-001" // To be replaced by auth session EID
+      });
+      if (result.success) {
+        setTasksCreatedCount(result.tasksCreated || 0);
+        setConfirmed(true);
+        setTimeout(onClose, 2500);
+      }
+    } catch (error) {
+      console.error("Error assigning playbook:", error);
+      alert("Hubo un error al registrar la asignación. Ver consola.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ── Render helpers ──
@@ -421,17 +442,24 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
         {/* Footer */}
         <div className="p-6 border-t border-slate-100 bg-white shrink-0">
           {confirmed ? (
-            <div className="flex items-center justify-center gap-2 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <Check size={16} className="text-emerald-600" />
-              <span className="text-sm font-black text-emerald-700 uppercase tracking-widest">¡Asignación registrada!</span>
+            <div className="flex flex-col items-center justify-center gap-1 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Check size={16} className="text-emerald-600" />
+                <span className="text-sm font-black text-emerald-700 uppercase tracking-widest">¡Asignación registrada!</span>
+              </div>
+              <p className="text-[10px] text-emerald-600 font-bold">{tasksCreatedCount} tareas y dependencias creadas</p>
             </div>
           ) : (
             <button
-              disabled={!canConfirm}
+              disabled={!canConfirm || isSubmitting}
               onClick={handleConfirm}
               className="w-full py-3.5 bg-[var(--cobalt-blue)] disabled:bg-slate-200 disabled:text-slate-400 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
-              Confirmar Asignación <ArrowRight size={16} />
+              {isSubmitting ? (
+                <><Loader2 size={16} className="animate-spin" /> Generando Master Plan...</>
+              ) : (
+                <>Confirmar Asignación <ArrowRight size={16} /></>
+              )}
             </button>
           )}
           {!canConfirm && !confirmed && (
