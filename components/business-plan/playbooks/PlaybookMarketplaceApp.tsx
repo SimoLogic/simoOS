@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Search, Filter, BookOpen, Clock, Users, ShieldAlert, ArrowRight } from "lucide-react";
-import { getPublishedPlaybooksAction, getActiveRoleTitlesForPlaybookAction } from "@/app/actions/business-plan-actions";
+import { getActiveRoleTitlesForPlaybookAction } from "@/app/actions/business-plan-actions";
+import { getPublishedPlaybooksAction } from "@/app/actions/playbook-assignment-actions";
 import { useTenant } from "@/lib/tenant-context";
 import { PlaybookPreviewModal } from "./PlaybookPreviewModal";
 

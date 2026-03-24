@@ -48,3 +48,25 @@ export async function getEligibleEmployeesForPlaybookAction(
   }
   return employees ?? [];
 }
+
+/**
+ * Fetch all PUBLISHED playbooks for the current tenant.
+ * Used by the Playbook Marketplace.
+ */
+export async function getPublishedPlaybooksAction(orgId: string) {
+  if (!orgId) return [];
+
+  const { data, error } = await supabase
+    .from("bp_playbooks")
+    .select("*, bp_playbook_steps(id, stakeholder, requested_to, scheduler_value)")
+    .eq("org_id", orgId)
+    .eq("status", "PUBLISHED")
+    .order("updated_at", { ascending: false });
+
+  if (error) { 
+    console.error("[BP Action] getPublishedPlaybooks:", error.message); 
+    return []; 
+  }
+
+  return data ?? [];
+}

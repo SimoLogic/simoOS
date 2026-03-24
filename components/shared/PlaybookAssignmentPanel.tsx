@@ -7,10 +7,8 @@ import {
 } from "lucide-react";
 import {
   getEligibleEmployeesForPlaybookAction,
-} from "@/app/actions/playbook-assignment-actions";
-import {
   getPublishedPlaybooksAction,
-} from "@/app/actions/business-plan-actions";
+} from "@/app/actions/playbook-assignment-actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
