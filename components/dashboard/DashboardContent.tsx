@@ -10,7 +10,7 @@ import { HCMaestro } from "../hr/HCMaestro";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
 import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
 import { GrowthifyModule } from "../business-plan/GrowthifyModule";
-import { BPAssignerModule } from "../business-plan/BPAssignerModule";
+
 import { BranchMasterApp } from "../operations/branches/BranchMasterApp";
 import { HierarchyMapApp } from "../operations/branches/HierarchyMapApp";
 import { ProformasApp } from "../operations/proformas/ProformasApp";
@@ -18,6 +18,7 @@ import { JobTitleApp } from "../hr/recruitment/JobTitleApp";
 import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
 import { MyPlanShell } from "../pmo/MyPlan/MyPlanShell";
 import { PlaybookDesignerApp } from "../playbook-designer/PlaybookDesignerApp";
+import { PlaybookMarketplaceApp } from "../business-plan/playbooks/PlaybookMarketplaceApp";
 import {
     LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
 } from "lucide-react";
@@ -92,8 +93,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <PerformanceModule />
                 ) : activeSubModule === "hr-metrics" ? (
                     <HRMetricsDashboard />
-                ) : activeSubModule === "bp-assigner" ? (
-                    <BPAssignerModule />
+
                 ) : activeSubModule === "branches-master" ? (
                     <BranchMasterApp />
                 ) : activeSubModule === "hierarchy-map" ? (
@@ -104,6 +104,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     <JobTitleApp />
                 ) : activeSubModule === "fx-manager" ? (
                     <FxManagerApp />
+                ) : activeSubModule === "playbooks" ? (
+                    <PlaybookMarketplaceApp />
                 ) : activeSubModule === "playbook-designer" ? (
                     <PlaybookDesignerApp />
                 ) : (

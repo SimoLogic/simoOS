@@ -97,32 +97,32 @@ type Errors = Record<string, string>;
 
 function validateStep1(d: ReturnType<typeof blankMaestro>): Errors {
     const e: Errors = {};
-    if (!d.numero_identificacion.trim()) e.numero_identificacion = "Required";
-    if (!d.tipo_documento_id) e.tipo_documento_id = "Required";
-    if (!d.primer_nombre.trim()) e.primer_nombre = "Required";
-    if (!d.primer_apellido.trim()) e.primer_apellido = "Required";
-    if (!d.segundo_apellido.trim()) e.segundo_apellido = "Required";
-    if (!d.fecha_nacimiento) e.fecha_nacimiento = "Required";
-    if (!d.genero) e.genero = "Required";
-    if (!d.email_personal.trim()) e.email_personal = "Required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email_personal)) e.email_personal = "Invalid email";
-    if (!d.municipio_dane) e.municipio_dane = "Required";
-    if (!d.direccion_residencia.trim()) e.direccion_residencia = "Required";
+    if (!d.identificationNumber.trim()) e.identificationNumber = "Required";
+    if (!d.documentTypeId) e.documentTypeId = "Required";
+    if (!d.firstName.trim()) e.firstName = "Required";
+    if (!d.lastName.trim()) e.lastName = "Required";
+    if (!d.secondLastName.trim()) e.secondLastName = "Required";
+    if (!d.birthDate) e.birthDate = "Required";
+    if (!d.gender) e.gender = "Required";
+    if (!d.personalEmail.trim()) e.personalEmail = "Required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.personalEmail)) e.personalEmail = "Invalid email";
+    if (!d.municipalityCode) e.municipalityCode = "Required";
+    if (!d.residenceAddress.trim()) e.residenceAddress = "Required";
     return e;
 }
 
 function validateStep2(d: ReturnType<typeof blankHistorial>): Errors {
     const e: Errors = {};
-    if (!d.fecha_inicio) e.fecha_inicio = "Required";
-    if (!d.tipo_contrato) e.tipo_contrato = "Required";
-    if (!d.tipo_salario) e.tipo_salario = "Required";
-    if (!d.entidad_legal) e.entidad_legal = "Required";
-    if (!d.salario_base || d.salario_base <= 0) e.salario_base = "Must be > 0";
+    if (!d.startDate) e.startDate = "Required";
+    if (!d.contractType) e.contractType = "Required";
+    if (!d.salaryType) e.salaryType = "Required";
+    if (!d.legalEntity) e.legalEntity = "Required";
+    if (!d.baseSalary || d.baseSalary <= 0) e.baseSalary = "Must be > 0";
     if (!d.area) e.area = "Required";
-    if (!d.sub_area) e.sub_area = "Required";
-    if (!d.centro_costo.trim()) e.centro_costo = "Required";
-    if (!d.direct_leader.trim()) e.direct_leader = "Required";
-    if (d.digito_dedicacion < 1 || d.digito_dedicacion > 100) e.digito_dedicacion = "1–100%";
+    if (!d.subArea) e.subArea = "Required";
+    if (!d.costCenter.trim()) e.costCenter = "Required";
+    if (!d.directLeader.trim()) e.directLeader = "Required";
+    if (d.dedicationPercentage < 1 || d.dedicationPercentage > 100) e.dedicationPercentage = "1–100%";
     return e;
 }
 
@@ -132,19 +132,19 @@ function validateStep3(d: EmpleadoAfiliaciones): Errors {
     if (!d.afp_id) e.afp_id = "Required";
     if (!d.arl_id) e.arl_id = "Required";
     if (!d.ccf_id) e.ccf_id = "Required";
-    if (!d.nivel_riesgo_arl) e.nivel_riesgo_arl = "Required";
-    if (!d.subtipo_cotizante) e.subtipo_cotizante = "Required";
+    if (!d.arlRiskLevel) e.arlRiskLevel = "Required";
+    if (!d.contributorSubtype) e.contributorSubtype = "Required";
     return e;
 }
 
 function validateStep4(d: EmpleadoSST): Errors {
     const e: Errors = {};
-    if (!d.talla_camisa) e.talla_camisa = "Required";
-    if (!d.talla_pantalon) e.talla_pantalon = "Required";
-    if (!d.talla_calzado || d.talla_calzado < 30) e.talla_calzado = "Required";
-    if (!d.tipo_sangre) e.tipo_sangre = "Required";
-    if (!d.contacto_emergencia.trim()) e.contacto_emergencia = "Required";
-    if (!d.telefono_emergencia.trim()) e.telefono_emergencia = "Required";
+    if (!d.shirtSize) e.shirtSize = "Required";
+    if (!d.pantsSize) e.pantsSize = "Required";
+    if (!d.shoeSize || d.shoeSize < 30) e.shoeSize = "Required";
+    if (!d.bloodType) e.bloodType = "Required";
+    if (!d.emergencyContact.trim()) e.emergencyContact = "Required";
+    if (!d.emergencyPhone.trim()) e.emergencyPhone = "Required";
     return e;
 }
 
@@ -253,22 +253,22 @@ const Step1: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Identity Document</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Document Type" required error={errors.tipo_documento_id}>
+                    <Field label="Document Type" required error={errors.documentTypeId}>
                         <Select
-                            value={data.tipo_documento_id}
-                            onChange={e => set("tipo_documento_id", e.target.value)}
-                            error={errors.tipo_documento_id}
+                            value={data.documentTypeId}
+                            onChange={e => set("documentTypeId", e.target.value as any)}
+                            error={errors.documentTypeId}
                             placeholder="— Select —"
                             options={TIPOS_DOCUMENTO.filter(t => t.value).map(t => ({ value: t.value, label: t.label }))}
                         />
                     </Field>
-                    <Field label="ID Number" required error={errors.numero_identificacion}
+                    <Field label="ID Number" required error={errors.identificationNumber}
                         hint="No dots or dashes (e.g. 1234567890)">
                         <input
                             type="text"
-                            value={data.numero_identificacion}
-                            onChange={e => set("numero_identificacion", e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
-                            className={inputCls(errors.numero_identificacion)}
+                            value={data.identificationNumber}
+                            onChange={e => set("identificationNumber", e.target.value.replace(/[^0-9a-zA-Z]/g, ""))}
+                            className={inputCls(errors.identificationNumber)}
                             placeholder="1234567890"
                             maxLength={20}
                         />
@@ -280,25 +280,25 @@ const Step1: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Full Name</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="First Name" required error={errors.primer_nombre}>
-                        <input type="text" value={data.primer_nombre}
-                            onChange={e => set("primer_nombre", e.target.value)}
-                            className={inputCls(errors.primer_nombre)} placeholder="e.g. Carlos" />
+                    <Field label="First Name" required error={errors.firstName}>
+                        <input type="text" value={data.firstName}
+                            onChange={e => set("firstName", e.target.value)}
+                            className={inputCls(errors.firstName)} placeholder="e.g. Carlos" />
                     </Field>
-                    <Field label="Middle Name(s)" error={errors.otros_nombres} hint="Optional">
-                        <input type="text" value={data.otros_nombres}
-                            onChange={e => set("otros_nombres", e.target.value)}
+                    <Field label="Middle Name(s)" error={errors.middleNames} hint="Optional">
+                        <input type="text" value={data.middleNames}
+                            onChange={e => set("middleNames", e.target.value)}
                             className={inputCls()} placeholder="e.g. Andrés" />
                     </Field>
-                    <Field label="First Last Name" required error={errors.primer_apellido}>
-                        <input type="text" value={data.primer_apellido}
-                            onChange={e => set("primer_apellido", e.target.value)}
-                            className={inputCls(errors.primer_apellido)} placeholder="e.g. Mendoza" />
+                    <Field label="First Last Name" required error={errors.lastName}>
+                        <input type="text" value={data.lastName}
+                            onChange={e => set("lastName", e.target.value)}
+                            className={inputCls(errors.lastName)} placeholder="e.g. Mendoza" />
                     </Field>
-                    <Field label="Second Last Name" required error={errors.segundo_apellido}>
-                        <input type="text" value={data.segundo_apellido}
-                            onChange={e => set("segundo_apellido", e.target.value)}
-                            className={inputCls(errors.segundo_apellido)} placeholder="e.g. Ruiz" />
+                    <Field label="Second Last Name" required error={errors.secondLastName}>
+                        <input type="text" value={data.secondLastName}
+                            onChange={e => set("secondLastName", e.target.value)}
+                            className={inputCls(errors.secondLastName)} placeholder="e.g. Ruiz" />
                     </Field>
                 </div>
             </div>
@@ -307,19 +307,19 @@ const Step1: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Demographics</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Date of Birth" required error={errors.fecha_nacimiento}
+                    <Field label="Date of Birth" required error={errors.birthDate}
                         hint="Used for age validation and pension eligibility">
-                        <input type="date" value={data.fecha_nacimiento}
-                            onChange={e => set("fecha_nacimiento", e.target.value)}
+                        <input type="date" value={data.birthDate}
+                            onChange={e => set("birthDate", e.target.value)}
                             max={today()}
-                            className={inputCls(errors.fecha_nacimiento)} />
+                            className={inputCls(errors.birthDate)} />
                     </Field>
-                    <Field label="Gender" required error={errors.genero}
+                    <Field label="Gender" required error={errors.gender}
                         hint="Impacts pension weeks calculation">
                         <Select
-                            value={data.genero}
-                            onChange={e => set("genero", e.target.value)}
-                            error={errors.genero}
+                            value={data.gender}
+                            onChange={e => set("gender", e.target.value)}
+                            error={errors.gender}
                             placeholder="— Select —"
                             options={[
                                 { value: "M", label: "Male (M)" },
@@ -335,19 +335,19 @@ const Step1: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Contact & Residence</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Personal Email" required error={errors.email_personal}
+                    <Field label="Personal Email" required error={errors.personalEmail}
                         hint="Used for DIAN electronic payroll delivery">
-                        <input type="email" value={data.email_personal}
-                            onChange={e => set("email_personal", e.target.value)}
-                            className={inputCls(errors.email_personal)}
+                        <input type="email" value={data.personalEmail}
+                            onChange={e => set("personalEmail", e.target.value)}
+                            className={inputCls(errors.personalEmail)}
                             placeholder="employee@gmail.com" />
                     </Field>
-                    <Field label="Municipality (DANE Code)" required error={errors.municipio_dane}
+                    <Field label="Municipality (DANE Code)" required error={errors.municipalityCode}
                         hint="5-digit DANE code – required for ARL">
                         <Select
-                            value={data.municipio_dane}
-                            onChange={e => set("municipio_dane", e.target.value)}
-                            error={errors.municipio_dane}
+                            value={data.municipalityCode}
+                            onChange={e => set("municipalityCode", e.target.value)}
+                            error={errors.municipalityCode}
                             placeholder="— Select city —"
                             options={MUNICIPIOS_DANE.map(m => ({ value: m.code, label: `${m.code} – ${m.name}` }))}
                         />
@@ -377,6 +377,12 @@ const Step1: React.FC<{
                             options={cities.map(c => ({ value: c.id, label: c.name }))}
                             disabled={!data.country_id}
                         />
+                    </Field>
+                    <Field label="Residence Address" required error={errors.residenceAddress}>
+                        <input type="text" value={data.residenceAddress}
+                            onChange={e => set("residenceAddress", e.target.value)}
+                            className={inputCls(errors.residenceAddress)}
+                            placeholder="Calle 123 #45-67" />
                     </Field>
                 </div>
             </div>
@@ -415,7 +421,7 @@ const Step2: React.FC<{
     }, [tenantCtx.currentTenant?.tenant_id]);
 
     // Derive role titles for the currently selected Job Title
-    const selectedJobTitleObj = jobTitleOptions.find(jt => jt.title === data.job_title);
+    const selectedJobTitleObj = jobTitleOptions.find(jt => jt.id === data.jobTitleId);
     const roleTitleOptions: RoleTitleRef[] = (selectedJobTitleObj?.role_titles ?? []);
 
     // Fallback to hard-coded list if DB returns nothing (e.g. table not yet created)
@@ -436,47 +442,47 @@ const Step2: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Contract Details</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Hire Date" required error={errors.fecha_inicio}>
-                        <input type="date" value={data.fecha_inicio}
-                            onChange={e => set("fecha_inicio", e.target.value)}
-                            className={inputCls(errors.fecha_inicio)} />
+                    <Field label="Hire Date" required error={errors.startDate}>
+                        <input type="date" value={data.startDate}
+                            onChange={e => set("startDate", e.target.value)}
+                            className={inputCls(errors.startDate)} />
                     </Field>
-                    <Field label="Contract Type" required error={errors.tipo_contrato}>
-                        <Select value={data.tipo_contrato}
-                            onChange={e => set("tipo_contrato", e.target.value)}
-                            error={errors.tipo_contrato}
+                    <Field label="Contract Type" required error={errors.contractType}>
+                        <Select value={data.contractType}
+                            onChange={e => set("contractType", e.target.value)}
+                            error={errors.contractType}
                             placeholder="— Select —"
                             options={TIPOS_CONTRATO.map(t => ({ value: t.value, label: t.label }))} />
                     </Field>
-                    <Field label="Salary Type" required error={errors.tipo_salario}>
-                        <Select value={data.tipo_salario}
-                            onChange={e => set("tipo_salario", e.target.value)}
-                            error={errors.tipo_salario}
+                    <Field label="Salary Type" required error={errors.salaryType}>
+                        <Select value={data.salaryType}
+                            onChange={e => set("salaryType", e.target.value as any)}
+                            error={errors.salaryType}
                             placeholder="— Select —"
-                            options={TIPOS_SALARIO.map(t => ({ value: t.value, label: t.label }))} />
+                            options={TIPOS_SALARIO.map(t => ({ value: t.value || "", label: t.label }))} />
                     </Field>
-                    <Field label="Local Entity" required error={errors.entidad_legal}
+                    <Field label="Local Entity" required error={errors.legalEntity}
                         hint="Legal entity holding the contract in Colombia">
-                        <Select value={data.entidad_legal}
-                            onChange={e => set("entidad_legal", e.target.value)}
-                            error={errors.entidad_legal}
+                        <Select value={data.legalEntity}
+                            onChange={e => set("legalEntity", e.target.value)}
+                            error={errors.legalEntity}
                             placeholder={entitiesLoading ? "Loading entities..." : "— Select Entity —"}
                             options={entityOptions}
                             disabled={entitiesLoading} />
                     </Field>
-                    <Field label="Base Salary [Local Currency]" required error={errors.salario_base}
+                    <Field label="Base Salary [Local Currency]" required error={errors.baseSalary}
                         hint="Monthly gross salary in the employee's local currency">
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">{data.salary_currency || "$"}</span>
-                            <input type="number" value={data.salario_base || ""}
-                                onChange={e => set("salario_base", parseFloat(e.target.value) || 0)}
-                                className={cn(inputCls(errors.salario_base), "pl-9")}
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-semibold">{data.salaryCurrency || "$"}</span>
+                            <input type="number" value={data.baseSalary || ""}
+                                onChange={e => set("baseSalary", parseFloat(e.target.value) || 0)}
+                                className={cn(inputCls(errors.baseSalary), "pl-9")}
                                 placeholder="5000" min={0} />
                         </div>
                     </Field>
-                    <Field label="Currency" required error={errors.salary_currency}>
-                        <Select value={data.salary_currency || ""}
-                            onChange={e => set("salary_currency", e.target.value)}
+                    <Field label="Currency" required error={errors.salaryCurrency}>
+                        <Select value={data.salaryCurrency || ""}
+                            onChange={e => set("salaryCurrency", e.target.value)}
                             placeholder="— Select —"
                             options={[
                                 { value: "USD", label: "USD" },
@@ -485,22 +491,22 @@ const Step2: React.FC<{
                                 { value: "PEN", label: "PEN" },
                             ]} />
                     </Field>
-                    <Field label="Income Tax Procedure" error={errors.procedimiento_renta}
+                    <Field label="Income Tax Procedure" error={errors.taxProcedure}
                         hint="Procedure 1 or 2 for withholding tax (retención en la fuente)">
-                        <Select value={data.procedimiento_renta}
-                            onChange={e => set("procedimiento_renta", parseInt(e.target.value))}
+                        <Select value={data.taxProcedure}
+                            onChange={e => set("taxProcedure", parseInt(e.target.value) as any)}
                             placeholder="— Select —"
                             options={[
                                 { value: 1, label: "Procedure 1" },
                                 { value: 2, label: "Procedure 2" },
                             ]} />
                     </Field>
-                    <Field label="Dedication %" required error={errors.digito_dedicacion}
+                    <Field label="Dedication %" required error={errors.dedicationPercentage}
                         hint="Percentage of time dedicated to this position (1–100)">
                         <div className="relative">
-                            <input type="number" value={data.digito_dedicacion}
-                                onChange={e => set("digito_dedicacion", parseInt(e.target.value) || 0)}
-                                className={cn(inputCls(errors.digito_dedicacion), "pr-8")}
+                            <input type="number" value={data.dedicationPercentage}
+                                onChange={e => set("dedicationPercentage", parseInt(e.target.value) || 0)}
+                                className={cn(inputCls(errors.dedicationPercentage), "pr-8")}
                                 min={1} max={100} />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
                         </div>
@@ -514,62 +520,62 @@ const Step2: React.FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="Area" required error={errors.area}>
                         <Select value={data.area}
-                            onChange={e => { set("area", e.target.value); onChange({ ...data, area: e.target.value, sub_area: "", job_title: "", role_title: "" } as any); }}
+                            onChange={e => { set("area", e.target.value as any); onChange({ ...data, area: e.target.value, subArea: "", jobTitleId: null, roleTitleId: null } as any); }}
                             error={errors.area}
                             placeholder="— Select area —"
                             options={AREAS_EMPRESA.map(a => ({ value: a, label: a }))} />
                     </Field>
-                    <Field label="Sub-Area" required error={errors.sub_area}>
-                        <Select value={data.sub_area}
-                            onChange={e => set("sub_area", e.target.value)}
-                            error={errors.sub_area}
+                    <Field label="Sub-Area" required error={errors.subArea}>
+                        <Select value={data.subArea}
+                            onChange={e => set("subArea", e.target.value)}
+                            error={errors.subArea}
                             placeholder={data.area ? "— Select sub-area —" : "— Select area first —"}
                             options={subAreas.map(s => ({ value: s, label: s }))}
                             disabled={!data.area} />
                     </Field>
                     {/* Job Title + Role Title — side by side */}
-                    <Field label="Job Title" error={errors.job_title}
+                    <Field label="Job Title" error={(errors as any).jobTitleId}
                         hint="Official role from Job Title Library">
-                        <Select value={data.job_title}
+                        <Select value={data.jobTitleId || ""}
                             onChange={e => {
-                                // Reset role_title when job title changes
-                                onChange({ ...data, job_title: e.target.value, role_title: "" } as any);
+                                // Reset roleTitle when job title changes
+                                onChange({ ...data, jobTitleId: e.target.value, roleTitleId: null } as any);
                             }}
                             placeholder="— Select Job Title —"
                             options={jobTitleOptions
                                 .filter(jt => !data.area || !jt.area || jt.area === data.area)
-                                .map(jt => ({ value: jt.title, label: jt.title }))} />
+                                .map(jt => ({ value: jt.id, label: jt.title }))} />
                     </Field>
-                    <Field label="Role Title" error={(errors as any).role_title}
-                        hint={data.job_title ? "Select an operational role assigned to this employee" : "Select a Job Title first"}>
+                    <Field label="Role Title" error={(errors as any).roleTitleId}
+                        hint={data.jobTitleId ? "Select an operational role assigned to this employee" : "Select a Job Title first"}>
                         <Select
-                            value={(data as any).role_title || ""}
-                            onChange={e => set("role_title" as any, e.target.value)}
-                            placeholder={data.job_title ? (roleTitleOptions.length > 0 ? "— Select Role Title —" : "No role titles defined") : "— Select Job Title first —"}
-                            options={roleTitleOptions.map(rt => ({ value: rt.role_title, label: rt.role_title }))}
-                            disabled={!data.job_title || roleTitleOptions.length === 0} />
-                        {(data as any).role_title && (() => {
-                            const found = roleTitleOptions.find(rt => rt.role_title === (data as any).role_title);
+                            value={(data as any).roleTitleId || ""}
+                            onChange={e => set("roleTitleId" as any, e.target.value)}
+                            placeholder={data.jobTitleId ? (roleTitleOptions.length > 0 ? "— Select Role Title —" : "No role titles defined") : "— Select Job Title first —"}
+                            options={roleTitleOptions.map(rt => ({ value: rt.id, label: rt.role_title }))}
+                            disabled={!data.jobTitleId || roleTitleOptions.length === 0} />
+                        {(data as any).roleTitleId && (() => {
+                            const found = roleTitleOptions.find(rt => rt.id === (data as any).roleTitleId);
                             return found?.describe_role ? (
                                 <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed">{found.describe_role}</p>
                             ) : null;
                         })()}
                     </Field>
-                    <Field label="Cost Center" required error={errors.centro_costo}
+                    <Field label="Cost Center" required error={errors.costCenter}
                         hint="Alphanumeric, max 10 characters">
-                        <input type="text" value={data.centro_costo}
-                            onChange={e => set("centro_costo", e.target.value.toUpperCase())}
-                            className={inputCls(errors.centro_costo)}
+                        <input type="text" value={data.costCenter}
+                            onChange={e => set("costCenter", e.target.value.toUpperCase())}
+                            className={inputCls(errors.costCenter)}
                             placeholder="CC-OPS-01" maxLength={10} />
                     </Field>
-                    <Field label="Cost Center Name" error={errors.nombre_centro_costo}>
-                        <input type="text" value={data.nombre_centro_costo}
-                            onChange={e => set("nombre_centro_costo", e.target.value)}
+                    <Field label="Cost Center Name" error={errors.costCenterName}>
+                        <input type="text" value={data.costCenterName}
+                            onChange={e => set("costCenterName", e.target.value)}
                             className={inputCls()} placeholder="Operations – BPO Delivery" />
                     </Field>
-                    <Field label="Sub Cost Center" error={errors.sub_centro_costo}>
-                        <input type="text" value={data.sub_centro_costo}
-                            onChange={e => set("sub_centro_costo", e.target.value.toUpperCase())}
+                    <Field label="Sub Cost Center" error={errors.subCostCenter}>
+                        <input type="text" value={data.subCostCenter}
+                            onChange={e => set("subCostCenter", e.target.value.toUpperCase())}
                             className={inputCls()} placeholder="SCC-01" maxLength={10} />
                     </Field>
                     <Field label="Branch / Sede" error={errors.branch}
@@ -583,10 +589,10 @@ const Step2: React.FC<{
                                 label: b.branch_code + (b.branch_name ? ` — ${b.branch_name}` : "")
                             }))} />
                     </Field>
-                    <Field label="Client" error={errors.cliente}
+                    <Field label="Client" error={errors.client}
                         hint="Client code (max 15 chars)">
-                        <input type="text" value={data.cliente}
-                            onChange={e => set("cliente", e.target.value)}
+                        <input type="text" value={data.client}
+                            onChange={e => set("client", e.target.value)}
                             className={inputCls()} placeholder="CLIENT-001" maxLength={15} />
                     </Field>
                     <Field label="Project" error={errors.project}>
@@ -594,11 +600,17 @@ const Step2: React.FC<{
                             onChange={e => set("project", e.target.value)}
                             className={inputCls()} placeholder="US Mortgage BPO 2025" maxLength={100} />
                     </Field>
-                    <Field label="Direct Leader ID" error={errors.direct_leader_id}
+                    <Field label="Direct Leader" required error={errors.directLeader}>
+                        <input type="text" value={data.directLeader}
+                            onChange={e => set("directLeader", e.target.value)}
+                            className={inputCls(errors.directLeader)}
+                            placeholder="John Doe" />
+                    </Field>
+                    <Field label="Direct Leader ID" error={errors.directLeaderId}
                         hint="EID of direct manager (e.g. EID-1234)">
-                        <input type="text" value={data.direct_leader_id || ""}
-                            onChange={e => set("direct_leader_id", e.target.value)}
-                            className={inputCls(errors.direct_leader_id)}
+                        <input type="text" value={data.directLeaderId || ""}
+                            onChange={e => set("directLeaderId", e.target.value)}
+                            className={inputCls(errors.directLeaderId)}
                             placeholder="EID-0001" maxLength={20} />
                     </Field>
                 </div>
@@ -639,14 +651,14 @@ const Step3: React.FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="EPS (Health Entity)" required error={errors.eps_id}>
                         <Select value={data.eps_id}
-                            onChange={e => setEntity("eps_id", "eps_nombre", e.target.value, EPS_OPTIONS)}
+                            onChange={e => setEntity("eps_id", "epsName", e.target.value, EPS_OPTIONS)}
                             error={errors.eps_id}
                             placeholder="— Select EPS —"
                             options={EPS_OPTIONS.map(o => ({ value: o.id, label: o.nombre }))} />
                     </Field>
                     <Field label="AFP (Pension Fund)" required error={errors.afp_id}>
                         <Select value={data.afp_id}
-                            onChange={e => setEntity("afp_id", "afp_nombre", e.target.value, AFP_OPTIONS)}
+                            onChange={e => setEntity("afp_id", "afpName", e.target.value, AFP_OPTIONS)}
                             error={errors.afp_id}
                             placeholder="— Select AFP —"
                             options={AFP_OPTIONS.map(o => ({ value: o.id, label: o.nombre }))} />
@@ -659,31 +671,31 @@ const Step3: React.FC<{
                 <div className="grid grid-cols-2 gap-4">
                     <Field label="ARL (Work Risk Admin.)" required error={errors.arl_id}>
                         <Select value={data.arl_id}
-                            onChange={e => setEntity("arl_id", "arl_nombre", e.target.value, ARL_OPTIONS)}
+                            onChange={e => setEntity("arl_id", "arlName", e.target.value, ARL_OPTIONS)}
                             error={errors.arl_id}
                             placeholder="— Select ARL —"
                             options={ARL_OPTIONS.map(o => ({ value: o.id, label: o.nombre }))} />
                     </Field>
-                    <Field label="ARL Risk Level" required error={errors.nivel_riesgo_arl}
+                    <Field label="ARL Risk Level" required error={errors.arlRiskLevel}
                         hint="Class I (office) to V (high risk)">
-                        <Select value={data.nivel_riesgo_arl}
-                            onChange={e => onChange({ ...data, nivel_riesgo_arl: parseInt(e.target.value) as any })}
-                            error={errors.nivel_riesgo_arl}
+                        <Select value={data.arlRiskLevel}
+                            onChange={e => onChange({ ...data, arlRiskLevel: parseInt(e.target.value) as any })}
+                            error={errors.arlRiskLevel}
                             placeholder="— Select class —"
                             options={[1, 2, 3, 4, 5].map(n => ({ value: n, label: `Class ${n}` }))} />
                     </Field>
                     <Field label="CCF (Compensation Fund)" required error={errors.ccf_id}>
                         <Select value={data.ccf_id}
-                            onChange={e => setEntity("ccf_id", "ccf_nombre", e.target.value, CCF_OPTIONS)}
+                            onChange={e => setEntity("ccf_id", "ccfName", e.target.value, CCF_OPTIONS)}
                             error={errors.ccf_id}
                             placeholder="— Select CCF —"
                             options={CCF_OPTIONS.map(o => ({ value: o.id, label: o.nombre }))} />
                     </Field>
-                    <Field label="PILA Contributor Subtype" required error={errors.subtipo_cotizante}
+                    <Field label="PILA Contributor Subtype" required error={errors.contributorSubtype}
                         hint="Código PILA – defines contribution rules">
-                        <Select value={data.subtipo_cotizante}
-                            onChange={e => onChange({ ...data, subtipo_cotizante: e.target.value })}
-                            error={errors.subtipo_cotizante}
+                        <Select value={data.contributorSubtype}
+                            onChange={e => onChange({ ...data, contributorSubtype: e.target.value })}
+                            error={errors.contributorSubtype}
                             placeholder="— Select subtype —"
                             options={SUBTIPO_COTIZANTE_OPTIONS.map(o => ({ value: o.value, label: o.label }))} />
                     </Field>
@@ -714,25 +726,25 @@ const Step4: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Dotación (Work Uniform Sizes)</h4>
                 <div className="grid grid-cols-3 gap-4">
-                    <Field label="Shirt Size" required error={errors.talla_camisa}>
-                        <Select value={data.talla_camisa}
-                            onChange={e => set("talla_camisa", e.target.value)}
-                            error={errors.talla_camisa}
+                    <Field label="Shirt Size" required error={errors.shirtSize}>
+                        <Select value={data.shirtSize}
+                            onChange={e => set("shirtSize", e.target.value as any)}
+                            error={errors.shirtSize}
                             placeholder="— Size —"
                             options={["XS", "S", "M", "L", "XL", "XXL"].map(s => ({ value: s, label: s }))} />
                     </Field>
-                    <Field label="Pants Size" required error={errors.talla_pantalon}>
-                        <Select value={data.talla_pantalon}
-                            onChange={e => set("talla_pantalon", e.target.value)}
-                            error={errors.talla_pantalon}
+                    <Field label="Pants Size" required error={errors.pantsSize}>
+                        <Select value={data.pantsSize}
+                            onChange={e => set("pantsSize", e.target.value as any)}
+                            error={errors.pantsSize}
                             placeholder="— Size —"
                             options={["28", "30", "32", "34", "36", "38", "40", "42"].map(s => ({ value: s, label: s }))} />
                     </Field>
-                    <Field label="Shoe Size" required error={errors.talla_calzado}
+                    <Field label="Shoe Size" required error={errors.shoeSize}
                         hint="Colombian shoe size (e.g. 38)">
-                        <input type="number" value={data.talla_calzado || ""}
-                            onChange={e => set("talla_calzado", parseInt(e.target.value) || 0)}
-                            className={inputCls(errors.talla_calzado)}
+                        <input type="number" value={data.shoeSize || ""}
+                            onChange={e => set("shoeSize", parseInt(e.target.value) || 0)}
+                            className={inputCls(errors.shoeSize)}
                             placeholder="38" min={30} max={50} />
                     </Field>
                 </div>
@@ -741,11 +753,11 @@ const Step4: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Medical Information</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Blood Type" required error={errors.tipo_sangre}
+                    <Field label="Blood Type" required error={errors.bloodType}
                         hint="Critical for emergencies and SST protocols">
-                        <Select value={data.tipo_sangre}
-                            onChange={e => set("tipo_sangre", e.target.value)}
-                            error={errors.tipo_sangre}
+                        <Select value={data.bloodType}
+                            onChange={e => set("bloodType", e.target.value as any)}
+                            error={errors.bloodType}
                             placeholder="— Blood type —"
                             options={["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(s => ({ value: s, label: s }))} />
                     </Field>
@@ -755,16 +767,16 @@ const Step4: React.FC<{
             <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Emergency Contact</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Contact Full Name" required error={errors.contacto_emergencia}>
-                        <input type="text" value={data.contacto_emergencia}
-                            onChange={e => set("contacto_emergencia", e.target.value)}
-                            className={inputCls(errors.contacto_emergencia)}
+                    <Field label="Contact Full Name" required error={errors.emergencyContact}>
+                        <input type="text" value={data.emergencyContact}
+                            onChange={e => set("emergencyContact", e.target.value)}
+                            className={inputCls(errors.emergencyContact)}
                             placeholder="María García (Mother)" maxLength={100} />
                     </Field>
-                    <Field label="Contact Phone" required error={errors.telefono_emergencia}>
-                        <input type="tel" value={data.telefono_emergencia}
-                            onChange={e => set("telefono_emergencia", e.target.value)}
-                            className={inputCls(errors.telefono_emergencia)}
+                    <Field label="Contact Phone" required error={errors.emergencyPhone}>
+                        <input type="tel" value={data.emergencyPhone}
+                            onChange={e => set("emergencyPhone", e.target.value)}
+                            className={inputCls(errors.emergencyPhone)}
                             placeholder="+57 300 123 4567" maxLength={20} />
                     </Field>
                 </div>
@@ -808,7 +820,7 @@ const Step5: React.FC<{
     currentTenantId: string;
     onEditStep: (stepId: number) => void;
 }> = ({ maestro, historial, afiliaciones, sst, eid, currentTenantId, onEditStep }) => {
-    const municipio = MUNICIPIOS_DANE.find(m => m.code === maestro.municipio_dane);
+    const municipio = MUNICIPIOS_DANE.find(m => m.code === maestro.municipalityCode);
     const eps = EPS_OPTIONS.find(e => e.id === afiliaciones.eps_id);
     const afp = AFP_OPTIONS.find(a => a.id === afiliaciones.afp_id);
     const arl = ARL_OPTIONS.find(a => a.id === afiliaciones.arl_id);
@@ -838,41 +850,41 @@ const Step5: React.FC<{
             </div>
 
             <ReviewSection title="M1 – Personal Identity" color="bg-cobalt-blue/5 text-cobalt-blue" onEdit={() => onEditStep(1)}>
-                <ReviewRow label="Document" value={`${maestro.tipo_documento_id} ${maestro.numero_identificacion}`} mono />
-                <ReviewRow label="Full Name" value={[maestro.primer_nombre, maestro.otros_nombres, maestro.primer_apellido, maestro.segundo_apellido].filter(Boolean).join(" ")} />
-                <ReviewRow label="Date of Birth" value={maestro.fecha_nacimiento} />
-                <ReviewRow label="Gender" value={maestro.genero === "M" ? "Male" : maestro.genero === "F" ? "Female" : "Non-binary"} />
-                <ReviewRow label="Personal Email" value={maestro.email_personal} />
-                <ReviewRow label="Municipality" value={municipio ? `${municipio.code} – ${municipio.name}` : maestro.municipio_dane} />
-                <ReviewRow label="Address" value={maestro.direccion_residencia} />
+                <ReviewRow label="Document" value={`${maestro.documentTypeId} ${maestro.identificationNumber}`} mono />
+                <ReviewRow label="Full Name" value={[maestro.firstName, maestro.middleNames, maestro.lastName, maestro.secondLastName].filter(Boolean).join(" ")} />
+                <ReviewRow label="Date of Birth" value={maestro.birthDate} />
+                <ReviewRow label="Gender" value={maestro.gender === "M" ? "Male" : maestro.gender === "F" ? "Female" : "Non-binary"} />
+                <ReviewRow label="Personal Email" value={maestro.personalEmail} />
+                <ReviewRow label="Municipality" value={municipio ? `${municipio.code} – ${municipio.name}` : maestro.municipalityCode} />
+                <ReviewRow label="Address" value={maestro.residenceAddress} />
             </ReviewSection>
 
             <ReviewSection title="M2/M4 – Job & Contract" color="bg-violet-50 text-violet-700" onEdit={() => onEditStep(2)}>
-                <ReviewRow label="Hire Date" value={historial.fecha_inicio} />
-                <ReviewRow label="Contract Type" value={historial.tipo_contrato} />
-                <ReviewRow label="Salary Type" value={historial.tipo_salario} />
-                <ReviewRow label="Base Salary" value={`COP ${historial.salario_base.toLocaleString("es-CO")}`} />
-                <ReviewRow label="Tax Procedure" value={historial.procedimiento_renta ? `Procedure ${historial.procedimiento_renta}` : "—"} />
-                <ReviewRow label="Area / Sub-Area" value={`${historial.area} / ${historial.sub_area}`} />
-                <ReviewRow label="Cost Center" value={`${historial.centro_costo} – ${historial.nombre_centro_costo}`} mono />
+                <ReviewRow label="Hire Date" value={historial.startDate} />
+                <ReviewRow label="Contract Type" value={historial.contractType} />
+                <ReviewRow label="Salary Type" value={historial.salaryType} />
+                <ReviewRow label="Base Salary" value={`COP ${historial.baseSalary.toLocaleString("en-US")}`} />
+                <ReviewRow label="Tax Procedure" value={historial.taxProcedure ? `Procedure ${historial.taxProcedure}` : "—"} />
+                <ReviewRow label="Area / Sub-Area" value={`${historial.area} / ${historial.subArea}`} />
+                <ReviewRow label="Cost Center" value={`${historial.costCenter} – ${historial.costCenterName}`} mono />
                 <ReviewRow label="Branch" value={historial.branch || "—"} />
-                <ReviewRow label="Client / Project" value={`${historial.cliente || "—"} / ${historial.project || "—"}`} />
-                <ReviewRow label="Dedication" value={`${historial.digito_dedicacion}%`} />
-                <ReviewRow label="Direct Leader" value={historial.direct_leader} />
+                <ReviewRow label="Client / Project" value={`${historial.client || "—"} / ${historial.project || "—"}`} />
+                <ReviewRow label="Dedication" value={`${historial.dedicationPercentage}%`} />
+                <ReviewRow label="Direct Leader" value={historial.directLeader} />
             </ReviewSection>
 
             <ReviewSection title="M3 – Social Security" color="bg-amber-50 text-amber-700" onEdit={() => onEditStep(3)}>
                 <ReviewRow label="EPS" value={eps?.nombre || afiliaciones.eps_id} />
                 <ReviewRow label="AFP" value={afp?.nombre || afiliaciones.afp_id} />
-                <ReviewRow label="ARL" value={`${arl?.nombre || afiliaciones.arl_id} – Class ${afiliaciones.nivel_riesgo_arl}`} />
+                <ReviewRow label="ARL" value={`${arl?.nombre || afiliaciones.arl_id} – Class ${afiliaciones.arlRiskLevel}`} />
                 <ReviewRow label="CCF" value={ccf?.nombre || afiliaciones.ccf_id} />
-                <ReviewRow label="PILA Subtype" value={afiliaciones.subtipo_cotizante} mono />
+                <ReviewRow label="PILA Subtype" value={afiliaciones.contributorSubtype} mono />
             </ReviewSection>
 
             <ReviewSection title="M5 – SST & Emergency" color="bg-emerald-50 text-emerald-700" onEdit={() => onEditStep(4)}>
-                <ReviewRow label="Shirt / Pants / Shoe" value={`${sst.talla_camisa} / ${sst.talla_pantalon} / ${sst.talla_calzado}`} />
-                <ReviewRow label="Blood Type" value={sst.tipo_sangre} />
-                <ReviewRow label="Emergency Contact" value={`${sst.contacto_emergencia} – ${sst.telefono_emergencia}`} />
+                <ReviewRow label="Shirt / Pants / Shoe" value={`${sst.shirtSize} / ${sst.pantsSize} / ${sst.shoeSize}`} />
+                <ReviewRow label="Blood Type" value={sst.bloodType} />
+                <ReviewRow label="Emergency Contact" value={`${sst.emergencyContact} – ${sst.emergencyPhone}`} />
             </ReviewSection>
         </div>
     );
@@ -945,7 +957,7 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
 
         // Extract extra keys that were temporarily stored in the step states
         const { continent_id, country_id, city_id, ...cleanMaestro } = maestro as any;
-        const { salary_currency, direct_leader_id, ...cleanHistorial } = historial as any;
+        const { salaryCurrency, directLeaderId, ...cleanHistorial } = historial as any;
 
         const record: FullEmployeeRecord = {
             eid,
@@ -954,13 +966,13 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
             continent_id: continent_id || null,
             country_id: country_id || null,
             city_id: city_id || null,
-            salary_currency: salary_currency || null,
-            direct_leader_id: direct_leader_id || null,
+            salaryCurrency: salaryCurrency || null,
+            directLeaderId: directLeaderId || null,
             maestro: { ...cleanMaestro, created_at: now, updated_at: now },
-            historialLaboral: { ...cleanHistorial, empleado_id: cleanMaestro.numero_identificacion, id_historial: 1, created_at: now },
-            afiliaciones: { ...afiliaciones, empleado_id: cleanMaestro.numero_identificacion, updated_at: now },
-            sst: { ...sst, empleado_id: cleanMaestro.numero_identificacion },
-            email_corporativo: `${cleanMaestro.primer_nombre.toLowerCase()}.${cleanMaestro.primer_apellido.toLowerCase()}@homesi.co`,
+            historialLaboral: { ...cleanHistorial, employeeId: cleanMaestro.identificationNumber, historyId: 1, created_at: now },
+            afiliaciones: { ...afiliaciones, employeeId: cleanMaestro.identificationNumber, updated_at: now },
+            sst: { ...sst, employeeId: cleanMaestro.identificationNumber },
+            email_corporativo: `${cleanMaestro.firstName.toLowerCase()}.${cleanMaestro.lastName.toLowerCase()}@homesi.co`,
             foto_url: fotoUrl || undefined,
         };
 
@@ -1087,7 +1099,7 @@ export const EmployeeIntakeApp: React.FC<EmployeeIntakeProps> = ({ onClose, onSa
                         <div className="mb-4 flex items-center gap-3 bg-action-red/10 border border-action-red/20 rounded-xl px-4 py-3 animate-in shake duration-300">
                             <ShieldAlert className="w-5 h-5 text-action-red shrink-0" />
                             <div className="flex-1">
-                                <p className="text-xs text-action-red font-bold uppercase tracking-wider">Error de Conexión a Base de Datos</p>
+                                <p className="text-xs text-action-red font-bold uppercase tracking-wider">Database Connection Error</p>
                                 <p className="text-[11px] text-action-red/80 leading-relaxed font-medium">{dbError}</p>
                             </div>
                         </div>

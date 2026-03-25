@@ -1,6 +1,6 @@
-// ⚠️ Lee ARCHITECTURE.md antes de modificar este módulo
+// ⚠️ Read ARCHITECTURE.md before modifying this module
 // PMO Module — My Plan Shell (Sprint 0 Placeholder)
-// Este componente evoluciona con cada prompt del Plan Maestro PMO
+// This component evolves with each PMO Master Plan prompt.
 
 "use client";
 
@@ -15,7 +15,8 @@ import {
     Filter,
     ChevronDown,
     Zap,
-    Lock
+    Lock,
+    Plug
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BoardView } from "@/types/pmo.types";
@@ -23,6 +24,8 @@ import { GridView } from "@/components/pmo/views/GridView";
 import { useSessionStore } from "@/lib/session-store";
 import { getBoardsAction } from "@/app/actions/pmo/board-actions";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
+import IntegrationsPanel from "@/components/pmo/integrations/IntegrationsPanel";
+import { PlaybookAssignmentPanel } from "@/components/shared/PlaybookAssignmentPanel";
 
 // ─── VIBE TOKENS (no hardcodear — usar estos constants) ─────────────
 const VIBE = {
@@ -34,18 +37,21 @@ const VIBE = {
     mirage: "#181B34",
 } as const;
 
+type PmoView = BoardView | 'integrations';
+
 interface ViewTab {
-    id: BoardView;
+    id: PmoView;
     label: string;
     icon: React.ElementType;
 }
 
 const viewTabs: ViewTab[] = [
-    { id: "grid",      label: "Grid",      icon: LayoutGrid },
-    { id: "kanban",    label: "Kanban",    icon: Trello },
-    { id: "gantt",     label: "Gantt",     icon: GanttChartSquare },
-    { id: "calendar",  label: "Calendar",  icon: CalendarDays },
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "grid",          label: "Grid",         icon: LayoutGrid },
+    { id: "kanban",        label: "Kanban",       icon: Trello },
+    { id: "gantt",         label: "Gantt",        icon: GanttChartSquare },
+    { id: "calendar",      label: "Calendar",     icon: CalendarDays },
+    { id: "dashboard",     label: "Dashboard",    icon: LayoutDashboard },
+    { id: "integrations",  label: "Integrations", icon: Plug },
 ];
 
 // Placeholder data — replaced by real DB data in Sprint 2+
@@ -58,13 +64,14 @@ const PLACEHOLDER_BOARD = {
 };
 
 export const MyPlanShell: React.FC = () => {
-    const [activeView, setActiveView] = useState<BoardView>("grid");
+    const [activeView, setActiveView] = useState<PmoView>("grid");
     const [isViewLocked, setIsViewLocked] = useState(false);
     const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
     const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null);
     const [boardTitle, setBoardTitle] = useState(PLACEHOLDER_BOARD.title);
     const [isPlaybook, setIsPlaybook] = useState(false);
     const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+    const [isAssignPanelOpen, setIsAssignPanelOpen] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const { tenant_id } = useSessionStore();
     const orgId = tenant_id || 'TNT-001';
@@ -163,6 +170,15 @@ export const MyPlanShell: React.FC = () => {
                         </button>
 
                         <button
+                            onClick={() => setIsAssignPanelOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all duration-[70ms] hover:opacity-90"
+                            style={{ backgroundColor: `${VIBE.blue}18`, color: VIBE.blue, borderRadius: "4px" }}
+                        >
+                            <Zap className="w-4 h-4" />
+                            Asignar Playbook
+                        </button>
+
+                        <button
                             onClick={() => setIsNewTaskOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium text-white transition-all duration-[70ms] hover:opacity-90"
                             style={{ backgroundColor: VIBE.purple, borderRadius: "4px" }}
@@ -177,10 +193,12 @@ export const MyPlanShell: React.FC = () => {
 
             {/* ── View Area ── */}
             <div className="flex-1 overflow-hidden relative">
-                {activeView === 'grid' && activeBoardId ? (
+                {activeView === 'integrations' ? (
+                    <IntegrationsPanel />
+                ) : activeView === 'grid' && activeBoardId ? (
                     <GridView key={refreshKey} boardId={activeBoardId} orgId={orgId} />
                 ) : (
-                    <ViewPlaceholder view={activeView} />
+                    <ViewPlaceholder view={activeView as BoardView} />
                 )}
             </div>
 
@@ -193,6 +211,15 @@ export const MyPlanShell: React.FC = () => {
                     isOpen={isNewTaskOpen}
                     onClose={() => setIsNewTaskOpen(false)}
                     onTaskCreated={() => setRefreshKey((k) => k + 1)}
+                />
+            )}
+
+            {/* Playbook Assignment Panel — employee-first mode */}
+            {isAssignPanelOpen && (
+                <PlaybookAssignmentPanel
+                    mode="employee-first"
+                    orgId={orgId}
+                    onClose={() => setIsAssignPanelOpen(false)}
                 />
             )}
         </div>

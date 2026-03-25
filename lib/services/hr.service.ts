@@ -30,50 +30,78 @@ const mapFromDb = (dbRow: any): FullEmployeeRecord => {
         status: dbRow.status,
         email_corporativo: dbRow.email_corporativo,
         foto_url: dbRow.foto_url,
+        salaryCurrency: dbRow.salary_currency || null,
+        directLeaderId: dbRow.direct_leader_id || null,
 
         maestro: {
-            numero_identificacion: dbRow.numero_identificacion,
-            tipo_documento_id: dbRow.tipo_documento_id,
-            primer_nombre: dbRow.primer_nombre,
-            otros_nombres: dbRow.otros_nombres ?? "",
-            primer_apellido: dbRow.primer_apellido,
-            segundo_apellido: dbRow.segundo_apellido,
-            fecha_nacimiento: dbRow.fecha_nacimiento,
-            genero: dbRow.genero,
-            email_personal: dbRow.email_personal,
-            municipio_dane: dbRow.municipio_dane,
-            direccion_residencia: dbRow.direccion_residencia,
+            identificationNumber: dbRow.numero_identificacion,
+            documentTypeId: dbRow.tipo_documento_id,
+            firstName: dbRow.primer_nombre,
+            middleNames: dbRow.otros_nombres ?? "",
+            lastName: dbRow.primer_apellido,
+            secondLastName: dbRow.segundo_apellido,
+            birthDate: dbRow.fecha_nacimiento,
+            gender: dbRow.genero,
+            personalEmail: dbRow.email_personal,
+            municipalityCode: dbRow.municipio_dane,
+            residenceAddress: dbRow.direccion_residencia,
             created_at: dbRow.created_at,
             updated_at: dbRow.updated_at
         },
 
         historialLaboral: {
-            empleado_id: dbRow.numero_identificacion,
-            fecha_inicio: dbRow.fecha_inicio,
-            fecha_fin: dbRow.fecha_fin,
-            tipo_contrato: dbRow.tipo_contrato,
-            tipo_salario: dbRow.tipo_salario,
-            salario_base: sanitizeNum(dbRow.salario_base),
-            procedimiento_renta: sanitizeNum(dbRow.procedimiento_renta, 1) as 1 | 2 | 0,
-            entidad_legal: dbRow.afiliaciones?.entidad_legal ?? dbRow.entidad_legal ?? "",
+            employeeId: dbRow.numero_identificacion,
+            startDate: dbRow.fecha_inicio,
+            endDate: dbRow.fecha_fin,
+            contractType: dbRow.tipo_contrato,
+            salaryType: dbRow.tipo_salario,
+            baseSalary: sanitizeNum(dbRow.salario_base),
+            taxProcedure: sanitizeNum(dbRow.procedimiento_renta, 1) as 1 | 2 | 0,
+            legalEntity: dbRow.afiliaciones?.entidad_legal ?? dbRow.entidad_legal ?? "",
             area: dbRow.area,
-            sub_area: dbRow.sub_area,
-            centro_costo: dbRow.centro_costo,
-            nombre_centro_costo: dbRow.nombre_centro_costo ?? "",
-            sub_centro_costo: dbRow.sub_centro_costo ?? "",
-            nombre_sub_centro_costo: dbRow.nombre_sub_centro_costo ?? "",
+            subArea: dbRow.sub_area,
+            costCenter: dbRow.centro_costo,
+            costCenterName: dbRow.nombre_centro_costo ?? "",
+            subCostCenter: dbRow.sub_centro_costo ?? "",
+            subCostCenterName: dbRow.nombre_sub_centro_costo ?? "",
             branch: dbRow.branch ?? "",
-            cliente: dbRow.cliente ?? "",
+            client: dbRow.cliente ?? "",
             project: dbRow.project ?? "",
-            digito_dedicacion: sanitizeNum(dbRow.digito_dedicacion, 100),
-            direct_leader: dbRow.direct_leader ?? "",
-            job_title: dbRow.job_title ?? "",
-            role_title: dbRow.role_title ?? "",
+            dedicationPercentage: sanitizeNum(dbRow.digito_dedicacion, 100),
+            directLeader: dbRow.direct_leader ?? "",
+            directLeaderId: dbRow.direct_leader_id ?? null,
+            jobTitleId: dbRow.job_title_id ?? null,
+            jobTitleName: dbRow.dim_job_title?.title ?? "",
+            roleTitleId: dbRow.role_title_id ?? null,
+            roleTitleName: dbRow.dim_role_title?.role_title ?? "",
+            salaryCurrency: dbRow.salary_currency ?? null,
             created_at: dbRow.created_at
         },
 
-        afiliaciones: dbRow.afiliaciones,
-        sst: dbRow.sst
+        afiliaciones: {
+            employeeId: dbRow.numero_identificacion,
+            eps_id: dbRow.afiliaciones?.eps_id ?? "",
+            epsName: dbRow.afiliaciones?.eps_nombre ?? "",
+            afp_id: dbRow.afiliaciones?.afp_id ?? "",
+            afpName: dbRow.afiliaciones?.afp_nombre ?? "",
+            arl_id: dbRow.afiliaciones?.arl_id ?? "",
+            arlName: dbRow.afiliaciones?.arl_nombre ?? "",
+            ccf_id: dbRow.afiliaciones?.ccf_id ?? "",
+            ccfName: dbRow.afiliaciones?.ccf_nombre ?? "",
+            arlRiskLevel: sanitizeNum(dbRow.afiliaciones?.nivel_riesgo_arl, 0) as 1 | 2 | 3 | 4 | 5 | 0,
+            contributorSubtype: dbRow.afiliaciones?.subtipo_cotizante ?? "",
+            updated_at: dbRow.afiliaciones?.updated_at
+        },
+
+        sst: {
+            employeeId: dbRow.numero_identificacion,
+            shirtSize: dbRow.sst?.talla_camisa ?? "",
+            pantsSize: dbRow.sst?.talla_pantalon ?? "",
+            shoeSize: sanitizeNum(dbRow.sst?.talla_calzado, 0),
+            bloodType: dbRow.sst?.tipo_sangre ?? "",
+            emergencyContact: dbRow.sst?.contacto_emergencia ?? "",
+            emergencyPhone: dbRow.sst?.telefono_emergencia ?? "",
+        }
     };
 };
 
@@ -85,45 +113,67 @@ const mapToDb = (record: FullEmployeeRecord) => {
         email_corporativo: sanitizeOptStr(record.email_corporativo),
         foto_url: sanitizeOptStr(record.foto_url),
 
-        // ── Identity (Maestro) ──────────────────────────────────────────────
-        numero_identificacion: sanitizeStr(record.maestro.numero_identificacion).slice(0, 20),
-        tipo_documento_id: sanitizeStr(record.maestro.tipo_documento_id).slice(0, 10),
-        primer_nombre: sanitizeStr(record.maestro.primer_nombre).slice(0, 100),
-        otros_nombres: sanitizeOptStr(record.maestro.otros_nombres)?.slice(0, 100) ?? null,
-        primer_apellido: sanitizeStr(record.maestro.primer_apellido).slice(0, 100),
-        segundo_apellido: sanitizeStr(record.maestro.segundo_apellido).slice(0, 100),
-        fecha_nacimiento: sanitizeDate(record.maestro.fecha_nacimiento),
-        genero: sanitizeStr(record.maestro.genero).slice(0, 1),
-        email_personal: sanitizeStr(record.maestro.email_personal).slice(0, 255),
-        municipio_dane: sanitizeStr(record.maestro.municipio_dane).slice(0, 10),
-        direccion_residencia: sanitizeStr(record.maestro.direccion_residencia),
+        // ── Identity (Maestro) ──
+        numero_identificacion: sanitizeStr(record.maestro.identificationNumber).slice(0, 20),
+        tipo_documento_id: sanitizeStr(record.maestro.documentTypeId).slice(0, 10),
+        primer_nombre: sanitizeStr(record.maestro.firstName).slice(0, 100),
+        otros_nombres: sanitizeOptStr(record.maestro.middleNames)?.slice(0, 100) ?? null,
+        primer_apellido: sanitizeStr(record.maestro.lastName).slice(0, 100),
+        segundo_apellido: sanitizeStr(record.maestro.secondLastName).slice(0, 100),
+        fecha_nacimiento: sanitizeDate(record.maestro.birthDate),
+        genero: sanitizeStr(record.maestro.gender).slice(0, 1),
+        email_personal: sanitizeStr(record.maestro.personalEmail).slice(0, 255),
+        municipio_dane: sanitizeStr(record.maestro.municipalityCode).slice(0, 10),
+        direccion_residencia: sanitizeStr(record.maestro.residenceAddress),
 
-        // ── Laboral Snapshot ────────────────────────────────────────────────
-        fecha_inicio: sanitizeDate(record.historialLaboral.fecha_inicio),
-        fecha_fin: sanitizeDate(record.historialLaboral.fecha_fin),
-        tipo_contrato: sanitizeStr(record.historialLaboral.tipo_contrato).slice(0, 50),
-        tipo_salario: sanitizeStr(record.historialLaboral.tipo_salario).slice(0, 50),
-        salario_base: sanitizeNum(record.historialLaboral.salario_base),
-        procedimiento_renta: sanitizeNum(record.historialLaboral.procedimiento_renta, 1),
+        // ── Laboral Snapshot ──
+        fecha_inicio: sanitizeDate(record.historialLaboral.startDate),
+        fecha_fin: sanitizeDate(record.historialLaboral.endDate),
+        tipo_contrato: sanitizeStr(record.historialLaboral.contractType).slice(0, 50),
+        tipo_salario: sanitizeStr(record.historialLaboral.salaryType).slice(0, 50),
+        salario_base: sanitizeNum(record.historialLaboral.baseSalary),
+        procedimiento_renta: sanitizeNum(record.historialLaboral.taxProcedure, 1),
         area: sanitizeStr(record.historialLaboral.area).slice(0, 100),
-        sub_area: sanitizeStr(record.historialLaboral.sub_area).slice(0, 100),
-        centro_costo: sanitizeStr(record.historialLaboral.centro_costo).slice(0, 20),
-        nombre_centro_costo: sanitizeOptStr(record.historialLaboral.nombre_centro_costo)?.slice(0, 255),
-        sub_centro_costo: sanitizeOptStr(record.historialLaboral.sub_centro_costo)?.slice(0, 20),
-        nombre_sub_centro_costo: sanitizeOptStr(record.historialLaboral.nombre_sub_centro_costo)?.slice(0, 255),
+        sub_area: sanitizeStr(record.historialLaboral.subArea).slice(0, 100),
+        centro_costo: sanitizeStr(record.historialLaboral.costCenter).slice(0, 20),
+        nombre_centro_costo: sanitizeOptStr(record.historialLaboral.costCenterName)?.slice(0, 255),
+        sub_centro_costo: sanitizeOptStr(record.historialLaboral.subCostCenter)?.slice(0, 20),
+        nombre_sub_centro_costo: sanitizeOptStr(record.historialLaboral.subCostCenterName)?.slice(0, 255),
         branch: sanitizeOptStr(record.historialLaboral.branch)?.slice(0, 100),
-        cliente: sanitizeOptStr(record.historialLaboral.cliente)?.slice(0, 100),
+        cliente: sanitizeOptStr(record.historialLaboral.client)?.slice(0, 100),
         project: sanitizeOptStr(record.historialLaboral.project)?.slice(0, 255),
-        digito_dedicacion: sanitizeNum(record.historialLaboral.digito_dedicacion, 100),
-        direct_leader: sanitizeOptStr(record.historialLaboral.direct_leader)?.slice(0, 255),
-        job_title: sanitizeOptStr(record.historialLaboral.job_title)?.slice(0, 255),
-        role_title: sanitizeOptStr(record.historialLaboral.role_title)?.slice(0, 255),
+        digito_dedicacion: sanitizeNum(record.historialLaboral.dedicationPercentage, 100),
+        direct_leader: sanitizeOptStr(record.historialLaboral.directLeader)?.slice(0, 255),
+        direct_leader_id: sanitizeOptStr(record.historialLaboral.directLeaderId),
+        job_title_id: sanitizeOptStr(record.historialLaboral.jobTitleId),
+        role_title_id: sanitizeOptStr(record.historialLaboral.roleTitleId),
+        salary_currency: sanitizeOptStr(record.historialLaboral.salaryCurrency),
 
         // ── JSONB ──
-        afiliaciones: { ...record.afiliaciones, entidad_legal: record.historialLaboral.entidad_legal },
-        sst: record.sst,
+        afiliaciones: {
+            eps_id: record.afiliaciones.eps_id,
+            eps_nombre: record.afiliaciones.epsName,
+            afp_id: record.afiliaciones.afp_id,
+            afp_nombre: record.afiliaciones.afpName,
+            arl_id: record.afiliaciones.arl_id,
+            arl_nombre: record.afiliaciones.arlName,
+            ccf_id: record.afiliaciones.ccf_id,
+            ccf_nombre: record.afiliaciones.ccfName,
+            nivel_riesgo_arl: record.afiliaciones.arlRiskLevel,
+            subtipo_cotizante: record.afiliaciones.contributorSubtype,
+            entidad_legal: record.historialLaboral.legalEntity,
+            updated_at: record.afiliaciones.updated_at
+        },
+        sst: {
+            talla_camisa: record.sst.shirtSize,
+            talla_pantalon: record.sst.pantsSize,
+            talla_calzado: record.sst.shoeSize,
+            tipo_sangre: record.sst.bloodType,
+            contacto_emergencia: record.sst.emergencyContact,
+            telefono_emergencia: record.sst.emergencyPhone
+        },
 
-        // ── Timestamps ─────────────────────────────────────────────────────
+        // ── Timestamps ──
         created_at: sanitizeDate(record.maestro.created_at),
         updated_at: sanitizeDate(record.maestro.updated_at),
     };
@@ -136,7 +186,7 @@ export async function getEmployeesService(tenantId: string): Promise<FullEmploye
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('dim_employee')
-            .select('*')
+            .select('*, dim_job_title(title), dim_role_title(role_title)')
             .eq('tenant_id', tenantId)
             .order('eid', { ascending: true });
 

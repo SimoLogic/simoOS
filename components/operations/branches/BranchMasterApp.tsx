@@ -13,7 +13,7 @@ import {
 } from "@/lib/branch-types";
 import {
     getBranchesAction, saveBranchAction, toggleBranchStatusAction,
-    getBranchManagersAction, checkCircularReferenceAction
+    getEligibleBranchManagersAction, checkCircularReferenceAction
 } from "@/app/actions/branch-actions";
 import { useTenant } from "@/lib/tenant-context";
 
@@ -179,7 +179,7 @@ const LeaseDataPopup: React.FC<{
 const BranchForm: React.FC<{
     branch: Partial<Branch>;
     allBranches: Branch[];
-    managers: { eid: string; full_name: string; title: string }[];
+    managers: { eid: string; primer_nombre: string; primer_apellido: string; role_title: string }[];
     tenantId: string;
     currency: string;
     onClose: () => void;
@@ -189,7 +189,8 @@ const BranchForm: React.FC<{
         tenant_id: tenantId,
         branch_code: "",
         branch_name: null,
-        branch_manager_eid: null,
+        manager_employee_eid: null,
+        manager_role_title: null,
         states_licensed: [],
         field_office_type: "Physical",
         office_address: null,
@@ -227,7 +228,7 @@ const BranchForm: React.FC<{
 
     const handleSave = async () => {
         if (!data.branch_code?.trim()) { setError("Branch Code is required."); return; }
-        if (!data.branch_manager_eid) { setError("Branch Manager is required."); return; }
+        if (!data.manager_employee_eid) { setError("Branch Manager is required."); return; }
         setSaving(true); setError(null);
         const result = await saveBranchAction(data as Branch);
         setSaving(false);
@@ -292,14 +293,18 @@ const BranchForm: React.FC<{
                     {/* Branch Manager */}
                     <div className="space-y-1.5">
                         <label className={labelCls}>Branch Manager *</label>
-                        <select value={data.branch_manager_eid || ""} onChange={e => set("branch_manager_eid", e.target.value || null)} className={inputCls}>
+                        <select value={data.manager_employee_eid || ""} onChange={e => {
+                            const m = managers.find(x => x.eid === e.target.value);
+                            set("manager_employee_eid", m ? m.eid : null);
+                            set("manager_role_title", m ? m.role_title : null);
+                        }} className={inputCls}>
                             <option value="">— Select Manager —</option>
                             {managers.map(m => (
-                                <option key={m.eid} value={m.eid}>{m.full_name} ({m.title})</option>
+                                <option key={m.eid} value={m.eid}>[{m.eid}] {m.primer_nombre} {m.primer_apellido} — {m.role_title}</option>
                             ))}
                             {managers.length === 0 && <option disabled>No eligible managers found in HC Master</option>}
                         </select>
-                        <p className="text-[10px] text-slate-400 pl-1">Showing employees with BM / NPPM / Producing BM roles</p>
+                        <p className="text-[10px] text-slate-400 pl-1">Showing active BM / NPPM / Producing BM / Market Leader roles</p>
                     </div>
 
                     {/* Parent Branch */}
@@ -457,7 +462,14 @@ const BranchRow: React.FC<{
                 {parent ? <span className="font-mono font-bold text-slate-600">{parent.branch_code}</span> : <span className="text-slate-300">—</span>}
             </td>
             {/* Manager */}
-            <td className="px-4 py-3 text-xs text-slate-600">{branch.branch_manager_name || branch.branch_manager_eid || "—"}</td>
+            <td className="px-4 py-3 text-xs text-slate-600">
+                {branch.manager_employee_eid ? (
+                    <div className="flex flex-col">
+                        <span className="font-semibold text-navy-blue">{branch.manager_employee_eid}</span>
+                        <span className="text-[10px] text-slate-400">{branch.manager_role_title}</span>
+                    </div>
+                ) : "—"}
+            </td>
             {/* States */}
             <td className="px-4 py-3">
                 <div className="flex items-center gap-1 flex-wrap">
@@ -501,7 +513,7 @@ const BranchRow: React.FC<{
 export const BranchMasterApp: React.FC = () => {
     const { currentTenant } = useTenant();
     const [branches, setBranches] = useState<Branch[]>([]);
-    const [managers, setManagers] = useState<{ eid: string; full_name: string; title: string }[]>([]);
+    const [managers, setManagers] = useState<{ eid: string; primer_nombre: string; primer_apellido: string; role_title: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [levelFilter, setLevelFilter] = useState<HierarchyLevel | "All">("All");
@@ -524,7 +536,7 @@ export const BranchMasterApp: React.FC = () => {
         setLoading(true);
         const [bData, mData] = await Promise.all([
             getBranchesAction(tenantId),
-            getBranchManagersAction(tenantId),
+            getEligibleBranchManagersAction(tenantId),
         ]);
         setBranches(bData);
         setManagers(mData);
@@ -556,7 +568,8 @@ export const BranchMasterApp: React.FC = () => {
         const matchSearch = !q ||
             (b.branch_code || "").toLowerCase().includes(q) ||
             (b.branch_name || "").toLowerCase().includes(q) ||
-            (b.branch_manager_name || "").toLowerCase().includes(q);
+            (b.manager_employee_eid || "").toLowerCase().includes(q) ||
+            (b.manager_role_title || "").toLowerCase().includes(q);
         const matchLevel = levelFilter === "All" || b.hierarchy_level === levelFilter;
         const matchStatus = statusFilter === "All" || (statusFilter === "Active" ? b.is_active : !b.is_active);
         return matchSearch && matchLevel && matchStatus;

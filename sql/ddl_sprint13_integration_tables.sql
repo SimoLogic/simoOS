@@ -45,10 +45,35 @@ COMMENT ON TABLE public.pmo_integration_tokens IS
     'AES-256-GCM encrypted OAuth tokens. Shield Protocol: Never store plain-text tokens.';
 
 COMMENT ON COLUMN public.pmo_integration_tokens.access_token IS
-    'Vault-encrypted access token. Format: iv:authTag:ciphertext.';
+    'Vault-encrypted access token. Format: JSON {iv, authTag, ciphertext} (AES-256-GCM).';
 
 COMMENT ON COLUMN public.pmo_integration_tokens.refresh_token IS
-    'Vault-encrypted refresh token. Format: iv:authTag:ciphertext.';
+    'Vault-encrypted refresh token. Format: JSON {iv, authTag, ciphertext} (AES-256-GCM).';
+
+-- ─── MIGRATION: add scopes + is_active (REPARACIÓN B) ──────────
+-- Idempotent: safe to re-run if columns already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'pmo_integration_tokens' AND column_name = 'scopes'
+    ) THEN
+        ALTER TABLE public.pmo_integration_tokens
+            ADD COLUMN scopes TEXT[] NOT NULL DEFAULT '{}';
+        COMMENT ON COLUMN public.pmo_integration_tokens.scopes IS
+            'OAuth scopes granted by the provider (e.g. {"api","refresh_token"} for SF).';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'pmo_integration_tokens' AND column_name = 'is_active'
+    ) THEN
+        ALTER TABLE public.pmo_integration_tokens
+            ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+        COMMENT ON COLUMN public.pmo_integration_tokens.is_active IS
+            'Soft-revocation flag. Set to FALSE to revoke (never DELETE — preserves audit history).';
+    END IF;
+END $$;
 
 -- ─── TABLE: pmo_sync_events ──────────────────────────────────
 -- Event log for Mirror Sync Protocol (Llave #4).
@@ -133,3 +158,38 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
+
+-- ─── TABLE: pmo_sync_mappings (REPARACIÓN SF-1) ──────────────────────────────
+-- Mirror Sync Protocol (Llave #4) — persistent mapping between PMO entities
+-- and their counterparts in Salesforce / Outlook / Zoom.
+-- Coexists with pmo_sync_events (conflict log).
+CREATE TABLE IF NOT EXISTS public.pmo_sync_mappings (
+    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id              TEXT        NOT NULL,
+    pmo_entity_type     TEXT        NOT NULL,
+    pmo_entity_id       TEXT        NOT NULL,
+    provider            TEXT        NOT NULL,
+    external_id         TEXT        NOT NULL,
+    external_url        TEXT,
+    last_sync_direction TEXT        NOT NULL,
+    last_sync_at        TIMESTAMPTZ NOT NULL,
+    sync_status         TEXT        NOT NULL DEFAULT 'OK',
+    conflict_data       JSONB,
+    metadata            JSONB,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_pmo_sync_mappings_entity_provider'
+    ) THEN
+        ALTER TABLE public.pmo_sync_mappings
+            ADD CONSTRAINT uq_pmo_sync_mappings_entity_provider
+            UNIQUE (pmo_entity_id, provider);
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_pmo_sync_mappings_provider ON public.pmo_sync_mappings (provider, external_id);
+CREATE INDEX IF NOT EXISTS idx_pmo_sync_mappings_org ON public.pmo_sync_mappings (org_id);

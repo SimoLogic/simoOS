@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 /**
  * ============================================================================
@@ -231,4 +231,139 @@ export async function deletePlaybookAction(orgId: string, playbookId: string) {
 
   await supabase.from("bp_playbooks").delete().eq("id", playbookId);
   revalidatePath("/business-plan/playbook-designer");
+}
+
+// ─── ROLES & PLAYBOOK METADATA ────────────────────────────────────────────────
+
+/**
+ * Fetch active Internal Roles from dim_role_title
+ */
+export async function getActiveRoleTitlesForPlaybookAction(orgId: string) {
+  if (!orgId) return [];
+  const { data, error } = await supabase
+    .from("dim_role_title")
+    .select("id, role_title")
+    .eq("tenant_id", orgId)
+    .eq("status", "Active")
+    .order("role_title", { ascending: true });
+
+  if (error) { console.error("[BP Action] getActiveRoleTitles:", error.message); return []; }
+  return data ?? [];
+}
+
+/**
+ * Fetch active Employees for Counteraction Assignment in Playbook Designer
+ */
+export async function getActiveEmployeesForPlaybookAction(orgId: string) {
+  if (!orgId) return [];
+  const { data, error } = await supabase
+    .from("dim_employee")
+    .select("eid, primer_nombre, primer_apellido, role_title")
+    .eq("tenant_id", orgId)
+    .eq("status", "Active")
+    .order("primer_apellido", { ascending: true });
+
+  if (error) { console.error("[BP Action] getActiveEmployees:", error.message); return []; }
+  return data ?? [];
+}
+
+/**
+ * Fetch all External Roles (Active/Inactive) for the settings panel.
+ * The sidebar component will filter by Active.
+ */
+export async function getActiveExternalRolesAction(orgId: string) {
+  if (!orgId) return [];
+  const { data, error } = await supabase
+    .from("dim_external_role")
+    .select("id, name, status, business_type, size, annual_volume, num_agents, notes")
+    .eq("org_id", orgId)
+    .order("name", { ascending: true });
+
+  if (error) { console.error("[BP Action] getActiveExternalRoles:", error.message); return []; }
+  return data ?? [];
+}
+
+export interface ExternalRoleInput {
+  name: string;
+  businessType?: string;
+  size?: 'Small' | 'Mid' | 'Large';
+  annualVolume?: string;
+  numAgents?: string;
+  notes?: string;
+}
+
+/**
+ * Create a new External Role
+ */
+export async function createExternalRoleAction(orgId: string, payload: ExternalRoleInput) {
+  if (!orgId || !payload.name) return { success: false, error: "Missing required fields" };
+  const { error } = await supabase
+    .from("dim_external_role")
+    .insert({
+      org_id: orgId,
+      name: payload.name,
+      business_type: payload.businessType || null,
+      size: payload.size || null,
+      annual_volume: payload.annualVolume || null,
+      num_agents: payload.numAgents || null,
+      notes: payload.notes || null,
+      status: "Active"
+    });
+  
+  if (error) {
+    if (error.code === '23505') return { success: false, error: "External role already exists" };
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
+
+/**
+ * Toggle External Role Status
+ */
+export async function toggleExternalRoleStatusAction(orgId: string, id: string, currentStatus: string) {
+  if (!orgId || !id) return { success: false, error: "Missing required fields" };
+  const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+  const { error } = await supabase
+    .from("dim_external_role")
+    .update({ status: newStatus })
+    .eq("id", id)
+    .eq("org_id", orgId);
+  
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * Fetch all PUBLISHED Playbooks with their Steps (for the Marketplace)
+ */
+export async function getPublishedPlaybooksAction(orgId: string) {
+  if (!orgId) return [];
+  const { data, error } = await supabase
+    .from("bp_playbooks")
+    .select(`
+      id, name, type, family, strategy, mission, expected_outcomes, status, created_at, global_owners,
+      bp_playbook_steps (
+        id, uid, step_num, name, type_of_activity, purpose, activity_description,
+        deliverable, deliverable_description, stakeholder, frequency, repetitions, freq_notes,
+        scheduler_value, supporting_task, counteraction_description, requested_to, sla, sla_description,
+        is_locked, is_repeatable
+      )
+    `)
+    .eq("tenant_id", orgId)
+    .eq("status", "PUBLISHED")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[BP Action] getPublishedPlaybooks:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Alias: Fetch a single playbook with all its steps by ID (Marketplace Preview).
+ * Delegates to getPlaybookDetailAction � no logic duplication.
+ */
+export async function getPlaybookByIdAction(playbookId: string, orgId: string) {
+  return getPlaybookDetailAction(playbookId, orgId);
 }

@@ -10,5 +10,5 @@ export default function MyPlanPage() {
 
 export const metadata = {
     title: "My Plan — PMO | SIMO Intellisense",
-    description: "Motor de proyectos PMO — gestión de tareas Playbook y personales",
+    description: "PMO project engine — management of Playbook and personal tasks",
 };

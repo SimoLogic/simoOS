@@ -11,12 +11,12 @@ export type SubModule = {
 
 export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     "business-plan": [
-        { id: "bp-assigner", label: "BP Assigner" },
+
         { id: "existing-accounts", label: "Existing Accounts" },
         { id: "new-business", label: "New Business" },
         { id: "playbooks", label: "Playbooks" },
         { id: "playbook-designer", label: "Playbook Designer" },
-        { id: "performance", label: "HR Metrics" },
+        { id: "performance", label: "SOP Designer" },
     ],
     growthify: [
         { id: "race-now", label: "Race Track LIVE" },

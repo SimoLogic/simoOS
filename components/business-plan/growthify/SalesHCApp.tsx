@@ -93,7 +93,7 @@ export const SalesHCApp: React.FC = () => {
                     tenant_id: currentTenant!.tenant_id,
                     employee_id: eid,
                     sales_role: emp?.historialLaboral.area || "Sales",
-                    target_dedication: `${emp?.historialLaboral.digito_dedicacion}%` || "100%",
+                    target_dedication: `${emp?.historialLaboral.dedicationPercentage}%` || "100%",
                     strategies: [],
                     approver1_name: "Jane Doe (Finance)",
                     approver1_role: "Finance",
@@ -280,7 +280,7 @@ export const SalesHCApp: React.FC = () => {
                                     return (
                                         <tr key={draft.employee_id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="p-4">
-                                                <div className="font-bold text-navy-blue text-sm">{empData?.maestro.primer_nombre} {empData?.maestro.primer_apellido}</div>
+                                                <div className="font-bold text-navy-blue text-sm">{empData?.maestro.firstName} {empData?.maestro.lastName}</div>
                                                 <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{empData?.eid} • {draft.sales_role}</div>
                                             </td>
 
@@ -519,9 +519,9 @@ export const SalesHCApp: React.FC = () => {
                                                     />
                                                 </td>
                                                 <td className="p-3 text-xs font-bold text-slate-500">{e.eid}</td>
-                                                <td className="p-3 text-sm font-bold text-navy-blue">{e.maestro.primer_nombre} {e.maestro.primer_apellido}</td>
-                                                <td className="p-3 text-xs text-slate-600">{e.historialLaboral.area} &gt; {e.historialLaboral.sub_area}</td>
-                                                <td className="p-3 text-xs text-slate-600 font-bold">{e.historialLaboral.digito_dedicacion}%</td>
+                                                <td className="p-3 text-sm font-bold text-navy-blue">{e.maestro.firstName} {e.maestro.lastName}</td>
+                                                <td className="p-3 text-xs text-slate-600">{e.historialLaboral.area} &gt; {e.historialLaboral.subArea}</td>
+                                                <td className="p-3 text-xs text-slate-600 font-bold">{e.historialLaboral.dedicationPercentage}%</td>
                                             </tr>
                                         );
                                     })}

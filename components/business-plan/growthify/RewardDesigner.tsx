@@ -491,8 +491,8 @@ export const RewardDesigner: React.FC = () => {
                                                 >
                                                     <option value="" className="text-navy-blue">-- Select Employee --</option>
                                                     {employees.map(e => (
-                                                        <option key={e.eid} value={`${e.maestro.primer_nombre} ${e.maestro.primer_apellido}`} className="text-navy-blue">
-                                                            {e.maestro.primer_nombre} {e.maestro.primer_apellido} - {e.historialLaboral.area}
+                                                        <option key={e.eid} value={`${e.maestro.firstName} ${e.maestro.lastName}`} className="text-navy-blue">
+                                                            {e.maestro.firstName} {e.maestro.lastName} - {e.historialLaboral.area}
                                                         </option>
                                                     ))}
                                                 </select>
@@ -507,8 +507,8 @@ export const RewardDesigner: React.FC = () => {
                                                 >
                                                     <option value="" className="text-navy-blue">-- Select Employee --</option>
                                                     {employees.map(e => (
-                                                        <option key={e.eid} value={`${e.maestro.primer_nombre} ${e.maestro.primer_apellido}`} className="text-navy-blue">
-                                                            {e.maestro.primer_nombre} {e.maestro.primer_apellido} - {e.historialLaboral.area}
+                                                        <option key={e.eid} value={`${e.maestro.firstName} ${e.maestro.lastName}`} className="text-navy-blue">
+                                                            {e.maestro.firstName} {e.maestro.lastName} - {e.historialLaboral.area}
                                                         </option>
                                                     ))}
                                                 </select>

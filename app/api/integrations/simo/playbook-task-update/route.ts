@@ -1,10 +1,10 @@
-// ⚠️ LEER ARCHITECTURE.md §9 (SIMO IS) antes de modificar
+// ⚠️ READ ARCHITECTURE.md §9 (SIMO IS) before modifying
 // POST /api/integrations/simo/playbook-task-update
-// Mirror Sync Protocol — Llave #4
+// Mirror Sync Protocol — Key #4
 //
-// REGLA: Solo actualiza campos del Playbook (title, description, dueDate, priority)
-// NUNCA: subtasks, comments, attachments, customFieldValues (propiedad del empleado)
-// Conflicto en 'status' → registra en SyncEvent, NO sobreescribe
+// RULE: Only update Playbook fields (title, description, dueDate, priority)
+// NEVER: subtasks, comments, attachments, customFieldValues (employee property)
+// Conflict in 'status' → log in SyncEvent, DO NOT overwrite
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyHmacSignature } from "@/lib/pmo/hmac";

@@ -59,9 +59,9 @@ export const PerformanceModule: React.FC = () => {
                     <Zap className="w-4 h-4 text-cobalt-blue" />
                     <span className="text-xs font-bold text-cobalt-blue uppercase tracking-widest">Business Plan</span>
                     <ChevronRight className="w-3 h-3 text-slate-300" />
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Performance</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">SOP Designer</span>
                 </div>
-                <h1 className="text-xl font-bold text-navy-blue">Performance Applications</h1>
+                <h1 className="text-xl font-bold text-navy-blue">SOP Applications</h1>
                 <p className="text-sm text-slate-500 mt-1">
                     Select an application to design, measure and improve your operational performance.
                 </p>

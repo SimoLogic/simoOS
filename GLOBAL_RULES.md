@@ -34,3 +34,13 @@ Este documento es la "Constitución Tecnológica" de Simo Intellisense. Todo age
 - Toda mutación de estado que afecte datos del usuario (nombres, estados, fechas, asignaciones) DEBE ser envuelta en el *Command Pattern*.
 - Se debe utilizar el middleware de `zundo` o una implementación propia en el Store para permitir un historial de al menos 50 acciones por sesión.
 - La UI debe ser capaz de detectar la combinación de teclas *Ctrl+Z / Cmd+Z* y ejecutar la función `undo()` de forma global, con un aviso sutil (Toast) que diga: 'Acción deshecha'. El redibujado de la UI debe ser instantáneo.
+
+## 7. Regla Maestra antes de Cualquier Acción
+- No propongas eliminar ni elimines campos de ninguna tabla existente, y si propones crear, debes evaluar si ya existe y preguntar al usuario si estarás duplicando con otro campo. El criterio para decidir qué campos conservar (por ende no eliminarlos) es simple: si un campo está siendo leído o escrito por algún componente activo del frontend de HR (HC Master, Job Description, Employee Intake, Approval Flow, Payroll & Benefits, HR Metrics, Payroll Changes), ese campo se conserva tal cual. Si un campo existe en la tabla pero ningún componente del frontend lo usa hoy, márcalo como candidato a deprecar pero NO lo elimines todavía — solo indícamelo en tu respuesta para que yo decida. Tu trabajo en este prompt es conectar y completar, no rediseñar.
+
+## 8. Sincronización Obligatoria (Frontend / BD)
+- Cada vez que hagas un cambio en el frontend, debes también ejecutar el SQL correspondiente en Supabase para que ambos queden sincronizados. Al final de cada tarea, confírmame explícitamente: (a) qué cambió en el código frontend, (b) qué SQL se ejecutó en Supabase, y (c) si la tabla afectada en Supabase refleja ahora el cambio. Si no puedes confirmar los tres puntos, detente y dímelo antes de continuar.
+
+## 9. Archivos de Diagnóstico
+- **REGLA PERMANENTE:** Nunca incluyas archivos temporales de diagnóstico (`tmp_*.js`, `query.sql`, `.tmp`) en commits. Antes de cada commit, verifica que solo se incluyan archivos de código de la aplicación. Si necesitas crear scripts temporales de diagnóstico, créalos en una carpeta `/tmp/` que ya esté en `.gitignore`.
+

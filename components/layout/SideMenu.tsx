@@ -14,8 +14,12 @@ import {
     LayoutGrid,
     CalendarDays,
     Zap,
+    BellRing,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSessionStore } from "@/lib/session-store";
+import { useMyQueueStore } from "@/lib/stores/my-queue-store";
+import { useEffect } from "react";
 
 /**
  * MODULE IDs — Literal as per Plan Maestro
@@ -31,7 +35,7 @@ export type ModuleId =
     | "ceo-playground";
 
 // PMO sub-modules
-export type PmoSubModuleId = "my-plan" | "my-work";
+export type PmoSubModuleId = "my-plan" | "my-work" | "my-queue";
 
 interface PmoSubModule {
     id: PmoSubModuleId;
@@ -43,6 +47,7 @@ interface PmoSubModule {
 const pmoSubModules: PmoSubModule[] = [
     { id: "my-plan", label: "My Plan", icon: CalendarDays, href: "/pmo/my-plan" },
     { id: "my-work", label: "My Work", icon: Briefcase, href: "/pmo/my-work" },
+    { id: "my-queue", label: "My Queue", icon: BellRing, href: "/pmo/my-queue" },
 ];
 
 
@@ -117,6 +122,15 @@ export const SideMenu: React.FC<SideMenuProps> = ({
     const [isExpanded, setIsExpanded] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
 
+    const { tenant_id, user_ide } = useSessionStore();
+    const { unreadCount, fetchUnreadCount, hasFetched } = useMyQueueStore();
+
+    useEffect(() => {
+        if (tenant_id && user_ide && !hasFetched) {
+            fetchUnreadCount(tenant_id, user_ide);
+        }
+    }, [tenant_id, user_ide, hasFetched, fetchUnreadCount]);
+
     // Expand on hover for snappy professional feel
     const handleMouseEnter = () => setIsExpanded(true);
     const handleMouseLeave = () => setIsExpanded(false);
@@ -179,8 +193,16 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                                     {module.label}
                                 </span>
 
-                                {/* Visual hint for PMO activity */}
-                                {isPmo && !isExpanded && isActive && (
+                                {/* Visual hint for PMO activity / Queue Badge */}
+                                {isPmo && unreadCount > 0 && (
+                                    <div className={cn(
+                                        "absolute top-0 right-0 rounded-full bg-[var(--action-red)] text-white flex items-center justify-center font-bold text-[9px] shadow-sm hover:scale-110 transition-transform",
+                                        isExpanded ? "w-4 h-4 -mt-1 -mr-1" : "w-3 h-3 -mt-0.5 -mr-0.5"
+                                    )}>
+                                        {isExpanded ? (unreadCount > 99 ? '99+' : unreadCount) : ''}
+                                    </div>
+                                )}
+                                {isPmo && unreadCount === 0 && !isExpanded && isActive && (
                                     <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--vibe-purple)] animate-pulse" />
                                 )}
                             </button>

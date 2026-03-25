@@ -21,6 +21,7 @@ import type { PmoTask, TaskStatus, TaskPriority } from "@/types/pmo.types";
 import { validateFieldValue } from "@/lib/pmo/field-engine";
 import { getRequiredSession } from "@/lib/pmo/auth-utils";
 import { sanitizeText } from "@/lib/pmo/sanitize";
+import { enqueueSfSync } from "@/lib/pmo/queue";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
@@ -41,6 +42,8 @@ const CreateTaskSchema = z.object({
   priority:    TaskPriorityEnum.optional(),
   dueDate:     z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
   assigneeId:  z.string().optional(),
+  linkedLeadId: z.string().optional(),
+  linkedOpportunityId: z.string().optional(),
 });
 
 const UpdateTaskSchema = z.object({
@@ -133,6 +136,17 @@ export async function createTaskAction(
       status:      validated.status as TaskStatus,
       priority:    validated.priority as TaskPriority | undefined,
     });
+
+    // ── SF-3: Enqueue Salesforce Sync if linked ──
+    if (validated.linkedLeadId || validated.linkedOpportunityId) {
+      await enqueueSfSync({
+        type: "TASK_CREATE",
+        orgId: session.orgId,
+        userId: session.userId,
+        pmoTaskId: task.id,
+      });
+    }
+
     return { success: true, data: task };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)
@@ -156,6 +170,34 @@ export async function updateTaskAction(
       status:      fields.status   as TaskStatus | undefined,
       priority:    fields.priority as TaskPriority | undefined,
     }, session.userId);
+
+    // ── SF-3: Enqueue Salesforce Sync Triggers ──
+    if (task.externalId) {
+      if (fields.status === "done" && task.isProtected) {
+        await enqueueSfSync({
+          type: "TASK_COMPLETE",
+          orgId: session.orgId,
+          userId: session.userId,
+          pmoTaskId: task.id,
+          sfTaskId: task.externalId,
+        });
+      } else if (fields.status || fields.title || fields.priority) {
+        await enqueueSfSync({
+          type: "TASK_UPDATE",
+          orgId: session.orgId,
+          userId: session.userId,
+          pmoTaskId: task.id,
+          sfTaskId: task.externalId,
+          changedFields: {
+            status: fields.status === "done" ? "Completed" : "In Progress",
+            subject: fields.title,
+            priority: fields.priority,
+            description: fields.description,
+          } as any,
+        });
+      }
+    }
+
     return { success: true, data: task };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)

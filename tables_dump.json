@@ -1,0 +1,1664 @@
+{
+  "dim_tenant": [
+    {
+      "name": "tcode",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "legal_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "dba_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "reporting_currency",
+      "type": "VARCHAR(3)"
+    },
+    {
+      "name": "status",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "hq_address",
+      "type": "JSONB"
+    },
+    {
+      "name": "pocs",
+      "type": "JSONB"
+    },
+    {
+      "name": "account_managers",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_employee": [
+    {
+      "name": "eid",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "numero_identificacion",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "tipo_documento_id",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "primer_nombre",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "otros_nombres",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "primer_apellido",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "segundo_apellido",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "fecha_nacimiento",
+      "type": "DATE"
+    },
+    {
+      "name": "genero",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "email_personal",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "municipio_dane",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "direccion_residencia",
+      "type": "TEXT"
+    },
+    {
+      "name": "foto_url",
+      "type": "TEXT"
+    },
+    {
+      "name": "status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "email_corporativo",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "fecha_inicio",
+      "type": "DATE"
+    },
+    {
+      "name": "fecha_fin",
+      "type": "DATE"
+    },
+    {
+      "name": "tipo_contrato",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "tipo_salario",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "salario_base",
+      "type": "NUMERIC(18,2)"
+    },
+    {
+      "name": "procedimiento_renta",
+      "type": "INTEGER"
+    },
+    {
+      "name": "area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "sub_area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "centro_costo",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "nombre_centro_costo",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "sub_centro_costo",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "nombre_sub_centro_costo",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "branch",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "cliente",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "project",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "digito_dedicacion",
+      "type": "INTEGER"
+    },
+    {
+      "name": "direct_leader",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "afiliaciones",
+      "type": "JSONB"
+    },
+    {
+      "name": "sst",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_strategies": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "purpose",
+      "type": "TEXT"
+    },
+    {
+      "name": "is_active",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_rewards": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "strategy_id",
+      "type": "UUID"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "override_closed_loan_pct",
+      "type": "NUMERIC(5,2)"
+    },
+    {
+      "name": "fixed_bonus",
+      "type": "NUMERIC(18,2)"
+    },
+    {
+      "name": "units_won_tier",
+      "type": "INTEGER"
+    },
+    {
+      "name": "recruitment_override_pct",
+      "type": "NUMERIC(5,2)"
+    },
+    {
+      "name": "approver1_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "approver1_role",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "approver1_status",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "approver2_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "approver2_role",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "approver2_status",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "drivers",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_requisitions": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "target_id",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "module",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "type",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "status",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_assignments": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "employee_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "strategies",
+      "type": "JSONB"
+    },
+    {
+      "name": "approver1_status",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "approver2_status",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_playbooks": [
+    {
+      "name": "id",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "strategy_id",
+      "type": "UUID"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "category",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "nodes",
+      "type": "JSONB"
+    },
+    {
+      "name": "edges",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "growthify_seller_activity": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "employee_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "playbook_id",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "step_id",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "action_type",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "value",
+      "type": "NUMERIC(18,2)"
+    },
+    {
+      "name": "notes",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_local_legal_entity": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "entity_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "local_tax_id",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "local_ein",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "entity_country",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "is_active",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_branch": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "branch_code",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "branch_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "branch_manager_eid",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "states_licensed",
+      "type": "TEXT"
+    },
+    {
+      "name": "field_office_type",
+      "type": "field_office_type"
+    },
+    {
+      "name": "office_address",
+      "type": "TEXT"
+    },
+    {
+      "name": "has_lease",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "lease_data",
+      "type": "JSONB"
+    },
+    {
+      "name": "hierarchy_level",
+      "type": "branch_hierarchy_level"
+    },
+    {
+      "name": "parent_branch_id",
+      "type": "UUID"
+    },
+    {
+      "name": "is_active",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_job_title": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "title",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "sub_area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "cost_center",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "sub_cost_center",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "direct_supervisor",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "requester_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "approver1_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "approver1_status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "approver2_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "approver2_status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "jdf_data",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_fx_rates": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "effective_date",
+      "type": "DATE"
+    },
+    {
+      "name": "exchange_rate",
+      "type": "NUMERIC(18,4)"
+    },
+    {
+      "name": "currency_from",
+      "type": "VARCHAR(3)"
+    },
+    {
+      "name": "currency_to",
+      "type": "VARCHAR(3)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "employee_approvers": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "eid",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbooks": [
+    {
+      "name": "id",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "category",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "tasks",
+      "type": "JSONB"
+    },
+    {
+      "name": "kpis",
+      "type": "JSONB"
+    },
+    {
+      "name": "escalation_matrix",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "bp_workflow": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "eid",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "supervisors1",
+      "type": "JSONB"
+    },
+    {
+      "name": "supervisors2",
+      "type": "JSONB"
+    },
+    {
+      "name": "supervisors3",
+      "type": "JSONB"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "process_designs": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "area",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "status",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "rows",
+      "type": "JSONB"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_proforma": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "proforma_code",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "client_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "currency",
+      "type": "VARCHAR(3)"
+    },
+    {
+      "name": "total_amount",
+      "type": "NUMERIC(18,2)"
+    },
+    {
+      "name": "line_items",
+      "type": "JSONB"
+    },
+    {
+      "name": "valid_from",
+      "type": "DATE"
+    },
+    {
+      "name": "valid_until",
+      "type": "DATE"
+    },
+    {
+      "name": "created_by",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_continent": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(100)"
+    }
+  ],
+  "dim_country": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "continent_id",
+      "type": "UUID"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "currency_code",
+      "type": "VARCHAR(3)"
+    }
+  ],
+  "dim_city": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "country_id",
+      "type": "UUID"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(100)"
+    }
+  ],
+  "dim_playbook_setup_designer": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "employee_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbook_external_role": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "role_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbook_activity_category": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "category_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbook_activity_dictionary": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "category_id",
+      "type": "UUID"
+    },
+    {
+      "name": "activity_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "mnemonic_id",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "purpose",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbook_data_source": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "source_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "dim_playbook": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "author_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "version",
+      "type": "INTEGER"
+    },
+    {
+      "name": "parent_playbook_id",
+      "type": "UUID"
+    },
+    {
+      "name": "strategy_id",
+      "type": "UUID"
+    },
+    {
+      "name": "playbook_type",
+      "type": "playbook_category"
+    },
+    {
+      "name": "purpose",
+      "type": "TEXT"
+    },
+    {
+      "name": "approver_1_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "approver_2_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "status",
+      "type": "playbook_status"
+    },
+    {
+      "name": "is_active",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "fact_playbook_step": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "playbook_id",
+      "type": "UUID"
+    },
+    {
+      "name": "step_number",
+      "type": "INTEGER"
+    },
+    {
+      "name": "dictionary_activity_id",
+      "type": "UUID"
+    },
+    {
+      "name": "day_offset",
+      "type": "INTEGER"
+    },
+    {
+      "name": "owner_type",
+      "type": "playbook_owner_type"
+    },
+    {
+      "name": "owner_job_title_id",
+      "type": "UUID"
+    },
+    {
+      "name": "owner_external_role_id",
+      "type": "UUID"
+    },
+    {
+      "name": "deliverable_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "deliverable_description",
+      "type": "TEXT"
+    },
+    {
+      "name": "stakeholder_type",
+      "type": "playbook_owner_type"
+    },
+    {
+      "name": "stakeholder_job_title_id",
+      "type": "UUID"
+    },
+    {
+      "name": "stakeholder_external_role_id",
+      "type": "UUID"
+    },
+    {
+      "name": "iterations",
+      "type": "INTEGER"
+    },
+    {
+      "name": "frequency",
+      "type": "playbook_frequency"
+    },
+    {
+      "name": "source_of_truth_id",
+      "type": "UUID"
+    },
+    {
+      "name": "contra_playbook_owner_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "fact_playbook_sla": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "tenant_id",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "playbook_id",
+      "type": "UUID"
+    },
+    {
+      "name": "kpi_name",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "kpi_mnemonic_id",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "data_source_id",
+      "type": "UUID"
+    },
+    {
+      "name": "frequency",
+      "type": "playbook_frequency"
+    },
+    {
+      "name": "formula_definition",
+      "type": "TEXT"
+    },
+    {
+      "name": "threshold_operator",
+      "type": "playbook_threshold_op"
+    },
+    {
+      "name": "threshold_value",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_workspaces": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "name",
+      "type": "TEXT"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_boards": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "workspace_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "title",
+      "type": "TEXT"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "simo_playbook_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "is_playbook_board",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "last_synced_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "active_view",
+      "type": "TEXT"
+    },
+    {
+      "name": "is_view_locked",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_columns": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "board_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "title",
+      "type": "TEXT"
+    },
+    {
+      "name": "type",
+      "type": "TEXT"
+    },
+    {
+      "name": "position",
+      "type": "INTEGER"
+    },
+    {
+      "name": "width_px",
+      "type": "INTEGER"
+    },
+    {
+      "name": "settings",
+      "type": "JSONB"
+    }
+  ],
+  "pmo_groups": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "board_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "title",
+      "type": "TEXT"
+    },
+    {
+      "name": "color",
+      "type": "TEXT"
+    },
+    {
+      "name": "position",
+      "type": "INTEGER"
+    },
+    {
+      "name": "is_collapsed",
+      "type": "BOOLEAN"
+    }
+  ],
+  "pmo_tasks": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "board_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "group_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "title",
+      "type": "TEXT"
+    },
+    {
+      "name": "description",
+      "type": "TEXT"
+    },
+    {
+      "name": "status",
+      "type": "TEXT"
+    },
+    {
+      "name": "priority",
+      "type": "TEXT"
+    },
+    {
+      "name": "due_date",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "assignee_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "is_protected",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "source_playbook_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "source_playbook_task_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "occurrence_index",
+      "type": "INTEGER"
+    },
+    {
+      "name": "item_height",
+      "type": "TEXT"
+    },
+    {
+      "name": "custom_field_values",
+      "type": "JSONB"
+    },
+    {
+      "name": "position",
+      "type": "INTEGER"
+    },
+    {
+      "name": "time_spent_minutes",
+      "type": "INTEGER"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "completed_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_subtasks": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "task_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "title",
+      "type": "TEXT"
+    },
+    {
+      "name": "is_completed",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_comments": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "task_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "author_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "content",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "updated_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_sync_events": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "task_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "synced_fields",
+      "type": "TEXT"
+    },
+    {
+      "name": "conflicts_found",
+      "type": "TEXT"
+    },
+    {
+      "name": "resolved_by",
+      "type": "TEXT"
+    },
+    {
+      "name": "idempotency_key",
+      "type": "TEXT"
+    },
+    {
+      "name": "timestamp_at",
+      "type": "TIMESTAMPTZ"
+    }
+  ],
+  "pmo_security_events": [
+    {
+      "name": "id",
+      "type": "TEXT"
+    },
+    {
+      "name": "org_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "user_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "task_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "attempted_at",
+      "type": "TIMESTAMPTZ"
+    },
+    {
+      "name": "ip_address",
+      "type": "TEXT"
+    },
+    {
+      "name": "vector",
+      "type": "TEXT"
+    },
+    {
+      "name": "details",
+      "type": "JSONB"
+    }
+  ],
+  "pmo_activity_logs": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "org_id",
+      "type": "UUID"
+    },
+    {
+      "name": "task_id",
+      "type": "UUID"
+    },
+    {
+      "name": "user_id",
+      "type": "UUID"
+    },
+    {
+      "name": "action_type",
+      "type": "TEXT"
+    },
+    {
+      "name": "old_value",
+      "type": "TEXT"
+    },
+    {
+      "name": "new_value",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMP"
+    }
+  ],
+  "pmo_notifications": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "org_id",
+      "type": "UUID"
+    },
+    {
+      "name": "user_id",
+      "type": "UUID"
+    },
+    {
+      "name": "title",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "message",
+      "type": "TEXT"
+    },
+    {
+      "name": "type",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "related_entity_id",
+      "type": "UUID"
+    },
+    {
+      "name": "related_entity_type",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "read",
+      "type": "BOOLEAN"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMP"
+    }
+  ],
+  "pmo_attachments": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "org_id",
+      "type": "UUID"
+    },
+    {
+      "name": "task_id",
+      "type": "UUID"
+    },
+    {
+      "name": "uploader_id",
+      "type": "UUID"
+    },
+    {
+      "name": "file_name",
+      "type": "VARCHAR(255)"
+    },
+    {
+      "name": "file_size_bytes",
+      "type": "BIGINT"
+    },
+    {
+      "name": "file_type",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "storage_path",
+      "type": "TEXT"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMP"
+    }
+  ],
+  "pmo_board_shares": [
+    {
+      "name": "id",
+      "type": "UUID"
+    },
+    {
+      "name": "org_id",
+      "type": "UUID"
+    },
+    {
+      "name": "board_id",
+      "type": "UUID"
+    },
+    {
+      "name": "created_by",
+      "type": "UUID"
+    },
+    {
+      "name": "token",
+      "type": "VARCHAR(64)"
+    },
+    {
+      "name": "expires_at",
+      "type": "TIMESTAMP"
+    },
+    {
+      "name": "created_at",
+      "type": "TIMESTAMP"
+    }
+  ]
+}
