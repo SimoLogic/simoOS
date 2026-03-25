@@ -41,7 +41,7 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
               <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-700">{playbook.type}</span>
             </div>
             <h2 className="text-3xl font-black text-navy-blue tracking-tight leading-none mb-2">{playbook.name}</h2>
-            <p className="text-sm font-medium text-slate-500 max-w-lg">{playbook.mission || 'No mission available.'}</p>
+            <p className="text-sm font-medium text-slate-500 max-w-lg">{playbook.purpose || 'No mission available.'}</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-colors shadow-sm bg-slate-100">
             <X size={20} />

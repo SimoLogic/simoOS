@@ -58,7 +58,7 @@ export async function getPublishedPlaybooksAction(orgId: string) {
 
   const { data, error } = await supabase
     .from("bp_playbooks")
-    .select("*, bp_playbook_steps(id, stakeholder, requested_to, scheduler_value)")
+    .select("*, bp_playbook_steps(id, name, type_of_activity, purpose, activity_description, deliverable, deliverable_description, stakeholder, requested_to, scheduler_value, frequency, repetitions, sla, sla_description)")
     .eq("org_id", orgId)
     .eq("status", "PUBLISHED")
     .order("updated_at", { ascending: false });

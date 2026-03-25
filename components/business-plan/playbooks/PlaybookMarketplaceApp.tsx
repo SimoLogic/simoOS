@@ -42,7 +42,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   // Derived filtered results
   const filteredPlaybooks = playbooks.filter((pb) => {
     const term = search.toLowerCase();
-    const matchSearch = pb.name?.toLowerCase().includes(term) || pb.mission?.toLowerCase().includes(term);
+    const matchSearch = pb.name?.toLowerCase().includes(term) || pb.purpose?.toLowerCase().includes(term);
     const matchType = typeFilter ? pb.type === typeFilter : true;
     const matchFamily = familyFilter ? pb.family === familyFilter : true;
     const matchStrategy = strategyFilter ? pb.strategy === strategyFilter : true;
@@ -148,7 +148,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                 </h3>
                 
                 <p className="text-xs text-slate-500 mb-6 line-clamp-3 font-medium flex-1">
-                  {pb.mission || "No operational mission defined for this playbook."}
+                  {pb.purpose || "No operational mission defined for this playbook."}
                 </p>
 
                 <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-auto">
