@@ -220,7 +220,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onHomeClick }) => {
                         <Home className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-lg font-bold tracking-widest text-white">
-                        H-OP-SY
+                        HOPSY
                     </span>
                 </button>
 
