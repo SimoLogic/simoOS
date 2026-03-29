@@ -65,8 +65,8 @@ const COLUMNS: ColumnDef[] = [
     { key: "direct_leader_id", label: "Leader EID", width: "w-32", group: "Professional" },
     { key: "historialLaboral.contractType", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
     { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
-    { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
-    { key: "historialLaboral.role_title", label: "Role Title", width: "w-44", group: "Professional" },
+    { key: "historialLaboral.jobTitleName", label: "Job Title", locked: true, width: "w-44", group: "Professional" },
+    { key: "historialLaboral.roleTitleName", label: "Role Title", locked: true, width: "w-44", group: "Professional" },
 
     // Benefits
     { key: "afiliaciones.epsName", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },

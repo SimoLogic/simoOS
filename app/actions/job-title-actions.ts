@@ -2,9 +2,9 @@
 
 import { supabase } from "@/lib/database";
 import { sanitizeStr, sanitizeOptStr } from "@/lib/utils/sanitizers";
-import type {
-    JobTitle, JobTitleRef, ApprovalDecision, JobDescriptionData,
-    RoleTitle, RoleTitleRef,
+import {
+    type JobTitle, type JobTitleRef, type ApprovalDecision, type JobDescriptionData,
+    type RoleTitle, type RoleTitleRef, parseJdfData
 } from "@/lib/job-title-types";
 
 // ─── Helper: map raw DB row → RoleTitleRef ────────────────────────────────────
@@ -33,7 +33,7 @@ const mapRow = (row: any): JobTitle => ({
     approver1_status: row.approver1_status,
     approver2_id: row.approver2_id ?? "",
     approver2_status: row.approver2_status,
-    jdf_data: (row.jdf_data as JobDescriptionData) ?? ({} as JobDescriptionData),
+    jdf_data: parseJdfData(row.jdf_data),
     role_titles: Array.isArray(row.dim_role_title)
         ? row.dim_role_title.filter((rt: any) => rt.status === "Active").map(mapRoleTitleRef)
         : [],
@@ -326,7 +326,7 @@ export async function duplicateJobTitleAction(
             requester_id: original.requester_id ?? "",
             approver1_id: original.approver1_id ?? "",
             approver2_id: original.approver2_id ?? "",
-            jdf_data: original.jdf_data ?? {},
+            jdf_data: parseJdfData(original.jdf_data),
             role_titles: Array.isArray(original.dim_role_title)
                 ? original.dim_role_title.map((rt: any) => ({
                     role_title: rt.role_title,

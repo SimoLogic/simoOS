@@ -41,8 +41,8 @@ const GanttView: React.FC<GanttViewProps> = ({
 
         // Estilo de columnas
         gantt.config.columns = [
-            { name: "text", label: "Tarea", tree: true, width: "*" },
-            { name: "start_date", label: "Inicio", align: "center", width: 80 },
+            { name: "text", label: "Task", tree: true, width: "*" },
+            { name: "start_date", label: "Start", align: "center", width: 80 },
             { name: "duration", label: "Días", align: "center", width: 60 },
         ];
 
@@ -69,7 +69,7 @@ const GanttView: React.FC<GanttViewProps> = ({
             if (task.isProtected || task.sourcePlaybookId) {
                 return `<div class="p-2">
                           <b class="text-vibe-purple">${task.text}</b><br/>
-                          <span class="text-xs text-gray-500 italic">Tarea gestionada por Simo Intellisense</span>
+                          <span class="text-xs text-gray-500 italic">Task managed by Simo Intellisense</span>
                         </div>`;
             }
             return `<b>${task.text}</b><br/>Duración: ${task.duration} días`;

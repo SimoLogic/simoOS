@@ -215,7 +215,7 @@ const TaskSection: React.FC<{ title: string, color: string, borderColor: string,
                                 {task.priority ? <PriorityBadge priority={task.priority} showLabel /> : <span className="text-gray-400 text-xs">Sin prioridad</span>}
                             </div>
                             <div className={`w-[100px] text-right text-xs font-semibold ${isCriticalSLA ? 'text-action-red' : 'text-gray-500'}`}>
-                                {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Sin fecha'}
+                                {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}
                             </div>
                         </div>
                     </div>

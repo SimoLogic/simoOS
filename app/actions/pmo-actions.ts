@@ -241,7 +241,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
               org_id: orgId,
               user_id: supportAssigneeEid, // EID
               type: "APPROVAL",
-              title: "Tienes una requisición de soporte pendiente",
+              title: "You have a pending support requisition",
               message: `Requisición para el playbook ${playbook.name}`,
               action_url: "/pmo/my-queue",
               is_read: false

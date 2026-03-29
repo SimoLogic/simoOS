@@ -72,7 +72,7 @@ export function DashboardEngine({ boardId, orgId, isReadOnly }: DashboardEngineP
                    style={{ width: `${metrics.burnRate}%` }}
                 />
              </div>
-             <p className="text-sm text-gray-400 mt-1 font-medium">Completado {metrics.completedTasks} de {metrics.totalTasks} tareas.</p>
+             <p className="text-sm text-gray-400 mt-1 font-medium">Completed {metrics.completedTasks} of {metrics.totalTasks} tasks.</p>
           </div>
           
           <div className="flex items-center gap-6 border-l border-gray-100 pl-8 shrink-0">

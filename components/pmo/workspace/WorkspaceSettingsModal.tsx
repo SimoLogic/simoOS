@@ -116,7 +116,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
              onClick={onClose}
              className="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
            >
-             Cancelar
+             Cancel
            </button>
            <button 
              disabled={loading}

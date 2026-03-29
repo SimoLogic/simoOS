@@ -67,7 +67,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
                 onClick={onNewGroupClick}
                 className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors shadow-sm"
               >
-                 + Nuevo Grupo
+                 + New Group
               </button>
 
               <button 
@@ -91,7 +91,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
                 onClick={onNewTaskClick}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-vibe-blue rounded hover:bg-blue-600 transition-colors shadow-sm"
               >
-                 <Plus className="w-4 h-4" /> Nueva Tarea
+                 <Plus className="w-4 h-4" /> New Task
               </button>
             </>
           )}
@@ -123,7 +123,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
               onClick={() => usePmoStore.setState({ activeView: "dashboard" })}
               className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'dashboard' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}
            >
-              Salud del Proyecto
+              Project Health
            </button>
         </div>
 
@@ -134,7 +134,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
                onChange={(e) => setFilterStatus(e.target.value || null)}
                className="text-sm border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-vibe-blue outline-none"
             >
-               <option value="">Cualquier Estado</option>
+               <option value="">Any Status</option>
                <option value="not_started">No Iniciado</option>
                <option value="in_progress">Trabajando</option>
                <option value="done">Listo</option>

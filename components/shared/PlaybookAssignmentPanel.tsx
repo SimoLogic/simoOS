@@ -233,7 +233,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
               <ChevronRight size={12} className="text-blue-300" />
               <StepBadge active={pmoStep === 1} done={pmoStep > 1} label="2. Playbook" />
               <ChevronRight size={12} className="text-blue-300" />
-              <StepBadge active={pmoStep === 2} done={false} label="3. Fecha" />
+              <StepBadge active={pmoStep === 2} done={false} label="3. Date" />
             </div>
           )}
         </div>
@@ -251,7 +251,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Buscar por nombre o EID..."
+                    placeholder="Search by name or EID..."
                     value={employeeSearch}
                     onChange={(e) => setEmployeeSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
@@ -321,7 +321,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
               <SectionHeader icon={<Users size={14} />} title="Paso 1 — Selecciona Empleados" />
               <div className="px-6 pb-4">
                 <p className="text-xs text-slate-500 mb-3 font-medium">
-                  Selecciona uno o más empleados. El siguiente paso filtrará los playbooks compatibles con sus roles.
+                  Select one or more employees. The next step will filter compatible playbooks based on their roles.
                 </p>
                 {loadingPlaybooks ? (
                   <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-slate-300" /></div>
@@ -331,7 +331,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Buscar empleado..."
+                        placeholder="Search employee..."
                         value={employeeSearch}
                         onChange={(e) => setEmployeeSearch(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all"
@@ -345,7 +345,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                   onClick={() => setPmoStep(1)}
                   className="mt-4 w-full py-2.5 bg-[#002B5B] disabled:opacity-40 hover:bg-blue-900 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2"
                 >
-                  Siguiente — Seleccionar Playbook <ChevronRight size={14} />
+                  Next — Select Playbook <ChevronRight size={14} />
                 </button>
               </div>
             </>
@@ -360,7 +360,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Buscar playbook..."
+                    placeholder="Search playbook..."
                     value={playbookSearch}
                     onChange={(e) => setPlaybookSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all"
@@ -408,7 +408,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                     onClick={() => setPmoStep(2)}
                     className="flex-1 py-2.5 bg-[#002B5B] disabled:opacity-40 hover:bg-blue-900 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2"
                   >
-                    Siguiente <ChevronRight size={14} />
+                    Next <ChevronRight size={14} />
                   </button>
                 </div>
               </div>
@@ -464,7 +464,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           )}
           {!canConfirm && !confirmed && (
             <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
-              Selecciona al menos un empleado y una fecha de inicio.
+              Select at least one employee and a start date.
             </p>
           )}
         </div>
@@ -494,11 +494,11 @@ const DateSection: React.FC<DateSectionProps> = ({
   startDate, onDateChange, startDateObj, keyDates, playbook,
 }) => (
   <>
-    <SectionHeader icon={<CalendarDays size={14} />} title="Sección B — Fecha de Inicio" />
+    <SectionHeader icon={<CalendarDays size={14} />} title="Section B — Start Date" />
     <div className="px-6 py-4 space-y-4">
       <div>
         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-          Fecha de inicio deseada
+          Desired start date
         </label>
         <input
           type="date"
@@ -555,13 +555,13 @@ const AllEmployeesList: React.FC<{
 }> = ({ orgId: _orgId, search, selectedEids, onToggle }) => {
   // In employee-first mode, we use a placeholder until a playbook is selected.
   // This slot is intentionally left for future integration with an HR-wide employee list action.
-  const mockNote = "En modo PMO, los empleados se cargan desde dim_employee al seleccionar el playbook en el paso 2.";
+  const mockNote = "In PMO mode, employees are loaded from dim_employee when selecting the playbook in step 2.";
 
   return (
     <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center">
       <Users size={20} className="mx-auto text-amber-400 mb-2" />
       <p className="text-xs text-amber-700 font-medium">{mockNote}</p>
-      <p className="text-[10px] text-amber-500 mt-1">Buscar: <strong>{search || "—"}</strong></p>
+      <p className="text-[10px] text-amber-500 mt-1">Search: <strong>{search || "—"}</strong></p>
       <p className="text-[10px] text-amber-500">Seleccionados: <strong>{selectedEids.size}</strong></p>
     </div>
   );

@@ -264,9 +264,9 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                  }}
                />
             </div>
-            <div className="w-80 px-4 flex items-center shrink-0 border-r border-[var(--vibe-border)] h-full">Tarea</div>
+            <div className="w-80 px-4 flex items-center shrink-0 border-r border-[var(--vibe-border)] h-full">Task</div>
             <div className="w-40 px-4 flex items-center shrink-0 justify-center border-r border-[var(--vibe-border)] h-full">Responsable</div>
-            <div className="w-32 px-4 flex items-center shrink-0 justify-center border-r border-[var(--vibe-border)] h-full">Estado</div>
+            <div className="w-32 px-4 flex items-center shrink-0 justify-center border-r border-[var(--vibe-border)] h-full">Status</div>
             <div className="flex-1 min-w-[200px] h-full"></div>
           </div>
 
