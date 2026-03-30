@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "HOPSY — HOMESI Operating System",
+    title: "HOPSY - HOMESI Operating System",
     description: "Business Operating System for Mortgage Professionals",
 };
 
