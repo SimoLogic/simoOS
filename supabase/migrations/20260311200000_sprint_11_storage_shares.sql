@@ -3,10 +3,10 @@
 
 -- ─── 1. SECURE ATTACHMENTS TABLE ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.pmo_attachments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL, 
-    task_id UUID NOT NULL REFERENCES public.pmo_tasks(id) ON DELETE CASCADE,
-    uploader_id UUID NOT NULL,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    org_id TEXT NOT NULL, 
+    task_id TEXT NOT NULL REFERENCES public.pmo_tasks(id) ON DELETE CASCADE,
+    uploader_id TEXT NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_size_bytes BIGINT NOT NULL,
     file_type VARCHAR(100) NOT NULL,
@@ -19,21 +19,21 @@ CREATE INDEX IF NOT EXISTS pmo_attachments_task_idx ON public.pmo_attachments (t
 ALTER TABLE public.pmo_attachments ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY select_org_attachments ON public.pmo_attachments
-    FOR SELECT USING (org_id = (SELECT org_id FROM users WHERE id = auth.uid()));
+    FOR SELECT USING (org_id = (SELECT org_id FROM users WHERE id = auth.uid()::text));
 
 CREATE POLICY insert_org_attachments ON public.pmo_attachments
-    FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM users WHERE id = auth.uid()));
+    FOR INSERT WITH CHECK (org_id = (SELECT org_id FROM users WHERE id = auth.uid()::text));
 
 CREATE POLICY delete_own_attachments ON public.pmo_attachments
-    FOR DELETE USING (uploader_id = auth.uid());
+    FOR DELETE USING (uploader_id = auth.uid()::text);
 
 
 -- ─── 2. PUBLIC BOARD SHARES ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.pmo_board_shares (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL,
-    board_id UUID NOT NULL REFERENCES public.pmo_boards(id) ON DELETE CASCADE,
-    created_by UUID NOT NULL,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    org_id TEXT NOT NULL,
+    board_id TEXT NOT NULL REFERENCES public.pmo_boards(id) ON DELETE CASCADE,
+    created_by TEXT NOT NULL,
     token VARCHAR(64) UNIQUE NOT NULL, -- Secure random string
     expires_at TIMESTAMP WITH TIME ZONE, -- Null meaning never expires
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -43,7 +43,7 @@ ALTER TABLE public.pmo_board_shares ENABLE ROW LEVEL SECURITY;
 
 -- Anyone within the org can create/see shares for their boards
 CREATE POLICY all_org_shares ON public.pmo_board_shares
-    FOR ALL USING (org_id = (SELECT org_id FROM users WHERE id = auth.uid()));
+    FOR ALL USING (org_id = (SELECT org_id FROM users WHERE id = auth.uid()::text));
 
 -- Unauthenticated (Public) Access Rule: 
 -- Public users MUST NOT be able to list all shares. They can only access via Edge API using the exact string token.

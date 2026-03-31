@@ -34,12 +34,24 @@ export async function getEligibleEmployeesForPlaybookAction(
   const roleTitles = Array.from(roleTitlesSet);
   if (!roleTitles.length) return [];
 
+  // 1. Resolve role titles to their official TEXT IDs in dim_role_title
+  const { data: roleTitleData, error: roleErr } = await supabase
+    .from("dim_role_title")
+    .select("id")
+    .eq("tenant_id", orgId)
+    .in("role_title", roleTitles)
+    .eq("status", "Active");
+
+  if (roleErr || !roleTitleData?.length) return [];
+  const allowedRoleIds = roleTitleData.map(rt => rt.id);
+
+  // 2. Filter employee strictly by their allocated role_title_id resolving cross-module
   const { data: employees, error: empErr } = await supabase
     .from("dim_employee")
-    .select("eid, primer_nombre, primer_apellido, role_title, assigned_branch_code")
+    .select("eid, primer_nombre, primer_apellido, role_title, role_title_id, assigned_branch_code")
     .eq("tenant_id", orgId)
     .eq("status", "Active")
-    .in("role_title", roleTitles)
+    .in("role_title_id", allowedRoleIds)
     .order("primer_apellido", { ascending: true });
 
   if (empErr) {
