@@ -708,26 +708,102 @@ model EmployeeApprover {
 }
 
 model PmoBoard {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @map("org_id")
-  name      String
-  type      String   @default("personal")
-  ownerId   String?  @map("owner_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  workspaceId      String   @map("workspace_id")
+  name             String?
+  title            String?
+  description      String?
+  type             String   @default("personal")
+  ownerId          String?  @map("owner_id")
+  simoPlaybookId   String?  @map("simo_playbook_id")
+  isPlaybookBoard  Boolean  @default(false) @map("is_playbook_board")
+  lastSyncedAt     DateTime? @map("last_synced_at")
+  activeView       String   @default("grid") @map("active_view")
+  isViewLocked     Boolean  @default(false) @map("is_view_locked")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([orgId])
   @@map("pmo_boards")
 }
 
 model PmoWorkspace {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgId     String   @map("org_id")
-  name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([orgId])
   @@map("pmo_workspaces")
+}
+
+model PmoGroup {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  boardId     String   @map("board_id")
+  title       String
+  color       String   @default("#6161FF")
+  position    Int      @default(0)
+  isCollapsed Boolean  @default(false) @map("is_collapsed")
+
+  @@index([boardId])
+  @@map("pmo_groups")
+}
+
+model PmoColumn {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  boardId   String   @map("board_id")
+  title     String
+  type      String   @default("text")
+  position  Int      @default(0)
+  widthPx   Int      @default(200) @map("width_px")
+  settings  Json?
+
+  @@index([boardId])
+  @@map("pmo_columns")
+}
+
+model PmoSubtask {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  taskId      String   @map("task_id")
+  title       String
+  isCompleted Boolean  @default(false) @map("is_completed")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@map("pmo_subtasks")
+}
+
+model PmoComment {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  taskId    String   @map("task_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([taskId])
+  @@map("pmo_comments")
+}
+
+model PmoSyncEvent {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  taskId          String   @map("task_id")
+  syncedFields    String[] @map("synced_fields")
+  conflictsFound  String[] @map("conflicts_found")
+  resolvedBy      String?  @map("resolved_by")
+  idempotencyKey  String   @unique @map("idempotency_key")
+  timestampAt     DateTime @default(now()) @map("timestamp_at")
+
+  @@index([taskId])
+  @@index([orgId])
+  @@map("pmo_sync_events")
 }
 
