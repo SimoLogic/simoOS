@@ -57,16 +57,19 @@ const COLUMNS: ColumnDef[] = [
 
     // Professional
     { key: "status", label: "Status", width: "w-32", type: "select", options: [{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }, { value: "On Leave", label: "On Leave" }, { value: "Terminated", label: "Terminated" }], badge: true, group: "Professional" },
-    { key: "manager_branches", label: "Branches", locked: true, width: "w-40", group: "Professional" },
+    { key: "manager_branches", label: "Manager Of Branches", locked: true, width: "w-40", group: "Professional" },
     { key: "historialLaboral.area", label: "Area", width: "w-36", type: "select", options: AREAS_EMPRESA.map(a => ({ value: a, label: a })), group: "Professional" },
     { key: "historialLaboral.subArea", label: "Sub-Area", width: "w-36", group: "Professional" },
+    { key: "historialLaboral.legalEntity", label: "Local Entity", width: "w-32", group: "Professional" },
     { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
     { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
     { key: "direct_leader_id", label: "Leader EID", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.contractType", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
-    { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
     { key: "historialLaboral.jobTitleName", label: "Job Title", locked: true, width: "w-44", group: "Professional" },
     { key: "historialLaboral.roleTitleName", label: "Role Title", locked: true, width: "w-44", group: "Professional" },
+    { key: "historialLaboral.contractType", label: "Contract", width: "w-40", type: "select", options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value, label: t.label })), group: "Professional" },
+    { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
+    { key: "historialLaboral.branch", label: "Branch", width: "w-32", group: "Professional" },
+    { key: "historialLaboral.client", label: "Client", width: "w-32", group: "Professional" },
 
     // Benefits
     { key: "afiliaciones.epsName", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
