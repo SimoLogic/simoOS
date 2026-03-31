@@ -20,10 +20,18 @@ async function main() {
   console.log("ANON RESULT:", anonData, anonErr?.message);
 
   // 2. Check RLS Policies using service role
-  const { data: policies, error: polErr } = await supabaseService.rpc('exec_sql', {
-      query: `SELECT tablename, policyname, permissive, roles, cmd, qual FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('dim_employee', 'dim_job_title');`
-  }).catch(() => ({ data: 'RPC may not exist', error: null }));
-  
+  let policies: any = null;
+  let polErr: any = null;
+  try {
+    const response = await supabaseService.rpc('exec_sql', {
+        query: `SELECT tablename, policyname, permissive, roles, cmd, qual FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('dim_employee', 'dim_job_title');`
+    });
+    policies = response.data;
+    polErr = response.error;
+  } catch (err: any) {
+    policies = 'RPC may not exist';
+    polErr = err;
+  }
   console.log("POLICIES (if rpc exists):", policies);
   
   // Try directly from pg_policies via REST if possible? Usually not accessible.
