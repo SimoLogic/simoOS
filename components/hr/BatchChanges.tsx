@@ -396,12 +396,14 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
             if (result.success && result.data) {
                 setEmployees(result.data);
                 showToast(`✓ ${emp.maestro.firstName} saved successfully`);
+                setEditingRows(prev => { const n = { ...prev }; delete n[eid]; return n; });
+                setSavedRows(prev => new Set(prev).add(eid));
+                setTimeout(() => setSavedRows(prev => { const n = new Set(prev); n.delete(eid); return n; }), 3000);
+            } else {
+                showToast(`Error saving: ${result.error || "Validation/DB error"}`, "error");
             }
-            setEditingRows(prev => { const n = { ...prev }; delete n[eid]; return n; });
-            setSavedRows(prev => new Set(prev).add(eid));
-            setTimeout(() => setSavedRows(prev => { const n = new Set(prev); n.delete(eid); return n; }), 3000);
         } catch (err: unknown) {
-            showToast(`Error saving: ${err instanceof Error ? err.message : "Unknown error"}`);
+            showToast(`Error saving: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
         } finally {
             setSavingRows(prev => { const n = new Set(prev); n.delete(eid); return n; });
         }

@@ -51,7 +51,7 @@ const HistorialLaboralSchema = z.object({
     directLeader: z.string().max(255).optional().nullable(),
     jobTitleId: z.string().uuid("Invalid Job Title ID").optional().nullable(),
     jobTitleName: z.string().optional(),
-    roleTitleId: z.string().uuid("Invalid Role Title ID").optional().nullable(),
+    roleTitleId: z.string().optional().nullable(),
     roleTitleName: z.string().optional(),
     created_at: z.string().optional()
 });
