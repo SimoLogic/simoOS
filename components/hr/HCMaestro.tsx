@@ -80,6 +80,7 @@ const COLUMNS: ColumnDef[] = [
     { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
     { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
     { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
+    { key: "historialLaboral.roleTitleName", label: "Role Title", locked: true, width: "w-44", group: "Professional" },
     {
         key: "historialLaboral.contractType", label: "Contract", width: "w-44", type: "select",
         options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value || "", label: t.label })),
@@ -125,6 +126,7 @@ const ESSENTIAL_KEYS = new Set([
     "status",
     "historialLaboral.area",
     "historialLaboral.job_title",
+    "historialLaboral.roleTitleName",
     "historialLaboral.legalEntity",
     "historialLaboral.directLeader",
     "historialLaboral.baseSalary",
