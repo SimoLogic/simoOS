@@ -24,12 +24,12 @@ import {
   X, GitBranch, User, Zap, FileText, Users,
   Clock, Target, Shield,
 } from 'lucide-react';
-import { PlaybookStep, EmployeeRef } from './types';
+import { PlaybookStep, EmployeeRef, PlaybookOwner } from './types';
 import { SolidNode, NodeConnector } from './SubComponents';
 
 interface FlowInspectorBPMNProps {
   step: PlaybookStep;
-  owners: string[];
+  owners: PlaybookOwner[];
   employeeList: EmployeeRef[];
   playbookPurpose: string;
   onClose: () => void;
@@ -45,7 +45,7 @@ export const FlowInspectorBPMN: React.FC<FlowInspectorBPMNProps> = ({
   onClose,
 }) => {
   const [activeNode, setActiveNode] = useState<ActiveNodeId>(null);
-  const employee = employeeList.find(e => e.id === step.requestedTo);
+  const employee = employeeList.find(e => e.id === step.requestedToId);
 
   return (
     <div className="fixed inset-0 z-[1000] bg-white flex flex-col p-6 animate-in fade-in duration-300 overflow-hidden">
@@ -87,7 +87,7 @@ export const FlowInspectorBPMN: React.FC<FlowInspectorBPMNProps> = ({
           {/* VIOLET-600 → USER TASK */}
           <SolidNode
             label="EXECUTORS"
-            title={owners.join(' & ')}
+            title={owners.map(o => o.name).join(' & ')}
             bgClass="bg-violet-600"
             icon={<User size={20} />}
             desc={playbookPurpose}
@@ -158,7 +158,7 @@ export const FlowInspectorBPMN: React.FC<FlowInspectorBPMNProps> = ({
           {/* CYAN-600 → STAKEHOLDER */}
           <SolidNode
             label="RECIPIENT"
-            title={step.stakeholder}
+            title={step.stakeholderName || 'UNKNOWN'}
             bgClass="bg-cyan-600"
             icon={<Users size={20} />}
           />

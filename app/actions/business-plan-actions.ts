@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 /**
  * ============================================================================
@@ -38,14 +38,14 @@ export interface PlaybookStepUpsertInput {
   activityDescription?: string;
   deliverable?: string;
   deliverableDescription?: string;
-  stakeholder?: string;
+  stakeholderId?: string | null;
   frequency: string;
   repetitions: number;
   freqNotes?: string;
   schedulerValue: number;
   supportingTask?: string;
   counteractionDescription?: string;
-  requestedTo?: string;
+  requestedToId?: string | null;
   sla?: string;
   slaDescription?: string;
   isLocked: boolean;
@@ -124,7 +124,7 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
     strategy: data.strategy,
     purpose: data.purpose ?? null,
     status: data.status,
-    global_owners: data.globalOwners,
+    global_owner_ids: data.globalOwners,
     updated_at: new Date().toISOString(),
   };
 
@@ -186,14 +186,14 @@ export async function upsertPlaybookStepsAction(
     activity_description: s.activityDescription ?? null,
     deliverable: s.deliverable ?? null,
     deliverable_description: s.deliverableDescription ?? null,
-    stakeholder: s.stakeholder ?? null,
+    stakeholder_id: s.stakeholderId ?? null,
     frequency: s.frequency,
     repetitions: s.repetitions,
     freq_notes: s.freqNotes ?? null,
     scheduler_value: s.schedulerValue,
     supporting_task: s.supportingTask ?? null,
     counteraction_description: s.counteractionDescription ?? null,
-    requested_to: s.requestedTo ?? null,
+    requested_to_id: s.requestedToId ?? null,
     sla: s.sla ?? null,
     sla_description: s.slaDescription ?? null,
     is_locked: s.isLocked,

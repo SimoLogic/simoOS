@@ -27,14 +27,16 @@ export interface PlaybookStep {
   activityDescription: string;  // Description of what to do
   deliverable: string;           // Expected output (UPPERCASE)
   deliverableDescription: string;
-  stakeholder: string;           // Receiver of deliverable (role name, UPPERCASE)
+  stakeholderId: string | null;  // DB UUID reference to dim_role_title | dim_external_role
+  stakeholderName: string | null;// UI Display name
   frequency: FrequencyOption;    // Cadence
   repetitions: number;           // How many times per period
   freqNotes: string;             // Execution window notes
   schedulerValue: number;        // Days offset from previous step (WorkdayHelper key)
   supportingTask: string;        // Counteraction task name (UPPERCASE)
   counteractionDescription: string;
-  requestedTo: string;           // Employee ID for counteraction assignment
+  requestedToId: string | null;  // DB UUID reference to dim_role_title | dim_external_role
+  requestedToName: string | null;// UI Display name
   sla: string;                   // Success SLA (UPPERCASE)
   slaDescription: string;
   isLocked: boolean;             // TRUE = saved/protected (Shield Protocol Llave #3)
@@ -43,8 +45,13 @@ export interface PlaybookStep {
 
 // ─── Playbook Container ────────────────────────────────────────────────────────
 
+export interface PlaybookOwner {
+  id: string;   // UUID
+  name: string; // Role name
+}
+
 export interface PlaybookState {
-  globalOwners: string[];
+  globalOwners: PlaybookOwner[];
   steps: PlaybookStep[];
 }
 

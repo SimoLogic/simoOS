@@ -17,12 +17,12 @@
 
 import React from 'react';
 import { Search, Layers, Shield, GripVertical } from 'lucide-react';
-import { PlaybookStep, ActivityLibraryItem } from './types';
+import { PlaybookStep, ActivityLibraryItem, PlaybookOwner } from './types';
 import { RoleGroup } from './SubComponents';
 
 interface LibraryAssetsProps {
-  internalRoles: string[];
-  externalRoles: string[];
+  internalRoles: PlaybookOwner[];
+  externalRoles: PlaybookOwner[];
   activityLibrary: ActivityLibraryItem[];
   repeatableActivities: PlaybookStep[];
 }

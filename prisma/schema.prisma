@@ -177,7 +177,7 @@ model BpPlaybook {
   strategy         String          @default("B2B")         // B2B | B2C | NPPM
   purpose          String?
   status           String          @default("DRAFT")       // DRAFT | SUBMITTED
-  globalOwners     String[]        @map("global_owners")   // Array of role names
+  globalOwnerIds   String[]        @map("global_owner_ids") @db.Uuid
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
@@ -200,14 +200,14 @@ model BpPlaybookStep {
   activityDescription      String?    @map("activity_description")
   deliverable              String?                             // UPPERCASE output
   deliverableDescription   String?    @map("deliverable_description")
-  stakeholder              String?                             // UPPERCASE role
+  stakeholderId            String?    @map("stakeholder_id") @db.Uuid
   frequency                String     @default("DAILY")        // DAILY | WEEKLY | MONTHLY | YEARLY
   repetitions              Int        @default(1)
   freqNotes                String?    @map("freq_notes")
   schedulerValue           Int        @default(0) @map("scheduler_value") // Workday offset (WorkdayHelper Llave #2)
   supportingTask           String?    @map("supporting_task")  // UPPERCASE counteraction
   counteractionDescription String?    @map("counteraction_description")
-  requestedTo              String?    @map("requested_to")     // Employee ID
+  requestedToId            String?    @map("requested_to_id")  @db.Uuid
   sla                      String?                             // UPPERCASE success metric
   slaDescription           String?    @map("sla_description")
   isLocked                 Boolean    @default(false) @map("is_locked")     // Shield Protocol
