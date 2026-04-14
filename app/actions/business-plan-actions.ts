@@ -26,6 +26,8 @@ export interface PlaybookUpsertInput {
   purpose?: string;
   status: string;
   globalOwners: string[];
+  version?: number;
+  parentId?: string | null;
 }
 
 export interface PlaybookStepUpsertInput {
@@ -108,15 +110,14 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
   return { ...pb, globalOwners: pb.global_owners ?? [], steps: steps ?? [] };
 }
 
-// ─── UPSERT ───────────────────────────────────────────────────────────────────
-
 /**
  * Saves (create or update) the playbook header metadata.
+ * Supports version tracking and duplicate lineage (parent_id).
  */
 export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput) {
   if (!orgId) throw new Error("orgId is required");
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     org_id: orgId,
     name: data.name,
     type: data.type,
@@ -125,8 +126,11 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
     purpose: data.purpose ?? null,
     status: data.status,
     global_owner_ids: data.globalOwners,
+    version: data.version ?? 1,
     updated_at: new Date().toISOString(),
   };
+
+  if (data.parentId !== undefined) payload.parent_id = data.parentId;
 
   let row: { id: string };
 
@@ -151,7 +155,84 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
   }
 
   revalidatePath("/business-plan/playbook-designer");
+  revalidatePath("/business-plan/playbooks");
   return row;
+}
+
+// ─── LIFECYCLE ACTIONS ────────────────────────────────────────────────────────
+
+/**
+ * Check if a playbook name already exists for this org.
+ * Returns { exists, conflictId, currentVersion } for collision handling.
+ */
+export async function checkPlaybookNameAction(
+  name: string,
+  orgId: string,
+  excludeId?: string
+): Promise<{ exists: boolean; conflictId?: string; currentVersion?: number }> {
+  if (!name || !orgId) return { exists: false };
+
+  let query = supabase
+    .from("bp_playbooks")
+    .select("id, version")
+    .eq("org_id", orgId)
+    .ilike("name", name.trim())
+    .neq("status", "INACTIVE");
+
+  if (excludeId) query = query.neq("id", excludeId);
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return { exists: false };
+  return { exists: true, conflictId: data.id, currentVersion: data.version };
+}
+
+/**
+ * Deactivate a playbook (soft delete — sets status to INACTIVE).
+ */
+export async function deactivatePlaybookAction(orgId: string, playbookId: string) {
+  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+  const { error } = await supabase
+    .from("bp_playbooks")
+    .update({ status: "INACTIVE", updated_at: new Date().toISOString() })
+    .eq("id", playbookId)
+    .eq("org_id", orgId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/business-plan/playbooks");
+}
+
+/**
+ * Fetch playbooks for the Marketplace with optional status filter.
+ * statusFilter: ['DRAFT', 'PUBLISHED', 'INACTIVE'] — pass empty array for ALL
+ */
+export async function getPlaybooksForMarketplaceAction(
+  orgId: string,
+  statusFilter: string[] = ['DRAFT', 'PUBLISHED']
+) {
+  if (!orgId) return [];
+
+  let query = supabase
+    .from("bp_playbooks")
+    .select(`
+      id, name, type, family, strategy, purpose, status, version, parent_id, created_at, updated_at, global_owner_ids,
+      bp_playbook_steps (
+        id, name, type_of_activity, purpose, activity_description, deliverable,
+        deliverable_description, scheduler_value, frequency, repetitions,
+        sla, sla_description, stakeholder_id, requested_to_id
+      )
+    `)
+    .eq("org_id", orgId)
+    .order("updated_at", { ascending: false });
+
+  if (statusFilter.length > 0) {
+    query = query.in("status", statusFilter);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[BP Action] getPlaybooksForMarketplace:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 /**

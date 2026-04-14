@@ -3,22 +3,24 @@
  * PLAYBOOK DESIGNER — NEXT.JS ROUTE PAGE
  * ============================================================================
  * Route: /business-plan/playbook-designer
- * Module: Business Plan > Playbook Designer
+ * Route: /business-plan/playbook-designer?id={uuid}       → Edit mode
+ * Route: /business-plan/playbook-designer?duplicate={uuid} → Duplicate mode
  *
- * This page renders the PlaybookDesignerApp component inside the
- * Business Plan module. The component is fully client-side (uses hooks,
- * drag events, and state).
+ * This page reads URL searchParams and passes them to PlaybookDesignerApp.
  * ============================================================================
  */
 
 import { PlaybookDesignerApp } from "@/components/playbook-designer/PlaybookDesignerApp";
 
-export const metadata = {
-  title: "Playbook Designer — Business Plan | SIMO Intellisense",
-  description:
-    "Design tactical playbooks with drag-and-drop operational nodes, BPMN flow inspection, and repeatable activity library.",
-};
-
-export default function PlaybookDesignerPage() {
-  return <PlaybookDesignerApp />;
+export default function PlaybookDesignerPage({
+  searchParams,
+}: {
+  searchParams: { id?: string; duplicate?: string };
+}) {
+  return (
+    <PlaybookDesignerApp
+      initialPlaybookId={searchParams.id ?? null}
+      duplicateFromId={searchParams.duplicate ?? null}
+    />
+  );
 }
