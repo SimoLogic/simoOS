@@ -101,8 +101,8 @@ export const DropArea: React.FC<DropAreaProps> = ({
   const [isOver, setIsOver] = useState(false);
   return (
     <div
-      onDragOver={e => { e.preventDefault(); if (!disabled) setIsOver(true); }}
-      onDragLeave={() => setIsOver(false)}
+      onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (!disabled) setIsOver(true); }}
+      onDragLeave={e => { e.stopPropagation(); setIsOver(false); }}
       onDrop={e => {
         e.preventDefault();
         e.stopPropagation(); // Shield Protocol: Prevent triggering parent step reorder or replacement
@@ -122,23 +122,28 @@ export const DropArea: React.FC<DropAreaProps> = ({
           }
         }
       }}
-      className={`relative transition-all text-left text-slate-800 ${isOver ? 'bg-indigo-50/50 scale-105 shadow-md z-10 rounded-lg' : ''} ${disabled ? 'opacity-80' : ''}`}
+      className={`relative transition-all text-left text-slate-800 min-h-[28px] ${isOver ? 'bg-indigo-50/80 scale-[1.02] shadow-md z-10 rounded-lg ring-1 ring-indigo-300' : ''} ${disabled ? 'opacity-80' : ''}`}
     >
       {!hideLabel && (
         <label className="text-[7px] text-slate-400 font-black uppercase flex items-center gap-1.5 mb-1 leading-none h-[10px]">
           {icon} {label}
         </label>
       )}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 min-h-[22px]">
         {isMultiple ? (
-          ((value as PlaybookOwner[]) || []).map((role) => (
-            <div key={role.id} className="bg-indigo-900 text-white px-2 py-1 rounded-lg text-[6px] font-black flex items-center gap-1.5 shadow-sm animate-in fade-in zoom-in duration-200">
-              {role.name}
-              {!disabled && onRemove && (
-                <X size={8} className="cursor-pointer text-indigo-400 hover:text-white transition-colors" onClick={() => onRemove(role.id)} />
-              )}
-            </div>
-          ))
+          ((value as PlaybookOwner[]) || []).length > 0 ? (
+            ((value as PlaybookOwner[]) || []).map((role) => (
+              <div key={role.id} className="bg-indigo-900 text-white px-2 py-1 rounded-lg text-[6px] font-black flex items-center gap-1.5 shadow-sm animate-in fade-in zoom-in duration-200">
+                {role.name}
+                {!disabled && onRemove && (
+                  <X size={8} className="cursor-pointer text-indigo-400 hover:text-white transition-colors" onClick={() => onRemove(role.id)} />
+                )}
+              </div>
+            ))
+          ) : (
+            // Empty state placeholder — matches Stakeholder visual parity
+            <div className="text-[7px] text-slate-200 italic font-black uppercase text-center w-full border border-dashed border-slate-200 rounded-lg py-1">DROP ROLE</div>
+          )
         ) : (
           (value as PlaybookOwner) ? (
             <div className="bg-emerald-500 text-white px-2 py-1 rounded-lg text-[7px] font-black truncate shadow-sm uppercase w-full text-center animate-in fade-in duration-300 tracking-tighter">
