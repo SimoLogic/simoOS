@@ -43,7 +43,7 @@ import {
   Settings, Save, GitBranch, Layers, Zap, Edit2,
 } from 'lucide-react';
 import {
-  PlaybookStep, PlaybookState,
+  PlaybookStep, PlaybookState, PlaybookOwner,
   PlaybookType, PlaybookFamily, PlaybookStrategy, PlaybookStatus, ActiveTab,
   WarningModalState, ReplaceModalState, DescModalState,
   FrequencyOption, EmployeeRef
@@ -89,14 +89,16 @@ const defaultStep: PlaybookStep = {
   activityDescription: 'Professional pitch following SIMO standards for cold reaching.',
   deliverable: 'RETENTION QUIZ',
   deliverableDescription: 'A 5-question form to validate information retention.',
-  stakeholder: 'SALES MANAGER',
+  stakeholderId: null,
+  stakeholderName: null,
   frequency: 'DAILY',
   repetitions: 8,
   freqNotes: 'Execution window between 9:00 AM and 11:00 AM EST.',
   schedulerValue: 0,
   supportingTask: 'MICRO-VIDEO PRODUCTION',
   counteractionDescription: 'If calls fail to convert, produce a micro-video summary.',
-  requestedTo: '1',
+  requestedToId: null,
+  requestedToName: null,
   sla: 'MIN 5 CALLS',
   slaDescription: 'Minimum of 5 documented calls per total proposed per session.',
   isLocked: true,
@@ -129,12 +131,12 @@ export const PlaybookDesignerApp: React.FC = () => {
 
   // ── Playbook Content ──
   const [activePB, setActivePB] = useState<PlaybookState>({
-    globalOwners: ['Business Developer'],
+    globalOwners: [],
     steps: [defaultStep],
   });
   const [repeatableActivities, setRepeatableActivities] = useState<PlaybookStep[]>([]);
-  const [internalRoles, setInternalRoles] = useState<string[]>([]);
-  const [externalRoles, setExternalRoles] = useState<string[]>([]);
+  const [internalRoles, setInternalRoles] = useState<PlaybookOwner[]>([]);
+  const [externalRoles, setExternalRoles] = useState<PlaybookOwner[]>([]);
   const [employeeList, setEmployeeList] = useState<EmployeeRef[]>([]);
 
   // ── Modal States ──
@@ -158,13 +160,16 @@ export const PlaybookDesignerApp: React.FC = () => {
       getActiveExternalRolesAction(orgId),
       getActiveEmployeesForPlaybookAction(orgId)
     ]);
-    setInternalRoles(intRoles.map(r => r.role_title));
-    setExternalRoles(extRoles.filter(r => r.status === 'Active').map(r => r.name));
+    const mappedInt = intRoles.map(r => ({ id: r.id, name: r.role_title }));
+    const mappedExt = extRoles.filter(r => r.status === 'Active').map(r => ({ id: r.id, name: r.name }));
+    setInternalRoles(mappedInt);
+    setExternalRoles(mappedExt);
     setEmployeeList(emps.map((e: any) => ({
       id: e.eid,
       name: `${e.primer_nombre} ${e.primer_apellido}`,
       role: e.role_title
     })));
+    return { intRoles: mappedInt, extRoles: mappedExt };
   };
 
   // ── Deep Fetch: load latest playbook + all steps on mount ──
@@ -172,7 +177,12 @@ export const PlaybookDesignerApp: React.FC = () => {
     if (!orgId) return;
     const load = async () => {
       // Step 0: Fetch Roles
-      await refreshData();
+      const { intRoles, extRoles } = await refreshData() || { intRoles: [], extRoles: [] };
+      const resolveRoleName = (id: string | null) => {
+        if (!id) return null;
+        const found = intRoles.find(r => r.id === id) || extRoles.find(r => r.id === id);
+        return found ? found.name : null;
+      };
 
       // Step 1: Get the most recently updated playbook header
       const list = await getPlaybooksAction(orgId);
@@ -202,22 +212,30 @@ export const PlaybookDesignerApp: React.FC = () => {
         activityDescription: (s.activity_description as string) ?? '',
         deliverable: (s.deliverable as string) ?? '',
         deliverableDescription: (s.deliverable_description as string) ?? '',
-        stakeholder: (s.stakeholder as string) ?? 'DROP',
+        stakeholderId: (s.stakeholder_id as string) ?? null,
+        stakeholderName: resolveRoleName((s.stakeholder_id as string) ?? null),
         frequency: (s.frequency as FrequencyOption) ?? 'DAILY',
         repetitions: (s.repetitions as number) ?? 1,
         freqNotes: (s.freq_notes as string) ?? '',
         schedulerValue: (s.scheduler_value as number) ?? 0,
         supportingTask: (s.supporting_task as string) ?? '',
         counteractionDescription: (s.counteraction_description as string) ?? '',
-        requestedTo: (s.requested_to as string) ?? '',
+        requestedToId: (s.requested_to_id as string) ?? null,
+        requestedToName: resolveRoleName((s.requested_to_id as string) ?? null),
         sla: (s.sla as string) ?? '',
         slaDescription: (s.sla_description as string) ?? '',
         isLocked: (s.is_locked as boolean) ?? false,
         isRepeatable: (s.is_repeatable as boolean) ?? false,
       }));
 
+      // Map Global Owners UUID string[] to PlaybookOwner[]
+      const mappedGlobalOwners = (detail.global_owner_ids ?? []).map((gid: string) => ({
+         id: gid,
+         name: resolveRoleName(gid) ?? 'Unknown Role'
+      }));
+
       setActivePB({
-        globalOwners: detail.global_owners ?? [],
+        globalOwners: mappedGlobalOwners,
         steps: hydratedSteps.length > 0 ? hydratedSteps : activePB.steps,
       });
     };
@@ -267,14 +285,14 @@ export const PlaybookDesignerApp: React.FC = () => {
     dragOverItemIdx.current = null;
   };
 
-  const handleDropGlobalOwner = (role: string) => {
-    if (role && !activePB.globalOwners.includes(role)) {
+  const handleDropGlobalOwner = (role: PlaybookOwner) => {
+    if (role && !activePB.globalOwners.some(r => r.id === role.id)) {
       setActivePB(prev => ({ ...prev, globalOwners: [...prev.globalOwners, role] }));
     }
   };
 
-  const handleRemoveGlobalOwner = (role: string) => {
-    setActivePB(prev => ({ ...prev, globalOwners: prev.globalOwners.filter(r => r !== role) }));
+  const handleRemoveGlobalOwner = (roleId: string) => {
+    setActivePB(prev => ({ ...prev, globalOwners: prev.globalOwners.filter(r => r.id !== roleId) }));
   };
 
   /**
@@ -363,7 +381,7 @@ export const PlaybookDesignerApp: React.FC = () => {
         strategy: playbookStrategy,
         purpose: playbookPurpose,
         status: publish ? 'SUBMITTED' : status,
-        globalOwners: activePB.globalOwners,
+        globalOwners: activePB.globalOwners.map(o => o.id),
       };
 
       const savedPlaybook = await upsertPlaybookAction(orgId, headerData);
@@ -400,14 +418,16 @@ export const PlaybookDesignerApp: React.FC = () => {
         activityDescription: '',
         deliverable: '',
         deliverableDescription: '',
-        stakeholder: 'DROP',
+        stakeholderId: null,
+        stakeholderName: null,
         frequency: 'DAILY',
         repetitions: 1,
         freqNotes: '',
         schedulerValue: 0,
         supportingTask: '',
         counteractionDescription: '',
-        requestedTo: '',
+        requestedToId: null,
+        requestedToName: null,
         sla: 'SLA',
         slaDescription: '',
         isLocked: false,
@@ -549,6 +569,7 @@ export const PlaybookDesignerApp: React.FC = () => {
               dragOverItemIdx={dragOverItemIdx}
               handleReorderSteps={handleReorderSteps}
               freqOptions={frequencyOptions}
+              roles={[...internalRoles, ...externalRoles]}
               empList={employeeList}
               lib={activityLibrary}
               onAdd={handleAddStep}

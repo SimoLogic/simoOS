@@ -177,7 +177,7 @@ model BpPlaybook {
   strategy         String          @default("B2B")         // B2B | B2C | NPPM
   purpose          String?
   status           String          @default("DRAFT")       // DRAFT | SUBMITTED
-  globalOwners     String[]        @map("global_owners")   // Array of role names
+  globalOwnerIds   String[]        @map("global_owner_ids") @db.Uuid
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
@@ -200,14 +200,14 @@ model BpPlaybookStep {
   activityDescription      String?    @map("activity_description")
   deliverable              String?                             // UPPERCASE output
   deliverableDescription   String?    @map("deliverable_description")
-  stakeholder              String?                             // UPPERCASE role
+  stakeholderId            String?    @map("stakeholder_id") @db.Uuid
   frequency                String     @default("DAILY")        // DAILY | WEEKLY | MONTHLY | YEARLY
   repetitions              Int        @default(1)
   freqNotes                String?    @map("freq_notes")
   schedulerValue           Int        @default(0) @map("scheduler_value") // Workday offset (WorkdayHelper Llave #2)
   supportingTask           String?    @map("supporting_task")  // UPPERCASE counteraction
   counteractionDescription String?    @map("counteraction_description")
-  requestedTo              String?    @map("requested_to")     // Employee ID
+  requestedToId            String?    @map("requested_to_id")  @db.Uuid
   sla                      String?                             // UPPERCASE success metric
   slaDescription           String?    @map("sla_description")
   isLocked                 Boolean    @default(false) @map("is_locked")     // Shield Protocol
@@ -478,39 +478,51 @@ model DimTenant {
 }
 
 model DimEmployee {
-  eid                   String   @id
-  tenantId              String?  @map("tenant_id")
-  numeroIdentificacion  String   @map("numero_identificacion")
-  tipoDocumentoId       String   @map("tipo_documento_id")
-  primerNombre          String   @map("primer_nombre")
-  otrosNombres          String?  @map("otros_nombres")
-  primerApellido        String   @map("primer_apellido")
-  segundoApellido       String   @map("segundo_apellido")
-  fechaNacimiento       DateTime @map("fecha_nacimiento") @db.Date
-  genero                String   @db.VarChar(1)
-  emailPersonal         String   @map("email_personal")
-  municipioDane         String   @map("municipio_dane")
-  direccionResidencia   String   @map("direccion_residencia")
-  fotoUrl               String?  @map("foto_url")
-  status                String?  @default("Active")
-  emailCorporativo      String?  @map("email_corporativo")
-  fechaInicio           DateTime @map("fecha_inicio") @db.Date
-  fechaFin              DateTime? @map("fecha_fin") @db.Date
-  tipoContrato          String   @map("tipo_contrato")
-  tipoSalario           String   @map("tipo_salario")
-  salarioBase           Decimal  @map("salario_base")
-  area                  String
-  subArea               String   @map("sub_area")
-  centroCosto           String   @map("centro_costo")
-  jobTitle              String?  @map("job_title")
-  roleTitle             String?  @map("role_title")
-  jobTitleId            String?  @map("job_title_id") @db.Uuid
-  roleTitleId           String?  @map("role_title_id") @db.Uuid
-  assignedBranchCode    String?  @map("assigned_branch_code")
-  afiliaciones          Json?    @default("{}")
-  sst                   Json?    @default("{}")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  eid                    String   @id
+  tenantId               String?  @map("tenant_id")
+  numeroIdentificacion   String   @map("numero_identificacion")
+  tipoDocumentoId        String   @map("tipo_documento_id")
+  primerNombre           String   @map("primer_nombre")
+  otrosNombres           String?  @map("otros_nombres")
+  primerApellido         String   @map("primer_apellido")
+  segundoApellido        String   @map("segundo_apellido")
+  fechaNacimiento        DateTime @map("fecha_nacimiento") @db.Date
+  genero                 String   @db.VarChar(1)
+  emailPersonal          String   @map("email_personal")
+  municipioDane          String   @map("municipio_dane")
+  direccionResidencia    String   @map("direccion_residencia")
+  fotoUrl                String?  @map("foto_url")
+  status                 String?  @default("Active")
+  emailCorporativo       String?  @map("email_corporativo")
+  fechaInicio            DateTime @map("fecha_inicio") @db.Date
+  fechaFin               DateTime? @map("fecha_fin") @db.Date
+  tipoContrato           String   @map("tipo_contrato")
+  tipoSalario            String   @map("tipo_salario")
+  salarioBase            Decimal  @map("salario_base")
+  procedimientoRenta     Int?     @default(1) @map("procedimiento_renta")
+  area                   String
+  subArea                String   @map("sub_area")
+  centroCosto            String   @map("centro_costo")
+  nombreCentroCosto      String?  @map("nombre_centro_costo")
+  subCentroCosto         String?  @map("sub_centro_costo")
+  nombreSubCentroCosto   String?  @map("nombre_sub_centro_costo")
+  branch                 String?  @map("branch")
+  cliente                String?  @map("cliente")
+  project                String?  @map("project")
+  digitoDedicacion       Int?     @map("digito_dedicacion")
+  directLeader           String?  @map("direct_leader")
+  directLeaderId         String?  @map("direct_leader_id")
+  entidadLegal           String?  @map("entidad_legal")
+  salaryCurrency         String?  @map("salary_currency")
+  jobTitle               String?  @map("job_title")
+  roleTitle              String?  @map("role_title")
+  jobTitleId             String?  @map("job_title_id") @db.Uuid
+  roleTitleId            String?  @map("role_title_id") @db.Uuid
+  assignedBranchCode     String?  @map("assigned_branch_code")
+  afiliaciones           Json?    @default("{}")
+  sst                    Json?    @default("{}")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
 
   @@index([tenantId])
   @@index([status])

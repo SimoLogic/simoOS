@@ -138,28 +138,27 @@ export async function getBranchEmployeesAction(tenantId: string, includeInactive
 }
 
 /** Get employees eligible to be Branch Managers.
- *  Primary check: job_title field (linked to dim_job_title).
+ *  Primary check: structural relationship to dim_job_title.
  *  Fallback: sub_area contains a manager-level title.
  */
 export async function getBranchManagersAction(tenantId: string): Promise<{ eid: string; full_name: string; title: string }[]> {
     if (!tenantId?.trim()) return [];
     try {
         const supabase = getSupabase();
-        // Query employees whose job_title OR sub_area matches a manager-level title.
-        // We use OR filter: job_title is preferred (official), sub_area is legacy fallback.
+        // Query employees whose dim_job_title matches a manager-level title.
         const { data, error } = await supabase
             .from("dim_employee")
-            .select("eid, primer_nombre, primer_apellido, job_title, sub_area, status")
+            .select("eid, primer_nombre, primer_apellido, sub_area, status, dim_job_title!inner(title)")
             .eq("tenant_id", tenantId)
             .eq("status", "Active")
-            .or(`job_title.in.(${BRANCH_MANAGER_TITLES.map(t => `"${t}"`).join(",")}),sub_area.in.(${BRANCH_MANAGER_TITLES.map(t => `"${t}"`).join(",")})`);
+            .in("dim_job_title.title", BRANCH_MANAGER_TITLES);
 
         if (error) throw error;
 
         return (data || []).map((e: any) => ({
             eid: e.eid,
             full_name: `${e.primer_nombre} ${e.primer_apellido}`.trim(),
-            title: e.job_title || e.sub_area || "",
+            title: e.dim_job_title?.title || e.sub_area || "",
         }));
     } catch (err: any) {
         console.error("[Branch] getBranchManagers error:", err.message);
@@ -343,7 +342,7 @@ export async function getBranchHeadcountHierarchyAction(
         // 2. Get Employee Data for the Branch (only active)
         const { data: employees, error: empError } = await supabase
             .from("dim_employee")
-            .select("eid, primer_nombre, primer_apellido, job_title, sub_area, direct_leader, entidad_legal, salario_base")
+            .select("eid, primer_nombre, primer_apellido, sub_area, direct_leader, entidad_legal, salario_base, dim_job_title(title)")
             .eq("tenant_id", tenantId)
             .eq("branch", branchCode)
             .eq("status", "Active");
@@ -390,7 +389,7 @@ export async function getBranchHeadcountHierarchyAction(
             nodes[e.eid] = {
                 eid: e.eid,
                 fullName: `${e.primer_nombre} ${e.primer_apellido}`,
-                jobTitle: e.job_title || e.sub_area || "Sin Título",
+                jobTitle: e.dim_job_title?.title || e.sub_area || "Sin Título",
                 country,
                 localSalary: Number(e.salario_base || 0),
                 convertedSalary: converted,
