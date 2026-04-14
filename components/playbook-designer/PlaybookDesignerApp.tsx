@@ -286,13 +286,13 @@ export const PlaybookDesignerApp: React.FC = () => {
   };
 
   const handleDropGlobalOwner = (role: PlaybookOwner) => {
-    if (role && !activePB.globalOwners.some(r => r.id === role.id)) {
+    if (role && !activePB.globalOwners.some(r => String(r.id) === String(role.id))) {
       setActivePB(prev => ({ ...prev, globalOwners: [...prev.globalOwners, role] }));
     }
   };
 
   const handleRemoveGlobalOwner = (roleId: string) => {
-    setActivePB(prev => ({ ...prev, globalOwners: prev.globalOwners.filter(r => r.id !== roleId) }));
+    setActivePB(prev => ({ ...prev, globalOwners: prev.globalOwners.filter(r => String(r.id) !== String(roleId)) }));
   };
 
   /**
