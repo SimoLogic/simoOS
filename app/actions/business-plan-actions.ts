@@ -65,7 +65,7 @@ export async function getPlaybooksAction(orgId: string) {
 
   const { data, error } = await supabase
     .from("bp_playbooks")
-    .select("id, name, type, family, strategy, status, purpose, global_owners, created_at, updated_at")
+    .select("id, name, type, family, strategy, status, purpose, version, global_owner_ids, created_at, updated_at")
     .eq("org_id", orgId)
     .order("updated_at", { ascending: false });
 
@@ -78,8 +78,9 @@ export async function getPlaybooksAction(orgId: string) {
     family: row.family,
     strategy: row.strategy,
     status: row.status,
+    version: row.version ?? 1,
     purpose: row.purpose,
-    globalOwners: row.global_owners ?? [],
+    globalOwners: row.global_owner_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -107,7 +108,7 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
     .eq("org_id", orgId)
     .order("position", { ascending: true });
 
-  return { ...pb, globalOwners: pb.global_owners ?? [], steps: steps ?? [] };
+  return { ...pb, globalOwners: pb.global_owner_ids ?? [], steps: steps ?? [] };
 }
 
 /**
@@ -217,7 +218,7 @@ export async function getPlaybooksForMarketplaceAction(
       bp_playbook_steps (
         id, name, type_of_activity, purpose, activity_description, deliverable,
         deliverable_description, scheduler_value, frequency, repetitions,
-        sla, sla_description, stakeholder_id, requested_to_id
+        sla, sla_description, stakeholder, requested_to
       )
     `)
     .eq("org_id", orgId)
