@@ -1,21 +1,39 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Clock, Users, ArrowRight, Activity, CalendarDays, CheckCircle2 } from "lucide-react";
+import { X, Clock, Users, ArrowRight, Activity, CalendarDays, CheckCircle2, Archive } from "lucide-react";
 import { PlaybookAssignmentPanel } from "@/components/shared/PlaybookAssignmentPanel";
+import { deactivatePlaybookAction } from "@/app/actions/business-plan-actions";
 import { useTenant } from "@/lib/tenant-context";
 
 interface PlaybookPreviewModalProps {
-  playbook: any; // the whole playbook including steps
+  playbook: any;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ playbook, onClose }) => {
+export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ playbook, onClose, onRefresh }) => {
   const [showAssignPanel, setShowAssignPanel] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const { currentTenant } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
 
   if (!playbook) return null;
+
+  const handleDeactivate = async () => {
+    setIsDeactivating(true);
+    try {
+      await deactivatePlaybookAction(orgId, playbook.id);
+      onRefresh?.();
+      onClose();
+    } catch {
+      alert("Error deactivating playbook. Please try again.");
+    } finally {
+      setIsDeactivating(false);
+      setShowDeactivateConfirm(false);
+    }
+  };
 
   // Calculate total duration based on highest scheduler value
   let totalDurationDays = 0;
@@ -40,8 +58,11 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
               <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">{playbook.status}</span>
               <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-700">{playbook.type}</span>
             </div>
-            <h2 className="text-3xl font-black text-navy-blue tracking-tight leading-none mb-2">{playbook.name}</h2>
-            <p className="text-sm font-medium text-slate-500 max-w-lg">{playbook.purpose || 'No mission available.'}</p>
+            <h2 className="text-3xl font-black text-navy-blue tracking-tight leading-none mb-1">{playbook.name}</h2>
+            {(playbook.version > 1) && (
+              <span className="text-xs text-slate-400 font-bold tracking-widest">VERSION {playbook.version}</span>
+            )}
+            <p className="text-sm font-medium text-slate-500 max-w-lg mt-1">{playbook.purpose || 'No mission available.'}</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-colors shadow-sm bg-slate-100">
             <X size={20} />
@@ -121,16 +142,53 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
         </div>
 
         {/* Footer actions */}
-        <div className="p-6 border-t border-slate-100 bg-white shrink-0 flex items-center justify-between">
-          <p className="text-xs font-semibold text-slate-400">Created {new Date(playbook.created_at).toLocaleDateString()}</p>
-          <button 
+        <div className="p-6 border-t border-slate-100 bg-white shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-semibold text-slate-400">Created {new Date(playbook.created_at).toLocaleDateString()}</p>
+            {playbook.status === 'PUBLISHED' && (
+              <button
+                onClick={() => setShowDeactivateConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100"
+              >
+                <Archive size={12} /> Deactivate
+              </button>
+            )}
+          </div>
+          <button
             onClick={() => setShowAssignPanel(true)}
             className="px-8 py-3 bg-[var(--cobalt-blue)] hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2"
           >
-            ASIGNAR PLAYBOOK <ArrowRight size={16} />
+            ASSIGN PLAYBOOK <ArrowRight size={16} />
           </button>
         </div>
       </div>
+
+      {/* Deactivate confirm modal */}
+      {showDeactivateConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-in zoom-in-95 duration-200">
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-2">Deactivate Playbook?</h3>
+            <p className="text-sm text-slate-500 font-medium mb-6">
+              <strong>&quot;{playbook.name}&quot;</strong> will be marked as Inactive and hidden from the assignment flow. You can still view it by filtering for Inactive playbooks.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeactivateConfirm(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeactivate}
+                disabled={isDeactivating}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg disabled:opacity-50"
+              >
+                {isDeactivating ? "Deactivating..." : "Confirm Deactivate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assignment Panel */}
       {showAssignPanel && (

@@ -45,7 +45,7 @@ import {
 import {
   PlaybookStep, PlaybookState, PlaybookOwner,
   PlaybookType, PlaybookFamily, PlaybookStrategy, PlaybookStatus, ActiveTab,
-  WarningModalState, ReplaceModalState, DescModalState,
+  WarningModalState, ReplaceModalState, DescModalState, OverwriteWarningState,
   FrequencyOption, EmployeeRef
 } from './types';
 import { useTenant } from '@/lib/tenant-context';
@@ -57,6 +57,7 @@ import {
   getActiveRoleTitlesForPlaybookAction,
   getActiveExternalRolesAction,
   getActiveEmployeesForPlaybookAction,
+  checkPlaybookNameAction,
 } from '@/app/actions/business-plan-actions';
 import { MetadataField } from './SubComponents';
 import { EditorArea, injectedStyles } from './EditorArea';
@@ -105,14 +106,28 @@ const defaultStep: PlaybookStep = {
   isRepeatable: false,
 };
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface PlaybookDesignerAppProps {
+  /** When set: Designer loads this specific playbook (Edit mode) */
+  initialPlaybookId?: string | null;
+  /** When set: Designer clones this playbook (Duplicate mode — user can rename) */
+  duplicateFromId?: string | null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const PlaybookDesignerApp: React.FC = () => {
+export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
+  initialPlaybookId = null,
+  duplicateFromId = null,
+}) => {
   const { currentTenant } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
+  const isDuplicateMode = !!duplicateFromId;
 
   // ── Persistence State ──
   const [playbookId, setPlaybookId] = useState<string | null>(null);
+  const [playbookVersion, setPlaybookVersion] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   // Anchor date for WorkdayHelper projections — editable by user
@@ -152,6 +167,10 @@ export const PlaybookDesignerApp: React.FC = () => {
     open: false, stepId: null, field: '', title: '', value: '', isLocked: false,
   });
   const [flowInspectorStep, setFlowInspectorStep] = useState<PlaybookStep | null>(null);
+  // Name collision modal for overwrite protection
+  const [overwriteWarning, setOverwriteWarning] = useState<OverwriteWarningState>({
+    open: false, conflictingName: '', nextVersion: 2, onConfirm: () => {},
+  });
 
   const refreshData = async () => {
     if (!orgId) return;
@@ -172,7 +191,7 @@ export const PlaybookDesignerApp: React.FC = () => {
     return { intRoles: mappedInt, extRoles: mappedExt };
   };
 
-  // ── Deep Fetch: load latest playbook + all steps on mount ──
+  // ── Deep Fetch: load specific or latest playbook on mount ──
   React.useEffect(() => {
     if (!orgId) return;
     const load = async () => {
@@ -184,25 +203,41 @@ export const PlaybookDesignerApp: React.FC = () => {
         return found ? found.name : null;
       };
 
-      // Step 1: Get the most recently updated playbook header
-      const list = await getPlaybooksAction(orgId);
-      if (list.length === 0) return;
+      // Determine which playbook ID to load
+      const targetId = initialPlaybookId || duplicateFromId || null;
 
-      const latest = list[0];
-      setPlaybookId(latest.id);
-      setPlaybookName(latest.name);
-      setPlaybookType(latest.type as PlaybookType);
-      setPlaybookFamily(latest.family as PlaybookFamily);
-      setPlaybookStrategy(latest.strategy as PlaybookStrategy);
-      setPlaybookPurpose(latest.purpose ?? '');
-      setStatus(latest.status as PlaybookStatus);
+      let detail: Record<string, unknown> | null = null;
+      let isNewPlaybook = false;
 
-      // Step 2: DEEP FETCH — load all steps for this playbook
-      const detail = await getPlaybookDetailAction(latest.id, orgId);
+      if (targetId) {
+        // Load specific playbook (Edit or Duplicate mode)
+        detail = await getPlaybookDetailAction(targetId, orgId);
+      } else {
+        // Default: load most recently updated playbook
+        const list = await getPlaybooksAction(orgId);
+        if (list.length === 0) return;
+        const latest = list[0];
+        detail = await getPlaybookDetailAction(latest.id, orgId);
+      }
+
       if (!detail) return;
 
-      // Hydrate steps into the Recipe Editor
-      const hydratedSteps: PlaybookStep[] = (detail.steps ?? []).map((s: Record<string, unknown>) => ({
+      setPlaybookName((detail.name as string) ?? 'NEW PLAYBOOK');
+      setPlaybookType((detail.type as PlaybookType) ?? 'GROWTH');
+      setPlaybookFamily((detail.family as PlaybookFamily) ?? 'COMMERCIAL');
+      setPlaybookStrategy((detail.strategy as PlaybookStrategy) ?? 'B2B');
+      setPlaybookPurpose((detail.purpose as string) ?? '');
+      setStatus((detail.status as PlaybookStatus) ?? 'DRAFT');
+      setPlaybookVersion((detail.version as number) ?? 1);
+
+      // In Duplicate mode: clear ID so a new record is created on save
+      if (isDuplicateMode) {
+        setPlaybookId(null);
+      } else {
+        setPlaybookId(detail.id as string);
+      }
+
+      const hydratedSteps: PlaybookStep[] = ((detail.steps ?? []) as Record<string, unknown>[]).map((s) => ({
         id: s.id as number,
         uid: s.uid as string,
         stepNum: s.step_num as string,
@@ -229,7 +264,7 @@ export const PlaybookDesignerApp: React.FC = () => {
       }));
 
       // Map Global Owners UUID string[] to PlaybookOwner[]
-      const mappedGlobalOwners = (detail.global_owner_ids ?? []).map((gid: string) => ({
+      const mappedGlobalOwners = ((detail.global_owner_ids as string[]) ?? []).map((gid: string) => ({
          id: gid,
          name: resolveRoleName(gid) ?? 'Unknown Role'
       }));
@@ -367,12 +402,41 @@ export const PlaybookDesignerApp: React.FC = () => {
 
   /**
    * Persist to DB: Upsert playbook header + all steps.
-   * Follows the "Apretón de Manos" from State vs. Database Protocol.
+   * Handles Draft saves, Publish (with auto-versioning), and name-collision check.
    */
-  const handleSaveToDB = async (publish: boolean = false): Promise<string | null> => {
+  const handleSaveToDB = async (publish: boolean = false, forceVersion?: number): Promise<string | null> => {
     if (!orgId) return null;
     setIsSaving(true);
     try {
+      // Name collision check (only in Duplicate mode or for new playbooks without an ID)
+      if (isDuplicateMode || !playbookId) {
+        const nameCheck = await checkPlaybookNameAction(playbookName, orgId, playbookId ?? undefined);
+        if (nameCheck.exists) {
+          const nextVer = (nameCheck.currentVersion ?? 1) + 1;
+          // Show overwrite warning — abort save until user confirms
+          setOverwriteWarning({
+            open: true,
+            conflictingName: playbookName,
+            nextVersion: nextVer,
+            onConfirm: async () => {
+              setOverwriteWarning(prev => ({ ...prev, open: false }));
+              await handleSaveToDB(publish, nextVer);
+            },
+          });
+          setIsSaving(false);
+          return null;
+        }
+      }
+
+      // Determine version:
+      // - Publish on a previously published playbook → increment
+      // - Draft save → keep current version
+      // - forceVersion used when user confirms name collision
+      let nextVersion = forceVersion ?? playbookVersion;
+      if (publish && status === 'PUBLISHED' && !forceVersion) {
+        nextVersion = playbookVersion + 1;
+      }
+
       const headerData = {
         id: playbookId ?? undefined,
         name: playbookName,
@@ -380,13 +444,16 @@ export const PlaybookDesignerApp: React.FC = () => {
         family: playbookFamily,
         strategy: playbookStrategy,
         purpose: playbookPurpose,
-        status: publish ? 'SUBMITTED' : status,
+        status: publish ? 'PUBLISHED' : 'DRAFT',
         globalOwners: activePB.globalOwners.map(o => o.id),
+        version: nextVersion,
+        parentId: isDuplicateMode ? (duplicateFromId ?? null) : undefined,
       };
 
       const savedPlaybook = await upsertPlaybookAction(orgId, headerData);
       const id = savedPlaybook.id;
       setPlaybookId(id);
+      setPlaybookVersion(nextVersion);
 
       await upsertPlaybookStepsAction(
         orgId,
@@ -395,7 +462,8 @@ export const PlaybookDesignerApp: React.FC = () => {
       );
 
       setLastSaved(new Date());
-      if (publish) setStatus('SUBMITTED');
+      if (publish) setStatus('PUBLISHED');
+      else if (status !== 'PUBLISHED') setStatus('DRAFT');
       return id;
     } catch (err) {
       console.error('[PlaybookDesigner] Save failed:', err);
@@ -479,8 +547,12 @@ export const PlaybookDesignerApp: React.FC = () => {
                 <label className="text-[6px] font-black text-slate-300 uppercase tracking-tighter">DESIGNER</label>
                 <p className="text-[8px] font-bold text-slate-500 uppercase">SIMO INTELLISENSE (ORG-001)</p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-[8px] font-black border uppercase ${status === 'SUBMITTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
-                {status}
+              <div className={`px-3 py-1 rounded-full text-[8px] font-black border uppercase ${
+                status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                status === 'INACTIVE' ? 'bg-slate-100 text-slate-400 border-slate-200' :
+                'bg-indigo-50 text-indigo-600 border-indigo-100'
+              }`}>
+                {status === 'PUBLISHED' ? `ACTIVE v${playbookVersion}` : status}
               </div>
               <Settings 
                 size={14} 
@@ -650,6 +722,57 @@ export const PlaybookDesignerApp: React.FC = () => {
           onClose={() => setShowExternalRolesModal(false)}
           onUpdate={refreshData}
         />
+      )}
+
+      {/* ── Overwrite Warning Modal ── */}
+      {overwriteWarning.open && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="text-amber-600 text-xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Name Conflict Detected</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">A playbook with this name already exists.</p>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <p className="text-xs text-amber-800 font-semibold">
+                Saving <strong>&quot;{overwriteWarning.conflictingName}&quot;</strong> will create a new version:{' '}
+                <span className="font-black text-amber-900">v{overwriteWarning.nextVersion}</span>
+              </p>
+              <p className="text-[10px] text-amber-600 mt-1 font-medium">
+                The existing playbook will remain unchanged. This will be saved as a new version.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setOverwriteWarning(prev => ({ ...prev, open: false }))}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest transition-all"
+              >
+                Cancel — Rename
+              </button>
+              <button
+                onClick={overwriteWarning.onConfirm}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-lg"
+              >
+                Accept — Save as v{overwriteWarning.nextVersion}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Duplicate Mode Banner ── */}
+      {isDuplicateMode && !playbookId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-indigo-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-indigo-700 animate-in slide-in-from-bottom duration-300">
+          <span className="text-lg">📋</span>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-indigo-200">Duplicate Mode</p>
+            <p className="text-sm font-bold text-white">Change the playbook name, then Save Draft or Publish.</p>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -212,7 +212,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-200 text-[10px] font-black uppercase tracking-widest mb-1">
-                {mode === "playbook-first" ? "Asignar Playbook" : "Nueva Asignación — PMO"}
+                {mode === "playbook-first" ? "Assign Playbook" : "New Assignment — PMO"}
               </p>
               <h2 className="text-white text-xl font-black leading-tight truncate max-w-xs">
                 {selectedPlaybook?.name ?? "Selecciona un Playbook"}
@@ -229,7 +229,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           {/* PMO step indicator */}
           {mode === "employee-first" && (
             <div className="flex items-center gap-2 mt-4">
-              <StepBadge active={pmoStep === 0} done={pmoStep > 0} label="1. Empleados" />
+              <StepBadge active={pmoStep === 0} done={pmoStep > 0} label="1. Employees" />
               <ChevronRight size={12} className="text-blue-300" />
               <StepBadge active={pmoStep === 1} done={pmoStep > 1} label="2. Playbook" />
               <ChevronRight size={12} className="text-blue-300" />
@@ -245,7 +245,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           {mode === "playbook-first" && (
             <>
               {/* Section A — Employee Selection */}
-              <SectionHeader icon={<Users size={14} />} title="Sección A — Empleados Elegibles" />
+              <SectionHeader icon={<Users size={14} />} title="Section A — Eligible Employees" />
               <div className="px-6 pb-4">
                 <div className="relative mb-3">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -264,7 +264,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                   </div>
                 ) : filteredEmployees.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-6 font-medium">
-                    No hay empleados elegibles para este playbook.
+                    No eligible employees found for this playbook.
                   </p>
                 ) : (
                   <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
@@ -299,7 +299,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
 
                 {selectedEids.size > 0 && (
                   <p className="mt-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                    {selectedEids.size} empleado{selectedEids.size > 1 ? "s" : ""} seleccionado{selectedEids.size > 1 ? "s" : ""}
+                    {selectedEids.size} employee{selectedEids.size > 1 ? "s" : ""} selected
                   </p>
                 )}
               </div>
@@ -318,7 +318,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           {/* ══ MODE: EMPLOYEE-FIRST (PMO) — Step 0: Employees ══ */}
           {mode === "employee-first" && pmoStep === 0 && (
             <>
-              <SectionHeader icon={<Users size={14} />} title="Paso 1 — Selecciona Empleados" />
+              <SectionHeader icon={<Users size={14} />} title="Step 1 — Select Employees" />
               <div className="px-6 pb-4">
                 <p className="text-xs text-slate-500 mb-3 font-medium">
                   Select one or more employees. The next step will filter compatible playbooks based on their roles.
@@ -354,7 +354,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           {/* ══ MODE: EMPLOYEE-FIRST — Step 1: Playbook ══ */}
           {mode === "employee-first" && pmoStep === 1 && (
             <>
-              <SectionHeader icon={<BookOpen size={14} />} title="Paso 2 — Selecciona Playbook" />
+              <SectionHeader icon={<BookOpen size={14} />} title="Step 2 — Select Playbook" />
               <div className="px-6 pb-4">
                 <div className="relative mb-3">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -401,7 +401,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                     onClick={() => setPmoStep(0)}
                     className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest transition-all"
                   >
-                    Atrás
+                    Back
                   </button>
                   <button
                     disabled={!selectedPlaybook}
@@ -423,9 +423,9 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                   ← Atrás
                 </button>
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Playbook seleccionado</p>
+                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Selected playbook</p>
                   <p className="text-sm font-bold text-[#002B5B]">{selectedPlaybook?.name}</p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">{selectedEids.size} empleado{selectedEids.size > 1 ? "s" : ""} seleccionado{selectedEids.size > 1 ? "s" : ""}</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">{selectedEids.size} employee{selectedEids.size > 1 ? "s" : ""} selected</p>
                 </div>
               </div>
               <DateSection
@@ -445,9 +445,9 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
             <div className="flex flex-col items-center justify-center gap-1 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
               <div className="flex items-center gap-2">
                 <Check size={16} className="text-emerald-600" />
-                <span className="text-sm font-black text-emerald-700 uppercase tracking-widest">¡Asignación registrada!</span>
+                <span className="text-sm font-black text-emerald-700 uppercase tracking-widest">Assignment Confirmed!</span>
               </div>
-              <p className="text-[10px] text-emerald-600 font-bold">{tasksCreatedCount} tareas y dependencias creadas</p>
+              <p className="text-[10px] text-emerald-600 font-bold">{tasksCreatedCount} tasks and dependencies created</p>
             </div>
           ) : (
             <button
@@ -456,9 +456,9 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
               className="w-full py-3.5 bg-[var(--cobalt-blue)] disabled:bg-slate-200 disabled:text-slate-400 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <><Loader2 size={16} className="animate-spin" /> Generando Master Plan...</>
+                <><Loader2 size={16} className="animate-spin" /> Generating Master Plan...</>
               ) : (
-                <>Confirmar Asignación <ArrowRight size={16} /></>
+                <>Confirm Assignment <ArrowRight size={16} /></>
               )}
             </button>
           )}
@@ -509,7 +509,7 @@ const DateSection: React.FC<DateSectionProps> = ({
         />
         {startDateObj && (
           <p className="mt-2 text-xs font-semibold text-[#0056C0]">
-            El playbook iniciará el <strong>{formatShortDate(startDateObj)}</strong> (próximo día hábil).
+            El playbook begins on <strong>{formatShortDate(startDateObj)}</strong> (next workday).
           </p>
         )}
       </div>
@@ -517,7 +517,7 @@ const DateSection: React.FC<DateSectionProps> = ({
       {keyDates.length > 0 && (
         <div>
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-            Preview — Primeras 3 fechas clave
+            Preview — First 3 key dates
           </p>
           <div className="space-y-1.5">
             {keyDates.map((d, i) => {

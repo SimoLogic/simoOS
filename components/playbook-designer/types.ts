@@ -61,12 +61,20 @@ export type FrequencyOption = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type PlaybookType = 'CORE' | 'GROWTH' | 'ELITE';
 export type PlaybookFamily = 'COMMERCIAL' | 'OPERATIONAL';
 export type PlaybookStrategy = 'B2B' | 'B2C' | 'NPPM';
-export type PlaybookStatus = 'DRAFT' | 'SUBMITTED';
+export type PlaybookStatus = 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export type ActiveTab = 'editor' | 'visual';
 
 // ─── UI Modal States ──────────────────────────────────────────────────────────
 
 export type WarningModalType = 'alert' | 'uncheck' | 'edit_warning' | 'confirm';
+
+// Name collision modal when saving with a duplicate playbook name
+export interface OverwriteWarningState {
+  open: boolean;
+  conflictingName: string;
+  nextVersion: number;
+  onConfirm: () => void;
+}
 
 export interface WarningModalState {
   open: boolean;
