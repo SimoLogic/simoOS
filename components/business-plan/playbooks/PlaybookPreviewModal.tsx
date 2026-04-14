@@ -127,7 +127,7 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
             onClick={() => setShowAssignPanel(true)}
             className="px-8 py-3 bg-[var(--cobalt-blue)] hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-sm shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-2"
           >
-            ASIGNAR PLAYBOOK <ArrowRight size={16} />
+            ASSIGN PLAYBOOK <ArrowRight size={16} />
           </button>
         </div>
       </div>

@@ -9,8 +9,11 @@ import { supabase } from "@/lib/database";
 
 /**
  * Fetch employees eligible for a specific playbook.
- * Extracts responsible role_titles from bp_playbook_steps
- * (stakeholder + requested_to), then returns matching active employees.
+ * Uses `bp_playbooks.global_owner_ids` (UUID array → dim_role_title)
+ * to find active employees whose `role_title_id` matches.
+ *
+ * This is the correct source of truth for "Responsibles" since the
+ * Designer stores global owner UUIDs on the playbook header, not on steps.
  */
 export async function getEligibleEmployeesForPlaybookAction(
   playbookId: string,
@@ -18,40 +21,29 @@ export async function getEligibleEmployeesForPlaybookAction(
 ) {
   if (!playbookId || !orgId) return [];
 
-  const { data: steps, error: stepsErr } = await supabase
-    .from("bp_playbook_steps")
-    .select("stakeholder, requested_to")
-    .eq("playbook_id", playbookId)
-    .eq("org_id", orgId);
+  // Step 1: Get the global_owner_ids UUID array from the playbook header
+  const { data: pb, error: pbErr } = await supabase
+    .from("bp_playbooks")
+    .select("global_owner_ids")
+    .eq("id", playbookId)
+    .eq("org_id", orgId)
+    .single();
 
-  if (stepsErr || !steps?.length) return [];
+  if (pbErr || !pb) {
+    console.error("[BP Action] getEligibleEmployees — playbook not found:", pbErr?.message);
+    return [];
+  }
 
-  const roleTitlesSet = new Set<string>();
-  steps.forEach((s) => {
-    if (s.stakeholder) roleTitlesSet.add(s.stakeholder as string);
-    if (s.requested_to) roleTitlesSet.add(s.requested_to as string);
-  });
-  const roleTitles = Array.from(roleTitlesSet);
-  if (!roleTitles.length) return [];
+  const globalOwnerIds: string[] = pb.global_owner_ids ?? [];
+  if (globalOwnerIds.length === 0) return [];
 
-  // 1. Resolve role titles to their official TEXT IDs in dim_role_title
-  const { data: roleTitleData, error: roleErr } = await supabase
-    .from("dim_role_title")
-    .select("id")
-    .eq("tenant_id", orgId)
-    .in("role_title", roleTitles)
-    .eq("status", "Active");
-
-  if (roleErr || !roleTitleData?.length) return [];
-  const allowedRoleIds = roleTitleData.map(rt => rt.id);
-
-  // 2. Filter employee strictly by their allocated role_title_id resolving cross-module
+  // Step 2: Fetch active employees whose role_title_id is in the global owner list
   const { data: employees, error: empErr } = await supabase
     .from("dim_employee")
     .select("eid, primer_nombre, primer_apellido, role_title, role_title_id, assigned_branch_code")
     .eq("tenant_id", orgId)
     .eq("status", "Active")
-    .in("role_title_id", allowedRoleIds)
+    .in("role_title_id", globalOwnerIds)
     .order("primer_apellido", { ascending: true });
 
   if (empErr) {
@@ -60,6 +52,7 @@ export async function getEligibleEmployeesForPlaybookAction(
   }
   return employees ?? [];
 }
+
 
 /**
  * Fetch all PUBLISHED playbooks for the current tenant.

@@ -380,7 +380,7 @@ export const PlaybookDesignerApp: React.FC = () => {
         family: playbookFamily,
         strategy: playbookStrategy,
         purpose: playbookPurpose,
-        status: publish ? 'SUBMITTED' : status,
+        status: publish ? 'PUBLISHED' : status,
         globalOwners: activePB.globalOwners.map(o => o.id),
       };
 
@@ -395,7 +395,7 @@ export const PlaybookDesignerApp: React.FC = () => {
       );
 
       setLastSaved(new Date());
-      if (publish) setStatus('SUBMITTED');
+      if (publish) setStatus('PUBLISHED');
       return id;
     } catch (err) {
       console.error('[PlaybookDesigner] Save failed:', err);
