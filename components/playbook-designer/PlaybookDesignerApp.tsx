@@ -264,7 +264,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       }));
 
       // Map Global Owners UUID string[] to PlaybookOwner[]
-      const mappedGlobalOwners = (detail.global_owner_ids ?? []).map((gid: string) => ({
+      const mappedGlobalOwners = ((detail.global_owner_ids as string[]) ?? []).map((gid: string) => ({
          id: gid,
          name: resolveRoleName(gid) ?? 'Unknown Role'
       }));
