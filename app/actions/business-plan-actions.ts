@@ -360,23 +360,22 @@ export async function upsertPlaybookStepsAction(
 ): Promise<{ success: boolean; error?: string }> {
   if (!orgId || !playbookId) return { success: false, error: "orgId and playbookId are required" };
 
-  // Remove deleted steps
-  const incomingUids = steps.map(s => s.uid);
+  // Strategy: DELETE ALL existing steps, then INSERT fresh.
+  // This avoids the duplication bug where upsert with new UUIDs always inserts.
   const { error: delError } = await supabase
     .from("bp_playbook_steps")
     .delete()
     .eq("playbook_id", playbookId)
-    .eq("org_id", orgId)
-    .not("uid", "in", `(${incomingUids.map(u => `"${u}"`).join(",")})`);
+    .eq("org_id", orgId);
 
   if (delError) {
     console.error("[BP] Step delete error:", delError.message);
-    // Non-fatal: continue with upsert
+    return { success: false, error: `[steps delete] ${delError.message}` };
   }
 
-  // Upsert each step
+  // Insert fresh steps with new UUIDs
   const rows = steps.map((s) => ({
-    id: s.id ? String(s.id) : crypto.randomUUID(), // always supply id — bp_playbook_steps has no DEFAULT uuid
+    id: crypto.randomUUID(),
     org_id: orgId,
     playbook_id: playbookId,
     uid: s.uid,
@@ -403,11 +402,13 @@ export async function upsertPlaybookStepsAction(
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
-    .from("bp_playbook_steps")
-    .upsert(rows, { onConflict: "id" });
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from("bp_playbook_steps")
+      .insert(rows);
 
-  if (error) return { success: false, error: `[steps upsert] ${error.message}` };
+    if (error) return { success: false, error: `[steps insert] ${error.message}` };
+  }
 
   revalidatePath("/business-plan");
   return { success: true };
