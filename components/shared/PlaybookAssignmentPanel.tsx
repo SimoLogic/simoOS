@@ -41,7 +41,6 @@ interface AssignmentRow {
   id: string; // local UUID for React key
   selectedEids: string[];
   startDate: string;
-  dropdownOpen: boolean;
   search: string;
 }
 
@@ -91,14 +90,14 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
 
   // Multi-row assignment state — starts with 1 empty row
   const [rows, setRows] = useState<AssignmentRow[]>([
-    { id: uid(), selectedEids: [], startDate: "", dropdownOpen: false, search: "" },
+    { id: uid(), selectedEids: [], startDate: "", search: "" },
   ]);
 
   // ── Load eligible employees when playbook is selected ──
   useEffect(() => {
     if (!selectedPlaybook || !orgId) return;
     setLoadingEmployees(true);
-    setRows([{ id: uid(), selectedEids: [], startDate: "", dropdownOpen: false, search: "" }]);
+    setRows([{ id: uid(), selectedEids: [], startDate: "", search: "" }]);
     getEligibleEmployeesForPlaybookAction(selectedPlaybook.id, orgId)
       .then((data) => setEmployees(data as Employee[]))
       .finally(() => setLoadingEmployees(false));
@@ -126,7 +125,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: uid(), selectedEids: [], startDate: "", dropdownOpen: false, search: "" },
+      { id: uid(), selectedEids: [], startDate: "", search: "" },
     ]);
   };
 
@@ -249,12 +248,14 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
             <Users size={24} className="mx-auto mb-2 text-slate-300" />
             <p className="text-sm font-bold text-slate-400">No eligible employees found</p>
             <p className="text-xs text-slate-300 mt-1">
-              Ensure HC Master has active employees with matching role titles defined in this playbook's Responsible field.
+              Ensure HC Master has active employees with matching role titles defined in this playbook&apos;s Responsible field.
             </p>
           </div>
         )}
 
-        {/* Section A: Assignment rows */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ASSIGNMENT GROUPS — Table-style with inline checkboxes             */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
         {!loadingEmployees && employees.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -272,10 +273,10 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {rows.map((row, idx) => (
                 <div key={row.id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                  {/* Row header */}
+                  {/* Group header — date picker inline */}
                   <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-100">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                       Group {idx + 1}
@@ -285,136 +286,132 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                         </span>
                       )}
                     </span>
-                    {rows.length > 1 && (
-                      <button onClick={() => removeRow(row.id)} className="p-0.5 text-slate-300 hover:text-red-400 transition-colors">
-                        <Trash2 size={12} />
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays size={10} className="text-slate-400" />
+                        <input
+                          type="date"
+                          value={row.startDate}
+                          onChange={(e) => updateRow(row.id, { startDate: e.target.value })}
+                          min={new Date().toISOString().split("T")[0]}
+                          className="border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 outline-none focus:border-blue-400 bg-white w-[130px]"
+                        />
+                      </div>
+                      {rows.length > 1 && (
+                        <button onClick={() => removeRow(row.id)} className="p-0.5 text-slate-300 hover:text-red-400 transition-colors">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Column headers */}
+                  <div className="grid grid-cols-[28px_1fr_1fr] px-3 py-1.5 bg-slate-50/60 border-b border-slate-100">
+                    <span></span>
+                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Employee</span>
+                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Role Title</span>
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="px-3 py-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2 py-1.5">
+                      <Search size={11} className="text-slate-400" />
+                      <input
+                        value={row.search}
+                        onChange={(e) => updateRow(row.id, { search: e.target.value })}
+                        placeholder="Search by name or role…"
+                        className="flex-1 bg-transparent text-xs outline-none text-slate-700 placeholder:text-slate-300"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Employee rows — table grid with checkboxes */}
+                  <div className="max-h-60 overflow-y-auto divide-y divide-slate-50">
+                    {Object.entries(
+                      getFilteredEmployees(row).reduce<Record<string, Employee[]>>((acc, e) => {
+                        const r = e.role_title || "Other";
+                        if (!acc[r]) acc[r] = [];
+                        acc[r].push(e);
+                        return acc;
+                      }, {})
+                    ).map(([role, emps]) => (
+                      <div key={role}>
+                        {/* Role group header */}
+                        <div className="px-3 py-1.5 bg-blue-50/50 border-b border-slate-100 flex items-center justify-between">
+                          <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">
+                            {role.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-[8px] font-bold text-blue-400">
+                            {emps.length} {emps.length === 1 ? "employee" : "employees"}
+                          </span>
+                        </div>
+                        {/* Employee rows */}
+                        {emps.map((emp) => {
+                          const selected = row.selectedEids.includes(emp.eid);
+                          return (
+                            <button
+                              key={emp.eid}
+                              type="button"
+                              onClick={() => toggleEmployee(row.id, emp.eid)}
+                              className={`w-full grid grid-cols-[28px_1fr_1fr] items-center px-3 py-2.5 text-left transition-all ${
+                                selected
+                                  ? "bg-blue-50/80 border-l-2 border-l-blue-500"
+                                  : "hover:bg-slate-50 border-l-2 border-l-transparent"
+                              }`}
+                            >
+                              {/* Checkbox */}
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                                selected
+                                  ? "bg-blue-600 border-blue-600"
+                                  : "border-slate-300 bg-white"
+                              }`}>
+                                {selected && <Check size={10} className="text-white" strokeWidth={3} />}
+                              </div>
+
+                              {/* Name column */}
+                              <div className="min-w-0 pr-2">
+                                <p className="text-xs font-bold text-slate-800 truncate">
+                                  {emp.primer_nombre} {emp.primer_apellido}
+                                </p>
+                                <p className="text-[9px] text-slate-400 truncate">
+                                  {emp.eid}{emp.assigned_branch_code ? ` · ${emp.assigned_branch_code}` : ""}
+                                </p>
+                              </div>
+
+                              {/* Role Title column */}
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full truncate inline-block max-w-full">
+                                  {emp.role_title}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    {getFilteredEmployees(row).length === 0 && (
+                      <p className="text-center text-xs text-slate-400 py-4">No employees match your search.</p>
                     )}
                   </div>
 
-                  <div className="p-3 space-y-3">
-                    {/* Employee multi-select dropdown */}
-                    <div>
-                      <label className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 block">
-                        <Users size={8} className="inline mr-1" />Employees
-                      </label>
-
-                      {/* Selected tags */}
-                      {row.selectedEids.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {row.selectedEids.map((eid) => (
-                            <span key={eid} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded-full">
-                              {getEmployeeName(eid)}
-                              <button onClick={() => toggleEmployee(row.id, eid)} className="hover:text-red-500 ml-0.5">×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Dropdown trigger */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => updateRow(row.id, { dropdownOpen: !row.dropdownOpen })}
-                          className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 font-medium hover:border-blue-300 transition-all"
-                        >
-                          <span className="text-slate-400 text-[10px]">
-                            {row.selectedEids.length === 0 ? "Select employees…" : `${row.selectedEids.length} selected — click to change`}
+                  {/* Selected summary at bottom */}
+                  {row.selectedEids.length > 0 && (
+                    <div className="px-3 py-2 bg-blue-50/40 border-t border-slate-100">
+                      <div className="flex flex-wrap gap-1">
+                        {row.selectedEids.map((eid) => (
+                          <span key={eid} className="flex items-center gap-1 bg-white text-blue-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-200 shadow-sm">
+                            {getEmployeeName(eid)}
+                            <button onClick={() => toggleEmployee(row.id, eid)} className="hover:text-red-500 ml-0.5 text-blue-400">×</button>
                           </span>
-                          <ChevronDown size={12} className={`transition-transform ${row.dropdownOpen ? "rotate-180" : ""}`} />
-                        </button>
-
-                        {row.dropdownOpen && (
-                          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
-                            {/* Search */}
-                            <div className="p-2 border-b border-slate-100">
-                              <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2 py-1.5">
-                                <Search size={11} className="text-slate-400" />
-                                <input
-                                  autoFocus
-                                  value={row.search}
-                                  onChange={(e) => updateRow(row.id, { search: e.target.value })}
-                                  placeholder="Search by name or role…"
-                                  className="flex-1 bg-transparent text-xs outline-none text-slate-700 placeholder:text-slate-300"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Employee list grouped by role */}
-                            <div className="max-h-56 overflow-y-auto">
-                              {Object.entries(
-                                getFilteredEmployees(row).reduce<Record<string, Employee[]>>((acc, e) => {
-                                  const r = e.role_title || "Other";
-                                  if (!acc[r]) acc[r] = [];
-                                  acc[r].push(e);
-                                  return acc;
-                                }, {})
-                              ).map(([role, emps]) => (
-                                <div key={role}>
-                                  <div className="px-3 py-1.5 bg-slate-50 text-[8px] font-black uppercase tracking-widest text-slate-400 sticky top-0 border-b border-slate-100">
-                                    {role.replace(/_/g, " ")} ({emps.length})
-                                  </div>
-                                  {emps.map((emp) => {
-                                    const selected = row.selectedEids.includes(emp.eid);
-                                    return (
-                                      <button
-                                        key={emp.eid}
-                                        type="button"
-                                        onClick={() => toggleEmployee(row.id, emp.eid)}
-                                        className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-blue-50 transition-colors ${selected ? "bg-blue-50/60" : ""}`}
-                                      >
-                                        <div>
-                                          <p className="text-xs font-bold text-slate-700">
-                                            {emp.primer_nombre} {emp.primer_apellido}
-                                          </p>
-                                          <p className="text-[9px] text-slate-400">
-                                            {emp.role_title}{emp.assigned_branch_code ? ` · ${emp.assigned_branch_code}` : ""} · {emp.eid}
-                                          </p>
-                                        </div>
-                                        {selected && <Check size={12} className="text-blue-600 shrink-0" />}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ))}
-                              {getFilteredEmployees(row).length === 0 && (
-                                <p className="text-center text-xs text-slate-400 py-4">No results</p>
-                              )}
-                            </div>
-
-                            {/* Close dropdown */}
-                            <div className="border-t border-slate-100 p-2 text-right">
-                              <button
-                                onClick={() => updateRow(row.id, { dropdownOpen: false })}
-                                className="text-[10px] font-black text-blue-600 hover:underline"
-                              >
-                                Done
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    </div>
-
-                    {/* Start date */}
-                    <div>
-                      <label className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 block">
-                        <CalendarDays size={8} className="inline mr-1" />Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={row.startDate}
-                        onChange={(e) => updateRow(row.id, { startDate: e.target.value })}
-                        min={new Date().toISOString().split("T")[0]}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-blue-400 bg-slate-50"
-                      />
                       {row.startDate && (
-                        <p className="text-[9px] text-slate-400 mt-1">
-                          Effective start: <span className="font-bold text-slate-600">{fmtDate(row.startDate)}</span>
+                        <p className="text-[9px] text-blue-500 mt-1.5 font-bold">
+                          Start: {fmtDate(row.startDate)}
                         </p>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
