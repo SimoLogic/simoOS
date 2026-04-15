@@ -121,7 +121,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
   initialPlaybookId = null,
   duplicateFromId = null,
 }) => {
-  const { currentTenant } = useTenant();
+  const { currentTenant, isLoading: tenantLoading } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
   const isDuplicateMode = !!duplicateFromId;
 
@@ -193,10 +193,12 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
 
   // ── Deep Fetch: load specific or latest playbook on mount ──
   React.useEffect(() => {
-    if (!orgId) return;
+    if (!orgId || tenantLoading) return;
     const load = async () => {
-      // Step 0: Fetch Roles
-      const { intRoles, extRoles } = await refreshData() || { intRoles: [], extRoles: [] };
+      // Fetch Roles first — refreshData returns { intRoles, extRoles }
+      const roleData = await refreshData();
+      const intRoles = roleData?.intRoles ?? [];
+      const extRoles = roleData?.extRoles ?? [];
       const resolveRoleName = (id: string | null) => {
         if (!id) return null;
         const found = intRoles.find(r => r.id === id) || extRoles.find(r => r.id === id);
@@ -207,7 +209,6 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       const targetId = initialPlaybookId || duplicateFromId || null;
 
       let detail: Record<string, unknown> | null = null;
-      let isNewPlaybook = false;
 
       if (targetId) {
         // Load specific playbook (Edit or Duplicate mode)

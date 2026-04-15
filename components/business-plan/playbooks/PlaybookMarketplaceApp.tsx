@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
 } from "lucide-react";
@@ -12,9 +12,12 @@ import { PlaybookPreviewModal } from "./PlaybookPreviewModal";
 type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 
 export const PlaybookMarketplaceApp: React.FC = () => {
-  const { currentTenant } = useTenant();
-  const orgId = currentTenant?.tenant_id;
+  const { currentTenant, isLoading: tenantLoading } = useTenant();
+  const orgId = currentTenant?.tenant_id ?? '';
   const router = useRouter();
+  const pathname = usePathname();
+  // Extract locale prefix (e.g. '/en') from current pathname
+  const localePrefix = pathname.split('/')[1] ? `/${pathname.split('/')[1]}` : '';
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,9 +44,11 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   };
 
   useEffect(() => {
+    // Wait for tenant to finish loading before fetching
+    if (tenantLoading || !orgId) return;
     fetchPlaybooks(activeStatusFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, activeStatusFilter]);
+  }, [orgId, activeStatusFilter, tenantLoading]);
 
   const filteredPlaybooks = playbooks.filter((pb) => {
     const term = search.toLowerCase();
@@ -58,18 +63,18 @@ export const PlaybookMarketplaceApp: React.FC = () => {
 
   const handleEdit = (e: React.MouseEvent, pb: any) => {
     e.stopPropagation();
-    router.push(`/business-plan/playbook-designer?id=${pb.id}`);
+    router.push(`${localePrefix}/business-plan/playbook-designer?id=${pb.id}`);
   };
 
   const handleDuplicate = (e: React.MouseEvent, pb: any) => {
     e.stopPropagation();
-    router.push(`/business-plan/playbook-designer?duplicate=${pb.id}`);
+    router.push(`${localePrefix}/business-plan/playbook-designer?duplicate=${pb.id}`);
   };
 
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
       // Draft cards redirect directly to Designer for editing
-      router.push(`/business-plan/playbook-designer?id=${pb.id}`);
+      router.push(`${localePrefix}/business-plan/playbook-designer?id=${pb.id}`);
     } else {
       setSelectedPlaybook(pb);
     }
