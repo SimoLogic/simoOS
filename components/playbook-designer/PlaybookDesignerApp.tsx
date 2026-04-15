@@ -279,7 +279,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
     };
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId]);
+  }, [orgId, initialPlaybookId, duplicateFromId]);
 
   // ── WorkdayHelper Schedule Map (Llave #2) ──
   // Cascading projection: each step's date = previous step date + schedulerValue workdays
