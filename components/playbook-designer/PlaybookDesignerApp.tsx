@@ -241,7 +241,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       }
 
       const hydratedSteps: PlaybookStep[] = ((detail.steps ?? []) as Record<string, unknown>[]).map((s) => ({
-        id: s.id as number,
+        id: (s.id as string) ?? String(Date.now()),
         uid: s.uid as string,
         stepNum: s.step_num as string,
         name: s.name as string,

@@ -18,7 +18,7 @@
 // ─── Core Step Entity ─────────────────────────────────────────────────────────
 
 export interface PlaybookStep {
-  id: number;
+  id: number | string;
   uid: string;                   // Hard-generated unique ID (e.g. "HBT032")
   stepNum: string;               // Zero-padded sequence (e.g. "01", "02")
   name: string;                  // Activity name (UPPERCASE)
@@ -86,13 +86,13 @@ export interface WarningModalState {
 
 export interface ReplaceModalState {
   open: boolean;
-  targetId: number | null;
+  targetId: number | string | null;
   sourceData: PlaybookStep | null;
 }
 
 export interface DescModalState {
   open: boolean;
-  stepId: number | null;
+  stepId: number | string | null;
   field: string;
   title: string;
   value: string;
