@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
 } from "lucide-react";
@@ -29,10 +29,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const fetchPlaybooks = async (statusFilter: StatusFilter) => {
-    if (!orgId) {
-      console.warn('[Marketplace] orgId is empty — skipping fetch');
-      return;
-    }
+    if (!orgId) return;
     setLoading(true);
     const statusArr =
       statusFilter === "ALL"
@@ -46,7 +43,6 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   useEffect(() => {
     if (tenantLoading || !orgId) return;
     fetchPlaybooks(activeStatusFilter);
-    // Refetch when returning to the tab
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') fetchPlaybooks(activeStatusFilter);
     };
@@ -66,14 +62,13 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     return matchSearch && matchType && matchFamily && matchStrategy;
   });
 
-  // SPA navigation — stays within the same [locale]/page.tsx
   const goToDesigner = (params: string) => {
-    router.push(`?sub=playbook-designer&${params}`);
+    router.push("?sub=playbook-designer&" + params);
   };
 
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
-      goToDesigner(`id=${pb.id}`);
+      goToDesigner("id=" + pb.id);
     } else {
       setSelectedPlaybook(pb);
     }
@@ -85,13 +80,12 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     try {
       const result = await duplicatePlaybookAction(orgId, pb.id);
       if (result.error) {
-        alert(`Duplicate failed: ${result.error}`);
+        alert("Duplicate failed: " + result.error);
       } else {
-        // Refresh the list to show the new copy
         await fetchPlaybooks(activeStatusFilter);
       }
     } catch (err) {
-      alert(`Duplicate failed: ${err instanceof Error ? err.message : String(err)}`);
+      alert("Duplicate failed: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setDuplicatingId(null);
     }
@@ -198,14 +192,8 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                 <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
                   <div className="flex gap-2 flex-wrap">
                     <TypeBadge type={pb.type} />
-                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600">
-                      {pb.family}
-                    </span>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200 text-slate-500">
-                      {pb.strategy}
-                    </span>
+                    <StatusBadge status={pb.status} version={pb.version} />
                   </div>
-                  <StatusBadge status={pb.status} version={pb.version} />
                 </div>
 
                 <h3 className="text-xl font-black text-slate-800 leading-tight mb-2 group-hover:text-blue-600 transition-colors">
@@ -227,7 +215,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                   {/* Action Icons — SPA navigation */}
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={(e) => { e.stopPropagation(); goToDesigner(`id=${pb.id}`); }}
+                      onClick={(e) => { e.stopPropagation(); goToDesigner("id=" + pb.id); }}
                       title="Edit this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                     >
@@ -239,9 +227,8 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                       title="Duplicate this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40"
                     >
-                      <Copy size={13} className={duplicatingId === pb.id ? 'animate-spin' : ''} />
+                      <Copy size={13} />
                     </button>
-                  </div>
                   </div>
                 </div>
               </div>
@@ -261,7 +248,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   );
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// --- Helpers ---
 
 const TypeBadge = ({ type }: { type: string }) => {
   let styles = "bg-slate-100 text-slate-600";
