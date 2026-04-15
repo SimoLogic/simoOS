@@ -82,7 +82,7 @@ export async function getEligibleEmployeesForPlaybookAction(
 
 /** Helper: enrich employees with role title names from the library */
 async function enrichWithRoleTitleNames(employees: Record<string, unknown>[], orgId: string) {
-  const roleIds = [...new Set(employees.map(e => e.role_title_id as string).filter(Boolean))];
+  const roleIds = Array.from(new Set(employees.map(e => e.role_title_id as string).filter(Boolean)));
   if (roleIds.length === 0) return employees;
 
   const { data: roleTitles } = await supabase
