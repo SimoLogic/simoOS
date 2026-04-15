@@ -147,7 +147,11 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
   } else {
     const { data: created, error } = await supabase
       .from("bp_playbooks")
-      .insert({ ...payload, created_at: new Date().toISOString() })
+      .insert({
+        ...payload,
+        id: crypto.randomUUID(),   // bp_playbooks has no DEFAULT uuid — must supply
+        created_at: new Date().toISOString(),
+      })
       .select("id")
       .single();
     if (error) return { error: `[header insert] ${error.message}` };
@@ -280,7 +284,7 @@ export async function upsertPlaybookStepsAction(
 
   // Upsert each step
   const rows = steps.map((s) => ({
-    ...(s.id ? { id: s.id } : {}),
+    id: (s.id && s.id !== 0) ? String(s.id) : crypto.randomUUID(), // always supply id
     org_id: orgId,
     playbook_id: playbookId,
     uid: s.uid,
