@@ -63,7 +63,8 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   });
 
   const goToDesigner = (params: string) => {
-    router.push("?sub=playbook-designer&" + params);
+    // _t cache-buster ensures searchParams always change, triggering useEffect re-load
+    router.push("?sub=playbook-designer&" + params + "&_t=" + Date.now());
   };
 
   const handleCardClick = (pb: any) => {

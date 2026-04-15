@@ -221,14 +221,30 @@ export async function duplicatePlaybookAction(
 
   if (srcErr || !source) return { error: `Source not found: ${srcErr?.message ?? 'no data'}` };
 
-  // 2. Create new playbook header
+  // 2. Generate unique COPY name
+  const baseCopyName = `${source.name} COPY`;
+  const { data: existing } = await supabase
+    .from("bp_playbooks")
+    .select("name")
+    .eq("org_id", orgId)
+    .ilike("name", `${source.name} COPY%`);
+
+  const existingNames = new Set((existing ?? []).map((p: { name: string }) => p.name));
+  let copyName = baseCopyName;
+  let counter = 2;
+  while (existingNames.has(copyName)) {
+    copyName = `${baseCopyName} ${counter}`;
+    counter++;
+  }
+
+  // 3. Create new playbook header
   const newId = crypto.randomUUID();
   const { error: insertErr } = await supabase
     .from("bp_playbooks")
     .insert({
       id: newId,
       org_id: orgId,
-      name: `${source.name} COPY`,
+      name: copyName,
       type: source.type,
       family: source.family,
       strategy: source.strategy,
