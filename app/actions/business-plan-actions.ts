@@ -284,7 +284,7 @@ export async function upsertPlaybookStepsAction(
 
   // Upsert each step
   const rows = steps.map((s) => ({
-    id: (s.id && s.id !== 0) ? String(s.id) : crypto.randomUUID(), // always supply id
+    id: s.id ? String(s.id) : crypto.randomUUID(), // always supply id — bp_playbook_steps has no DEFAULT uuid
     org_id: orgId,
     playbook_id: playbookId,
     uid: s.uid,
