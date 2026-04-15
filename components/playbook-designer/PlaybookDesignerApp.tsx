@@ -297,7 +297,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleStepUpdate = (stepId: number, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => {
+  const handleStepUpdate = (stepId: number | string, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => {
     setActivePB(prev => ({
       ...prev,
       steps: prev.steps.map(s => s.id === stepId ? { ...s, [field]: value } : s),
@@ -341,7 +341,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
    * US-003: Lock Toggle — Shield Protocol
    * If step isLocked AND isRepeatable → warn about edit sync desync before unlocking.
    */
-  const handleLockToggle = (stepId: number) => {
+  const handleLockToggle = (stepId: number | string) => {
     const step = activePB.steps.find(s => s.id === stepId);
     if (!step) return;
     if (step.isLocked && step.isRepeatable) {
