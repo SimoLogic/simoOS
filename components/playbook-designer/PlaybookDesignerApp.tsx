@@ -136,12 +136,12 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
 
   // ── Playbook Metadata ──
   const [activeTab, setActiveTab] = useState<ActiveTab>('editor');
-  const [playbookName, setPlaybookName] = useState('B2B REALTOR OUTREACH STRATEGY');
+  const [playbookName, setPlaybookName] = useState('NEW PLAYBOOK');
   const [isEditingName, setIsEditingName] = useState(false);
   const [playbookType, setPlaybookType] = useState<PlaybookType>('GROWTH');
   const [playbookFamily, setPlaybookFamily] = useState<PlaybookFamily>('COMMERCIAL');
   const [playbookStrategy, setPlaybookStrategy] = useState<PlaybookStrategy>('B2B');
-  const [playbookPurpose, setPlaybookPurpose] = useState('Align sales pitch with the commercial strategy.');
+  const [playbookPurpose, setPlaybookPurpose] = useState('');
   const [showPurposeModal, setShowPurposeModal] = useState(false);
   const [status, setStatus] = useState<PlaybookStatus>('DRAFT');
 
@@ -227,14 +227,17 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       setPlaybookFamily((detail.family as PlaybookFamily) ?? 'COMMERCIAL');
       setPlaybookStrategy((detail.strategy as PlaybookStrategy) ?? 'B2B');
       setPlaybookPurpose((detail.purpose as string) ?? '');
-      setStatus((detail.status as PlaybookStatus) ?? 'DRAFT');
-      setPlaybookVersion((detail.version as number) ?? 1);
 
-      // In Duplicate mode: clear ID so a new record is created on save
+      // In Duplicate mode: clear ID, append COPY, reset version/status
       if (isDuplicateMode) {
         setPlaybookId(null);
+        setPlaybookName(`${((detail.name as string) ?? 'PLAYBOOK')} COPY`);
+        setStatus('DRAFT');
+        setPlaybookVersion(1);
       } else {
         setPlaybookId(detail.id as string);
+        setStatus((detail.status as PlaybookStatus) ?? 'DRAFT');
+        setPlaybookVersion((detail.version as number) ?? 1);
       }
 
       const hydratedSteps: PlaybookStep[] = ((detail.steps ?? []) as Record<string, unknown>[]).map((s) => ({
@@ -412,42 +415,46 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
     if (!orgId) return null;
     setIsSaving(true);
     try {
-      // Name collision check (only in Duplicate mode or for new playbooks without an ID)
+      let saveName = playbookName; // mutable copy for auto-suffix
+
+      // Name collision check
       if (isDuplicateMode || !playbookId) {
-        const nameCheck = await checkPlaybookNameAction(playbookName, orgId, playbookId ?? undefined);
+        const nameCheck = await checkPlaybookNameAction(saveName, orgId, playbookId ?? undefined);
         if (nameCheck.exists) {
-          const nextVer = (nameCheck.currentVersion ?? 1) + 1;
-          // Show overwrite warning — abort save until user confirms
-          setOverwriteWarning({
-            open: true,
-            conflictingName: playbookName,
-            nextVersion: nextVer,
-            onConfirm: async () => {
-              setOverwriteWarning(prev => ({ ...prev, open: false }));
-              await handleSaveToDB(publish, nextVer);
-            },
-          });
-          setIsSaving(false);
-          return null;
+          if (isDuplicateMode) {
+            // In duplicate mode: show overwrite warning for user to decide
+            const nextVer = (nameCheck.currentVersion ?? 1) + 1;
+            setOverwriteWarning({
+              open: true,
+              conflictingName: saveName,
+              nextVersion: nextVer,
+              onConfirm: async () => {
+                setOverwriteWarning(prev => ({ ...prev, open: false }));
+                await handleSaveToDB(publish, nextVer);
+              },
+            });
+            setIsSaving(false);
+            return null;
+          } else {
+            // For new playbooks: auto-resolve by appending a unique suffix
+            const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+            saveName = `${saveName} ${suffix}`;
+            setPlaybookName(saveName);
+          }
         }
       }
 
-      // Determine version:
-      // - Publish on a previously PUBLISHED playbook AND there are real changes → increment
-      // - Publish on a previously PUBLISHED playbook WITHOUT changes → keep version (no-op publish)
-      // - Draft save → always keep current version
-      // - forceVersion used when user confirms name collision
+      // Determine version
       let nextVersion = forceVersion ?? playbookVersion;
       if (publish && status === 'PUBLISHED' && !forceVersion) {
         if (isDirty) {
           nextVersion = playbookVersion + 1;
         }
-        // If not dirty and already published, we still save (idempotent) but don't increment
       }
 
       const headerData = {
         id: playbookId ?? undefined,
-        name: playbookName,
+        name: saveName,
         type: playbookType,
         family: playbookFamily,
         strategy: playbookStrategy,
