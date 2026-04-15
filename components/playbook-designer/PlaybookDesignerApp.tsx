@@ -215,11 +215,9 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
         // Load specific playbook (Edit or Duplicate mode)
         detail = await getPlaybookDetailAction(targetId, orgId);
       } else {
-        // Default: load most recently updated playbook
-        const list = await getPlaybooksAction(orgId);
-        if (list.length === 0) return;
-        const latest = list[0];
-        detail = await getPlaybookDetailAction(latest.id, orgId);
+        // No targetId: Designer opens blank (ready for new playbook creation)
+        // Do NOT load any existing playbook
+        return;
       }
 
       if (!detail) return;

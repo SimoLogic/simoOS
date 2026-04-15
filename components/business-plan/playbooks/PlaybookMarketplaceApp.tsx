@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import {
   Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
 } from "lucide-react";
@@ -14,10 +15,10 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export const PlaybookMarketplaceApp: React.FC = () => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
-  const router = useRouter();
   const pathname = usePathname();
-  // Extract locale prefix (e.g. '/en') from current pathname
-  const localePrefix = pathname.split('/')[1] ? `/${pathname.split('/')[1]}` : '';
+  // Build designer base URL resilient to any locale/routing setup
+  // Strips the last two segments ('/playbooks') and replaces with '/playbook-designer'
+  const designerBase = pathname.replace(/\/playbooks.*$/, '/playbook-designer');
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,18 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, activeStatusFilter, tenantLoading]);
 
+  // Refetch when user returns to this tab (e.g. after editing a playbook)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && orgId && !tenantLoading) {
+        fetchPlaybooks(activeStatusFilter);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, activeStatusFilter, tenantLoading]);
+
   const filteredPlaybooks = playbooks.filter((pb) => {
     const term = search.toLowerCase();
     const matchSearch =
@@ -61,20 +74,10 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     return matchSearch && matchType && matchFamily && matchStrategy;
   });
 
-  const handleEdit = (e: React.MouseEvent, pb: any) => {
-    e.stopPropagation();
-    router.push(`${localePrefix}/business-plan/playbook-designer?id=${pb.id}`);
-  };
-
-  const handleDuplicate = (e: React.MouseEvent, pb: any) => {
-    e.stopPropagation();
-    router.push(`${localePrefix}/business-plan/playbook-designer?duplicate=${pb.id}`);
-  };
-
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
-      // Draft cards redirect directly to Designer for editing
-      router.push(`${localePrefix}/business-plan/playbook-designer?id=${pb.id}`);
+      // Draft cards: open in designer via Link — use window.location for reliability
+      window.location.href = `${designerBase}?id=${pb.id}`;
     } else {
       setSelectedPlaybook(pb);
     }
@@ -207,22 +210,24 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Action Icons */}
+                  {/* Action Icons — use Link for reliable Next.js navigation */}
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={(e) => handleEdit(e, pb)}
+                    <Link
+                      href={`${designerBase}?id=${pb.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       title="Edit this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                     >
                       <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={(e) => handleDuplicate(e, pb)}
+                    </Link>
+                    <Link
+                      href={`${designerBase}?duplicate=${pb.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       title="Duplicate this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
                     >
                       <Copy size={13} />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
