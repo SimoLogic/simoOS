@@ -488,7 +488,9 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       else if (status !== 'PUBLISHED') setStatus('DRAFT');
       return id;
     } catch (err) {
-      console.error('[PlaybookDesigner] Save failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[PlaybookDesigner] Save failed:', msg);
+      alert(`Save failed: ${msg}`);
       return null;
     } finally {
       setIsSaving(false);

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
@@ -15,10 +14,9 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export const PlaybookMarketplaceApp: React.FC = () => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
-  const pathname = usePathname();
-  // Build designer base URL resilient to any locale/routing setup
-  // Strips the last two segments ('/playbooks') and replaces with '/playbook-designer'
-  const designerBase = pathname.replace(/\/playbooks.*$/, '/playbook-designer');
+  // Relative path — /business-plan/playbooks → ../playbook-designer
+  // Works regardless of locale prefix (/en, /es, etc.)
+  const designerHref = (params: string) => `../playbook-designer${params}`;
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,13 +31,18 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const [selectedPlaybook, setSelectedPlaybook] = useState<any | null>(null);
 
   const fetchPlaybooks = async (statusFilter: StatusFilter) => {
-    if (!orgId) return;
+    if (!orgId) {
+      console.warn('[Marketplace] orgId is empty — skipping fetch');
+      return;
+    }
     setLoading(true);
     const statusArr =
       statusFilter === "ALL"
         ? ["DRAFT", "PUBLISHED", "INACTIVE"]
         : [statusFilter];
+    console.log(`[Marketplace] Fetching for orgId="${orgId}" status=${JSON.stringify(statusArr)}`);
     const data = await getPlaybooksForMarketplaceAction(orgId, statusArr);
+    console.log(`[Marketplace] Received ${data.length} playbooks`);
     setPlaybooks(data);
     setLoading(false);
   };
@@ -77,7 +80,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
       // Draft cards: open in designer via Link — use window.location for reliability
-      window.location.href = `${designerBase}?id=${pb.id}`;
+      window.location.href = designerHref(`?id=${pb.id}`);
     } else {
       setSelectedPlaybook(pb);
     }
@@ -213,7 +216,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                   {/* Action Icons — use Link for reliable Next.js navigation */}
                   <div className="flex items-center gap-1.5">
                     <Link
-                      href={`${designerBase}?id=${pb.id}`}
+                      href={designerHref(`?id=${pb.id}`)}
                       onClick={(e) => e.stopPropagation()}
                       title="Edit this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
@@ -221,7 +224,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                       <Pencil size={13} />
                     </Link>
                     <Link
-                      href={`${designerBase}?duplicate=${pb.id}`}
+                      href={designerHref(`?duplicate=${pb.id}`)}
                       onClick={(e) => e.stopPropagation()}
                       title="Duplicate this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"

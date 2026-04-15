@@ -8,25 +8,40 @@ import { cn } from "@/lib/utils";
 
 export default function BusinessPlanLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // Extract locale prefix (e.g. '/en') — first segment after initial /
+  const segments = pathname.split('/');
+  const localePrefix = segments.length > 1 && ['en', 'es'].includes(segments[1]) ? `/${segments[1]}` : '';
 
   const tabs = [
     {
-      name: "OVERVIEW",
-      href: "/business-plan",
+      name: "Existing Accounts",
+      href: `${localePrefix}/business-plan`,
       icon: LayoutDashboard,
-      isActive: pathname === "/business-plan",
+      isActive: pathname.endsWith("/business-plan") || pathname.endsWith("/business-plan/"),
     },
     {
-      name: "PLAYBOOK DESIGNER",
-      href: "/business-plan/playbook-designer",
+      name: "New Business",
+      href: `${localePrefix}/business-plan`,
+      icon: LayoutDashboard,
+      isActive: false, // placeholder tab
+    },
+    {
+      name: "Playbooks",
+      href: `${localePrefix}/business-plan/playbooks`,
       icon: Zap,
-      isActive: pathname.startsWith("/business-plan/playbook-designer"),
+      isActive: pathname.includes("/business-plan/playbooks"),
     },
     {
-      name: "PLAYBOOKS",
-      href: "/business-plan/playbooks",
-      icon: Zap, // Or a better icon like BookOpen later if needed
-      isActive: pathname.startsWith("/business-plan/playbooks"),
+      name: "Playbook Designer",
+      href: `${localePrefix}/business-plan/playbook-designer`,
+      icon: Zap,
+      isActive: pathname.includes("/business-plan/playbook-designer"),
+    },
+    {
+      name: "SOP Designer",
+      href: `${localePrefix}/business-plan`,
+      icon: LayoutDashboard,
+      isActive: false, // placeholder tab
     },
   ];
 
