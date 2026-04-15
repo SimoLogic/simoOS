@@ -56,14 +56,14 @@ export async function getEligibleEmployeesForPlaybookAction(
 
 /**
  * Fetch all PUBLISHED playbooks for the current tenant.
- * Used by the Playbook Marketplace.
+ * Used by the Playbook Marketplace and employee-first Assignment Panel.
  */
 export async function getPublishedPlaybooksAction(orgId: string) {
   if (!orgId) return [];
 
   const { data, error } = await supabase
     .from("bp_playbooks")
-    .select("*, bp_playbook_steps(id, name, type_of_activity, purpose, activity_description, deliverable, deliverable_description, stakeholder, requested_to, scheduler_value, frequency, repetitions, sla, sla_description)")
+    .select("id, name, type, family, strategy, purpose, status, version, global_owner_ids, created_at, updated_at")
     .eq("org_id", orgId)
     .eq("status", "PUBLISHED")
     .order("updated_at", { ascending: false });
@@ -73,5 +73,22 @@ export async function getPublishedPlaybooksAction(orgId: string) {
     return []; 
   }
 
-  return data ?? [];
+  if (!data || data.length === 0) return [];
+
+  // Fetch steps separately to avoid column mismatch errors
+  const ids = data.map(p => p.id);
+  const { data: steps } = await supabase
+    .from("bp_playbook_steps")
+    .select("*")
+    .in("playbook_id", ids)
+    .order("position", { ascending: true });
+
+  const stepsByPlaybook = (steps ?? []).reduce((acc: Record<string, unknown[]>, s: Record<string, unknown>) => {
+    const pid = s.playbook_id as string;
+    if (!acc[pid]) acc[pid] = [];
+    acc[pid].push(s);
+    return acc;
+  }, {});
+
+  return data.map(p => ({ ...p, bp_playbook_steps: stepsByPlaybook[p.id] ?? [] }));
 }
