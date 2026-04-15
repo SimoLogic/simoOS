@@ -50,10 +50,10 @@ export const injectedStyles = `
 
 interface EditorAreaProps {
   playbook: PlaybookState;
-  onUpdate: (stepId: number, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => void;
-  onLock: (stepId: number) => void;
+  onUpdate: (stepId: number | string, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => void;
+  onLock: (stepId: number | string) => void;
   onRepeat: (step: PlaybookStep) => void;
-  onReplace: (targetId: number, sourceData: PlaybookStep) => void;
+  onReplace: (targetId: number | string, sourceData: PlaybookStep) => void;
   onAddOwner: (role: PlaybookOwner) => void;
   onRemoveOwner: (roleId: string) => void;
   onOpenDesc: (step: PlaybookStep, field: string, title: string) => void;
