@@ -115,8 +115,8 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
  * Saves (create or update) the playbook header metadata.
  * Supports version tracking and duplicate lineage (parent_id).
  */
-export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput) {
-  if (!orgId) throw new Error("orgId is required");
+export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput): Promise<{ id: string; error?: string } | { id?: undefined; error: string }> {
+  if (!orgId) return { error: "orgId is required" };
 
   const payload: Record<string, unknown> = {
     org_id: orgId,
@@ -133,8 +133,6 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
 
   if (data.parentId !== undefined) payload.parent_id = data.parentId;
 
-  let row: { id: string };
-
   if (data.id) {
     const { data: updated, error } = await supabase
       .from("bp_playbooks")
@@ -143,21 +141,19 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
       .eq("org_id", orgId)
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    row = updated;
+    if (error) return { error: `[header update] ${error.message}` };
+    revalidatePath("/business-plan");
+    return updated;
   } else {
     const { data: created, error } = await supabase
       .from("bp_playbooks")
       .insert({ ...payload, created_at: new Date().toISOString() })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    row = created;
+    if (error) return { error: `[header insert] ${error.message}` };
+    revalidatePath("/business-plan");
+    return created;
   }
-
-  revalidatePath("/business-plan/playbook-designer");
-  revalidatePath("/business-plan/playbooks");
-  return row;
 }
 
 // ─── LIFECYCLE ACTIONS ────────────────────────────────────────────────────────
@@ -265,17 +261,22 @@ export async function upsertPlaybookStepsAction(
   orgId: string,
   playbookId: string,
   steps: PlaybookStepUpsertInput[]
-) {
-  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+): Promise<{ success: boolean; error?: string }> {
+  if (!orgId || !playbookId) return { success: false, error: "orgId and playbookId are required" };
 
   // Remove deleted steps
   const incomingUids = steps.map(s => s.uid);
-  await supabase
+  const { error: delError } = await supabase
     .from("bp_playbook_steps")
     .delete()
     .eq("playbook_id", playbookId)
     .eq("org_id", orgId)
     .not("uid", "in", `(${incomingUids.map(u => `"${u}"`).join(",")})`);
+
+  if (delError) {
+    console.error("[BP] Step delete error:", delError.message);
+    // Non-fatal: continue with upsert
+  }
 
   // Upsert each step
   const rows = steps.map((s) => ({
@@ -310,9 +311,10 @@ export async function upsertPlaybookStepsAction(
     .from("bp_playbook_steps")
     .upsert(rows, { onConflict: "id" });
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: `[steps upsert] ${error.message}` };
 
-  revalidatePath("/business-plan/playbook-designer");
+  revalidatePath("/business-plan");
+  return { success: true };
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

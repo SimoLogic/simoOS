@@ -466,11 +466,19 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       };
 
       const savedPlaybook = await upsertPlaybookAction(orgId, headerData);
-      const id = savedPlaybook.id;
+
+      // Check for error returned from server action (not thrown — production-safe)
+      if ('error' in savedPlaybook && savedPlaybook.error) {
+        alert(`Save failed: ${savedPlaybook.error}`);
+        setIsSaving(false);
+        return null;
+      }
+
+      const id = savedPlaybook.id!;
       setPlaybookId(id);
       setPlaybookVersion(nextVersion);
 
-      await upsertPlaybookStepsAction(
+      const stepsResult = await upsertPlaybookStepsAction(
         orgId,
         id,
         // Recalculate stepNum from real position to fix non-consecutive numbering
@@ -482,6 +490,13 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
         }))
       );
 
+      if (stepsResult.error) {
+        alert(`Steps save failed: ${stepsResult.error}`);
+        // header was saved, steps failed — don't wipe the playbookId
+        setIsSaving(false);
+        return id;
+      }
+
       setLastSaved(new Date());
       setIsDirty(false); // Reset dirty flag after successful save
       if (publish) setStatus('PUBLISHED');
@@ -490,7 +505,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[PlaybookDesigner] Save failed:', msg);
-      alert(`Save failed: ${msg}`);
+      alert(`Save failed (unexpected): ${msg}`);
       return null;
     } finally {
       setIsSaving(false);
