@@ -367,7 +367,9 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
                                           <p className="text-xs font-bold text-slate-700">
                                             {emp.primer_nombre} {emp.primer_apellido}
                                           </p>
-                                          <p className="text-[9px] text-slate-400">{emp.eid}</p>
+                                          <p className="text-[9px] text-slate-400">
+                                            {emp.role_title}{emp.assigned_branch_code ? ` · ${emp.assigned_branch_code}` : ""} · {emp.eid}
+                                          </p>
                                         </div>
                                         {selected && <Check size={12} className="text-blue-600 shrink-0" />}
                                       </button>
