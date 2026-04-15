@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
 } from "lucide-react";
-import { getPlaybooksForMarketplaceAction } from "@/app/actions/business-plan-actions";
+import { getPlaybooksForMarketplaceAction, duplicatePlaybookAction } from "@/app/actions/business-plan-actions";
 import { useTenant } from "@/lib/tenant-context";
 import { PlaybookPreviewModal } from "./PlaybookPreviewModal";
 
@@ -14,8 +14,7 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export const PlaybookMarketplaceApp: React.FC = () => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
-  // Hardcoded absolute path — middleware adds /en prefix automatically
-  const DESIGNER = '/business-plan/playbook-designer';
+  const router = useRouter();
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,9 +24,9 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState("");
   const [familyFilter, setFamilyFilter] = useState("");
   const [strategyFilter, setStrategyFilter] = useState("");
-  const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilter>("ALL");
-
+  const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilter>('ALL');
   const [selectedPlaybook, setSelectedPlaybook] = useState<any | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const fetchPlaybooks = async (statusFilter: StatusFilter) => {
     if (!orgId) {
@@ -39,26 +38,17 @@ export const PlaybookMarketplaceApp: React.FC = () => {
       statusFilter === "ALL"
         ? ["DRAFT", "PUBLISHED", "INACTIVE"]
         : [statusFilter];
-    console.log(`[Marketplace] Fetching for orgId="${orgId}" status=${JSON.stringify(statusArr)}`);
     const data = await getPlaybooksForMarketplaceAction(orgId, statusArr);
-    console.log(`[Marketplace] Received ${data.length} playbooks`);
     setPlaybooks(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    // Wait for tenant to finish loading before fetching
     if (tenantLoading || !orgId) return;
     fetchPlaybooks(activeStatusFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, activeStatusFilter, tenantLoading]);
-
-  // Refetch when user returns to this tab (e.g. after editing a playbook)
-  useEffect(() => {
+    // Refetch when returning to the tab
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && orgId && !tenantLoading) {
-        fetchPlaybooks(activeStatusFilter);
-      }
+      if (document.visibilityState === 'visible') fetchPlaybooks(activeStatusFilter);
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
@@ -76,12 +66,34 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     return matchSearch && matchType && matchFamily && matchStrategy;
   });
 
+  // SPA navigation — stays within the same [locale]/page.tsx
+  const goToDesigner = (params: string) => {
+    router.push(`?sub=playbook-designer&${params}`);
+  };
+
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
-      // Draft cards: open in designer via Link — use window.location for reliability
-      window.location.href = `${DESIGNER}?id=${pb.id}`;
+      goToDesigner(`id=${pb.id}`);
     } else {
       setSelectedPlaybook(pb);
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, pb: any) => {
+    e.stopPropagation();
+    setDuplicatingId(pb.id);
+    try {
+      const result = await duplicatePlaybookAction(orgId, pb.id);
+      if (result.error) {
+        alert(`Duplicate failed: ${result.error}`);
+      } else {
+        // Refresh the list to show the new copy
+        await fetchPlaybooks(activeStatusFilter);
+      }
+    } catch (err) {
+      alert(`Duplicate failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -212,24 +224,24 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Action Icons — use Link for reliable Next.js navigation */}
+                  {/* Action Icons — SPA navigation */}
                   <div className="flex items-center gap-1.5">
-                    <Link
-                      href={`${DESIGNER}?id=${pb.id}`}
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); goToDesigner(`id=${pb.id}`); }}
                       title="Edit this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                     >
                       <Pencil size={13} />
-                    </Link>
-                    <Link
-                      href={`${DESIGNER}?duplicate=${pb.id}`}
-                      onClick={(e) => e.stopPropagation()}
+                    </button>
+                    <button
+                      onClick={(e) => handleDuplicate(e, pb)}
+                      disabled={duplicatingId === pb.id}
                       title="Duplicate this playbook"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40"
                     >
-                      <Copy size={13} />
-                    </Link>
+                      <Copy size={13} className={duplicatingId === pb.id ? 'animate-spin' : ''} />
+                    </button>
+                  </div>
                   </div>
                 </div>
               </div>
