@@ -14,9 +14,8 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export const PlaybookMarketplaceApp: React.FC = () => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
   const orgId = currentTenant?.tenant_id ?? '';
-  // Relative path — /business-plan/playbooks → ../playbook-designer
-  // Works regardless of locale prefix (/en, /es, etc.)
-  const designerHref = (params: string) => `../playbook-designer${params}`;
+  // Hardcoded absolute path — middleware adds /en prefix automatically
+  const DESIGNER = '/business-plan/playbook-designer';
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +79,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const handleCardClick = (pb: any) => {
     if (pb.status === "DRAFT") {
       // Draft cards: open in designer via Link — use window.location for reliability
-      window.location.href = designerHref(`?id=${pb.id}`);
+      window.location.href = `${DESIGNER}?id=${pb.id}`;
     } else {
       setSelectedPlaybook(pb);
     }
@@ -216,7 +215,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                   {/* Action Icons — use Link for reliable Next.js navigation */}
                   <div className="flex items-center gap-1.5">
                     <Link
-                      href={designerHref(`?id=${pb.id}`)}
+                      href={`${DESIGNER}?id=${pb.id}`}
                       onClick={(e) => e.stopPropagation()}
                       title="Edit this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
@@ -224,7 +223,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                       <Pencil size={13} />
                     </Link>
                     <Link
-                      href={designerHref(`?duplicate=${pb.id}`)}
+                      href={`${DESIGNER}?duplicate=${pb.id}`}
                       onClick={(e) => e.stopPropagation()}
                       title="Duplicate this playbook"
                       className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
