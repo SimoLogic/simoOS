@@ -130,6 +130,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
   const [playbookVersion, setPlaybookVersion] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isDirty, setIsDirty] = useState(false); // true = unsaved changes exist
   // Anchor date for WorkdayHelper projections — editable by user
   const [playbookStartDate, setPlaybookStartDate] = useState<Date>(() => new Date());
 
@@ -300,6 +301,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       ...prev,
       steps: prev.steps.map(s => s.id === stepId ? { ...s, [field]: value } : s),
     }));
+    setIsDirty(true);
   };
 
   const handleReorderSteps = () => {
@@ -316,6 +318,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
         stepNum: String(index + 1).padStart(2, '0'),
       }));
       setActivePB(prev => ({ ...prev, steps: sequenced }));
+      setIsDirty(true);
     }
     dragItemIdx.current = null;
     dragOverItemIdx.current = null;
@@ -324,11 +327,13 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
   const handleDropGlobalOwner = (role: PlaybookOwner) => {
     if (role && !activePB.globalOwners.some(r => String(r.id) === String(role.id))) {
       setActivePB(prev => ({ ...prev, globalOwners: [...prev.globalOwners, role] }));
+      setIsDirty(true);
     }
   };
 
   const handleRemoveGlobalOwner = (roleId: string) => {
     setActivePB(prev => ({ ...prev, globalOwners: prev.globalOwners.filter(r => String(r.id) !== String(roleId)) }));
+    setIsDirty(true);
   };
 
   /**
@@ -430,12 +435,16 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       }
 
       // Determine version:
-      // - Publish on a previously published playbook → increment
-      // - Draft save → keep current version
+      // - Publish on a previously PUBLISHED playbook AND there are real changes → increment
+      // - Publish on a previously PUBLISHED playbook WITHOUT changes → keep version (no-op publish)
+      // - Draft save → always keep current version
       // - forceVersion used when user confirms name collision
       let nextVersion = forceVersion ?? playbookVersion;
       if (publish && status === 'PUBLISHED' && !forceVersion) {
-        nextVersion = playbookVersion + 1;
+        if (isDirty) {
+          nextVersion = playbookVersion + 1;
+        }
+        // If not dirty and already published, we still save (idempotent) but don't increment
       }
 
       const headerData = {
@@ -459,10 +468,17 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       await upsertPlaybookStepsAction(
         orgId,
         id,
-        activePB.steps.map((s, idx) => ({ ...s, id: undefined, position: idx }))
+        // Recalculate stepNum from real position to fix non-consecutive numbering
+        activePB.steps.map((s, idx) => ({
+          ...s,
+          id: undefined,
+          position: idx,
+          stepNum: String(idx + 1).padStart(2, '0'),
+        }))
       );
 
       setLastSaved(new Date());
+      setIsDirty(false); // Reset dirty flag after successful save
       if (publish) setStatus('PUBLISHED');
       else if (status !== 'PUBLISHED') setStatus('DRAFT');
       return id;
@@ -503,6 +519,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
         isRepeatable: false,
       }],
     }));
+    setIsDirty(true);
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -570,7 +587,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
               {isEditingName ? (
                 <input
                   value={playbookName}
-                  onChange={e => setPlaybookName(e.target.value.toUpperCase())}
+                  onChange={e => { setPlaybookName(e.target.value.toUpperCase()); setIsDirty(true); }}
                   onBlur={() => setIsEditingName(false)}
                   className="text-sm font-black uppercase outline-none bg-transparent border-b border-indigo-500 flex-1 py-1"
                   autoFocus

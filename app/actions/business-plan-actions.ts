@@ -211,29 +211,51 @@ export async function getPlaybooksForMarketplaceAction(
 ) {
   if (!orgId) return [];
 
-  let query = supabase
+  // Step 1: Fetch playbook headers
+  let headerQuery = supabase
     .from("bp_playbooks")
-    .select(`
-      id, name, type, family, strategy, purpose, status, version, parent_id, created_at, updated_at, global_owner_ids,
-      bp_playbook_steps (
-        id, name, type_of_activity, purpose, activity_description, deliverable,
-        deliverable_description, scheduler_value, frequency, repetitions,
-        sla, sla_description, stakeholder, requested_to
-      )
-    `)
+    .select("id, name, type, family, strategy, purpose, status, version, parent_id, created_at, updated_at, global_owner_ids")
     .eq("org_id", orgId)
     .order("updated_at", { ascending: false });
 
   if (statusFilter.length > 0) {
-    query = query.in("status", statusFilter);
+    headerQuery = headerQuery.in("status", statusFilter);
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("[BP Action] getPlaybooksForMarketplace:", error.message);
+  const { data: headers, error: headerError } = await headerQuery;
+  if (headerError) {
+    console.error("[BP Action] getPlaybooksForMarketplace headers:", headerError.message);
     return [];
   }
-  return data ?? [];
+  if (!headers || headers.length === 0) return [];
+
+  // Step 2: Fetch steps for all returned playbooks (use * to avoid column mismatch)
+  const playbookIds = headers.map(h => h.id);
+  const { data: steps, error: stepsError } = await supabase
+    .from("bp_playbook_steps")
+    .select("*")
+    .in("playbook_id", playbookIds)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true });
+
+  if (stepsError) {
+    console.error("[BP Action] getPlaybooksForMarketplace steps:", stepsError.message);
+    // Return headers without steps rather than crashing
+    return headers.map(h => ({ ...h, bp_playbook_steps: [] }));
+  }
+
+  // Step 3: Attach steps to their playbook
+  const stepsByPlaybook = (steps ?? []).reduce((acc: Record<string, unknown[]>, step: Record<string, unknown>) => {
+    const pid = step.playbook_id as string;
+    if (!acc[pid]) acc[pid] = [];
+    acc[pid].push(step);
+    return acc;
+  }, {});
+
+  return headers.map(h => ({
+    ...h,
+    bp_playbook_steps: stepsByPlaybook[h.id] ?? [],
+  }));
 }
 
 /**
