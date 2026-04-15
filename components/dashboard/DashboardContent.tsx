@@ -107,7 +107,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                 ) : activeSubModule === "playbooks" ? (
                     <PlaybookMarketplaceApp />
                 ) : activeSubModule === "playbook-designer" ? (
-                    <PlaybookDesignerApp />
+                    <PlaybookDesignerApp
+                        initialPlaybookId={searchParams.get("id") ?? null}
+                        duplicateFromId={searchParams.get("duplicate") ?? null}
+                    />
                 ) : (
                     <SplitView subModuleId={activeSubModule} />
                 )}

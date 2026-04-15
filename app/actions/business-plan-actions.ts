@@ -198,7 +198,99 @@ export async function deactivatePlaybookAction(orgId: string, playbookId: string
     .eq("id", playbookId)
     .eq("org_id", orgId);
   if (error) throw new Error(error.message);
-  revalidatePath("/business-plan/playbooks");
+  revalidatePath("/business-plan");
+}
+
+/**
+ * Duplicate an existing playbook: copies header + all steps.
+ * New playbook gets " COPY" suffix, DRAFT status, version 1, parent_id = original.
+ */
+export async function duplicatePlaybookAction(
+  orgId: string,
+  sourcePlaybookId: string
+): Promise<{ id?: string; error?: string }> {
+  if (!orgId || !sourcePlaybookId) return { error: "orgId and sourcePlaybookId are required" };
+
+  // 1. Fetch source playbook header
+  const { data: source, error: srcErr } = await supabase
+    .from("bp_playbooks")
+    .select("*")
+    .eq("id", sourcePlaybookId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (srcErr || !source) return { error: `Source not found: ${srcErr?.message ?? 'no data'}` };
+
+  // 2. Create new playbook header
+  const newId = crypto.randomUUID();
+  const { error: insertErr } = await supabase
+    .from("bp_playbooks")
+    .insert({
+      id: newId,
+      org_id: orgId,
+      name: `${source.name} COPY`,
+      type: source.type,
+      family: source.family,
+      strategy: source.strategy,
+      purpose: source.purpose,
+      status: "DRAFT",
+      global_owner_ids: source.global_owner_ids ?? [],
+      version: 1,
+      parent_id: sourcePlaybookId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+  if (insertErr) return { error: `[duplicate header] ${insertErr.message}` };
+
+  // 3. Fetch source steps
+  const { data: srcSteps } = await supabase
+    .from("bp_playbook_steps")
+    .select("*")
+    .eq("playbook_id", sourcePlaybookId)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true });
+
+  // 4. Clone steps into the new playbook (new IDs, same content)
+  if (srcSteps && srcSteps.length > 0) {
+    const clonedSteps = srcSteps.map((s: Record<string, unknown>) => ({
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      playbook_id: newId,
+      uid: s.uid,
+      step_num: s.step_num,
+      name: s.name,
+      type_of_activity: s.type_of_activity,
+      purpose: s.purpose,
+      activity_description: s.activity_description,
+      deliverable: s.deliverable,
+      deliverable_description: s.deliverable_description,
+      stakeholder_id: s.stakeholder_id,
+      frequency: s.frequency,
+      repetitions: s.repetitions,
+      freq_notes: s.freq_notes,
+      scheduler_value: s.scheduler_value,
+      supporting_task: s.supporting_task,
+      counteraction_description: s.counteraction_description,
+      requested_to_id: s.requested_to_id,
+      sla: s.sla,
+      sla_description: s.sla_description,
+      is_locked: false, // unlocked so user can edit
+      is_repeatable: s.is_repeatable,
+      position: s.position,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error: stepsErr } = await supabase
+      .from("bp_playbook_steps")
+      .insert(clonedSteps);
+
+    if (stepsErr) return { error: `[duplicate steps] ${stepsErr.message}` };
+  }
+
+  revalidatePath("/business-plan");
+  return { id: newId };
 }
 
 /**
