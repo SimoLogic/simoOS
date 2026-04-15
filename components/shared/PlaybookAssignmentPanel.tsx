@@ -100,7 +100,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
     setLoadingEmployees(true);
     setRows([{ id: uid(), selectedEids: [], startDate: "", dropdownOpen: false, search: "" }]);
     getEligibleEmployeesForPlaybookAction(selectedPlaybook.id, orgId)
-      .then((data: Employee[]) => setEmployees(data))
+      .then((data) => setEmployees(data as Employee[]))
       .finally(() => setLoadingEmployees(false));
   }, [selectedPlaybook, orgId]);
 
