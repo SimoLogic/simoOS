@@ -29,7 +29,7 @@ import { usePmoStore } from "@/lib/stores/pmo.store";
 import { bulkUpdateTasksAction } from "@/app/actions/pmo/bulk-task-actions";
 import { Loader2, AlertCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SidePeek } from "@/components/pmo/grid/SidePeek";
+import { SidePeek } from "@/components/pmo/shared/SidePeek";
 import { PresenceProvider } from "@/components/pmo/shared/PresenceProvider";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
 import { useSessionStore } from "@/lib/session-store";
@@ -416,24 +416,18 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
           onDelete={() => console.warn("Shield Protocol: bulk delete blocked for protected tasks.")}
         />
 
-        {/* ── SIDE PEEK ── */}
+        {/* ── SIDE PEEK (S-08) ── */}
         {activePeekTask && (
-          <>
-            <div
-              className="fixed inset-0 bg-transparent z-[55]"
-              onClick={() => setActivePeekTaskId(null)}
-            />
-            <SidePeek
-              task={activePeekTask}
-              isOpen={!!activePeekTaskId}
-              onClose={() => setActivePeekTaskId(null)}
-              onUpdate={async (updates) => {
-                if (activePeekTaskId) {
-                  usePmoStore.getState().setOptimisticTaskUpdate(activePeekTaskId, updates);
-                }
-              }}
-            />
-          </>
+          <SidePeek
+            task={activePeekTask}
+            orgId={orgId}
+            userId={user_ide ?? "system"}
+            isOpen={!!activePeekTaskId}
+            onClose={() => setActivePeekTaskId(null)}
+            onTaskUpdate={(taskId, fields) => {
+              usePmoStore.getState().setOptimisticTaskUpdate(taskId, fields);
+            }}
+          />
         )}
       </div>
 

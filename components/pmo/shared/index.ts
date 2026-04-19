@@ -4,3 +4,5 @@
 export { PlaybookBadge } from "./PlaybookBadge";
 export { StatusBadge } from "./StatusBadge";
 export { PriorityBadge } from "./PriorityBadge";
+export { SidePeek } from "./SidePeek";
+
