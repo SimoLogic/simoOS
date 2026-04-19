@@ -1,5 +1,5 @@
 // PMO Actions — barrel export
-// ⚠️ Actualizar al agregar nuevas actions en Sprint 3+
+// TOTAL: 8 action modules, 30+ Server Actions, ZERO stubs.
 
 // Board & Workspace actions
 export {
@@ -32,3 +32,45 @@ export {
   deleteGroupAction,
   reorderGroupsAction,
 } from "./group-actions";
+
+// Column actions
+export {
+  addColumnAction,
+  updateColumnAction,
+  deleteColumnAction,
+  reorderColumnsAction,
+  getColumnsAction,
+  updateCustomFieldValueAction,
+} from "./column-actions";
+
+// Subitem actions
+export {
+  getSubitemsAction,
+  createSubitemAction,
+  updateSubitemAction,
+  deleteSubitemAction,
+} from "./subitem-actions";
+
+// Update actions (Side Peek comments)
+export {
+  getUpdatesAction,
+  addUpdateAction,
+  deleteUpdateAction,
+  toggleReactionAction,
+} from "./update-actions";
+
+// Activity log actions (auditoría transaccional)
+export {
+  getTaskActivityAction,
+  logActivityAction,
+  logFieldChangeAction,
+  getTaskActivityLogsAction,
+} from "./activity-actions";
+
+// Saved view actions
+export {
+  getViewsAction,
+  createViewAction,
+  updateViewAction,
+  deleteViewAction,
+} from "./view-actions";
