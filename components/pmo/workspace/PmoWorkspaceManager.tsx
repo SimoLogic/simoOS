@@ -55,7 +55,7 @@ export const PmoWorkspaceManager: React.FC = () => {
 
     const handleCreateWorkspace = async () => {
         if (!tenant_id) return;
-        const name = prompt("Nombre del nuevo Workspace:");
+        const name = prompt("New Workspace Name:");
         if (!name) return;
         
         await createWorkspaceAction({ orgId: tenant_id, name });
@@ -142,7 +142,7 @@ export const PmoWorkspaceManager: React.FC = () => {
                             onClick={handleCreateWorkspace}
                             className="bg-[#6161FF] text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all"
                         >
-                            Crear Primer Workspace
+                            Create First Workspace
                         </button>
                     </div>
                 ) : (

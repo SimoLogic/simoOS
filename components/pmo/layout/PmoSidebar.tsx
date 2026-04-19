@@ -119,7 +119,7 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
                     {!isCollapsed && (
                         <input
                             type="text"
-                            placeholder="Buscar en PMO..."
+                            placeholder="Search PMO..."
                             className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-transparent rounded-md text-[13px] text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#6161FF] focus:ring-1 focus:ring-[#6161FF] outline-none transition-all"
                         />
                     )}
@@ -173,7 +173,7 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
                         )}
                     >
                         <LayoutGrid className="w-4 h-4 shrink-0" />
-                        {!isCollapsed && <span className="text-[14px] font-medium truncate">Todos los Tableros</span>}
+                        {!isCollapsed && <span className="text-[14px] font-medium truncate">All Boards</span>}
                     </button>
 
                     {/* Dynamic Workspaces (S-09) */}
@@ -204,7 +204,7 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
                                         {isExp && (
                                             <div className="pl-6 pr-2 mt-1 space-y-0.5">
                                                 {boards.length === 0 ? (
-                                                    <span className="text-[11px] text-slate-400 italic px-2">Vacio</span>
+                                                    <span className="text-[11px] text-slate-400 italic px-2">Empty</span>
                                                 ) : (
                                                     boards.map(b => (
                                                         <button 
@@ -242,24 +242,24 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
             {/* Bottom Controls */}
             <div className="p-3 border-t border-[#E6E9EF] flex flex-col gap-1 shrink-0">
                 <button
-                    title={isCollapsed ? "Papelera" : undefined}
+                    title={isCollapsed ? "Trash" : undefined}
                     className={cn(
                         "flex items-center gap-3 rounded-md transition-colors hover:bg-slate-50 text-slate-700",
                         isCollapsed ? "justify-center p-2 mx-auto" : "px-3 py-2 w-full"
                     )}
                 >
                     <Trash2 className="w-4 h-4 shrink-0 text-slate-400" />
-                    {!isCollapsed && <span className="text-[13px]">Papelera</span>}
+                    {!isCollapsed && <span className="text-[13px]">Trash</span>}
                 </button>
                 <button
-                    title={isCollapsed ? "Configuración" : undefined}
+                    title={isCollapsed ? "Settings" : undefined}
                     className={cn(
                         "flex items-center gap-3 rounded-md transition-colors hover:bg-slate-50 text-slate-700",
                         isCollapsed ? "justify-center p-2 mx-auto" : "px-3 py-2 w-full"
                     )}
                 >
                     <Settings className="w-4 h-4 shrink-0 text-slate-400" />
-                    {!isCollapsed && <span className="text-[13px]">Configuración</span>}
+                    {!isCollapsed && <span className="text-[13px]">Settings</span>}
                 </button>
             </div>
         </aside>
