@@ -17,6 +17,7 @@ import {
     Zap,
     Lock,
     Plug,
+    CreditCard,
     Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,10 +27,12 @@ import { KanbanView } from "@/components/pmo/views/KanbanView";
 import GanttView from "@/components/pmo/views/GanttView";
 import { CalendarView } from "@/components/pmo/views/CalendarView";
 import { DashboardEngine } from "@/components/pmo/views/DashboardEngine";
+import { CardsView } from "@/components/pmo/views/CardsView";
 import { useSessionStore } from "@/lib/session-store";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { getBoardsAction, getBoardAction } from "@/app/actions/pmo/board-actions";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
+import { BoardOnboarding } from "@/components/pmo/shared/BoardOnboarding";
 import IntegrationsPanel from "@/components/pmo/integrations/IntegrationsPanel";
 import { PlaybookAssignmentPanel } from "@/components/shared/PlaybookAssignmentPanel";
 
@@ -50,6 +53,7 @@ const viewTabs = [
     { id: "kanban"       as PmoView, label: "Kanban",       icon: Trello },
     { id: "gantt"        as PmoView, label: "Gantt",        icon: GanttChartSquare },
     { id: "calendar"     as PmoView, label: "Calendar",     icon: CalendarDays },
+    { id: "cards"        as PmoView, label: "Cards",        icon: CreditCard },
     { id: "dashboard"    as PmoView, label: "Dashboard",    icon: LayoutDashboard },
     { id: "integrations" as PmoView, label: "Integrations", icon: Plug },
 ];
@@ -115,7 +119,17 @@ export const MyPlanShell: React.FC = () => {
 
         if (activeView === "grid") {
             if (!activeBoardId) return <EmptyBoardState />;
-            return <GridView key={refreshKey} boardId={activeBoardId} orgId={orgId} isReadOnly={isViewLocked} />;
+            return (
+                <>
+                    <BoardOnboarding boardId={activeBoardId} />
+                    <GridView key={refreshKey} boardId={activeBoardId} orgId={orgId} isReadOnly={isViewLocked} />
+                </>
+            );
+        }
+
+        if (activeView === "cards") {
+            if (!activeBoardId) return <EmptyBoardState />;
+            return <CardsView boardId={activeBoardId} orgId={orgId} isReadOnly={isViewLocked} mode="my-plan" />;
         }
 
         if (activeView === "dashboard") {

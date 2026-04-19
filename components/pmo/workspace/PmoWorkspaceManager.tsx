@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { FolderOpen, Plus, MoreHorizontal, LayoutGrid, Settings, Briefcase } from "lucide-react";
 import { useSessionStore } from "@/lib/session-store";
 import { getWorkspacesAction, createWorkspaceAction } from "@/app/actions/pmo/board-actions";
-import { getBoardsAction } from "@/app/actions/pmo/board-actions";
+import { getBoardsAction, getBoardAction } from "@/app/actions/pmo/board-actions";
 import { WorkspaceSettingsModal } from "./WorkspaceSettingsModal";
 import { TemplateSelectorModal } from "./TemplateSelectorModal";
 import GridView from "../views/GridView";
+import { CardsView } from "../views/CardsView";
+import { BoardOnboarding } from "../shared/BoardOnboarding";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 
 export const PmoWorkspaceManager: React.FC = () => {
@@ -72,7 +74,25 @@ export const PmoWorkspaceManager: React.FC = () => {
         setActiveBoardId(newBoardId);
     };
 
+    const activeView = usePmoStore(s => s.activeView);
+
     if (activeBoardId) {
+        const orgId = tenant_id || "";
+
+        const renderBoardView = () => {
+            switch (activeView) {
+                case "cards":
+                    return <CardsView boardId={activeBoardId} orgId={orgId} isReadOnly={false} mode="my-projects" />;
+                default:
+                    return (
+                        <>
+                            <BoardOnboarding boardId={activeBoardId} />
+                            <GridView boardId={activeBoardId} orgId={orgId} isReadOnly={false} />
+                        </>
+                    );
+            }
+        };
+
         return (
             <div className="w-full h-full flex flex-col relative motion-preset-slide-up-sm motion-duration-250">
                 <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-200 bg-white shadow-sm z-10 shrink-0">
@@ -84,7 +104,7 @@ export const PmoWorkspaceManager: React.FC = () => {
                     </button>
                 </div>
                 <div className="flex-1 relative bg-white">
-                    <GridView boardId={activeBoardId} orgId={tenant_id || ""} isReadOnly={false} />
+                    {renderBoardView()}
                 </div>
             </div>
         );
@@ -95,14 +115,14 @@ export const PmoWorkspaceManager: React.FC = () => {
             <div className="max-w-6xl mx-auto space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Mis Proyectos</h1>
-                        <p className="text-[14px] text-slate-500 mt-1">Organiza tus tableros en Workspaces departamentales o por iniciativa.</p>
+                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">My Projects</h1>
+                        <p className="text-[14px] text-slate-500 mt-1">Organize your boards into departmental or initiative-based Workspaces.</p>
                     </div>
                     <button 
                         onClick={handleCreateWorkspace}
                         className="bg-[#6161FF] hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-[14px] font-bold transition-all flex items-center gap-2 shadow hover:shadow-lg"
                     >
-                        <Plus className="w-4 h-4" /> Nuevo Workspace
+                        <Plus className="w-4 h-4" /> New Workspace
                     </button>
                 </div>
 

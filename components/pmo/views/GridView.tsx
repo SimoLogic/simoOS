@@ -316,7 +316,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
 
             {/* [+] Add Column button */}
             {!isReadOnly && (
-              <div className="flex items-center justify-center px-2 h-full border-r border-slate-200">
+              <div data-onboarding="add-column-btn" className="flex items-center justify-center px-2 h-full border-r border-slate-200">
                 <ColumnTypeSelector
                   boardId={boardId}
                   orgId={orgId}

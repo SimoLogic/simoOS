@@ -17,7 +17,7 @@ export type FrequencyType =
     | 'BIWEEKLY'
     | 'MONTHLY';
 
-export type BoardView = 'grid' | 'kanban' | 'gantt' | 'calendar' | 'dashboard';
+export type BoardView = 'grid' | 'kanban' | 'gantt' | 'calendar' | 'dashboard' | 'cards';
 
 export interface WorkdayConfig {
     timezone: string;         // e.g. 'America/Bogota'
