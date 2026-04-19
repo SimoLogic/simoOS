@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/pmo/board.service";
 import { getGroupsService } from "@/lib/services/pmo/group.service";
 import { getTasksService } from "@/lib/services/pmo/task.service";
+import { getSubitemsByTaskIdsService } from "@/lib/services/pmo/subitem.service";
 import { seedDefaultColumnsService, getColumnsService } from "@/lib/services/pmo/column.service";
 import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
 
@@ -113,11 +114,18 @@ export async function getBoardAction(
       getTasksService(boardId, orgId),
       getColumnsService(boardId, orgId),
     ]);
+    
+    // Fetch subitems for all tasks
+    const taskIds = tasks.map(t => t.id);
+    const subitems = taskIds.length > 0 ? await getSubitemsByTaskIdsService(taskIds, orgId) : [];
 
     // Nest tasks under their parent group
     const hydratedGroups = groups.map((g) => ({
       ...g,
-      tasks: tasks.filter((t) => t.groupId === g.id),
+      tasks: tasks.filter((t) => t.groupId === g.id).map(t => ({
+        ...t,
+        subtasks: subitems.filter(s => s.taskId === t.id)
+      })),
     }));
 
     return { success: true, data: { ...board, groups: hydratedGroups, columns } };

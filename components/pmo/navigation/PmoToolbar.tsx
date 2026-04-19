@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw } from "lucide-react";
+import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { ImportExportMenu } from "@/components/pmo/navigation/ImportExportMenu";
 import { KeyboardShortcuts } from "@/components/pmo/shared/KeyboardShortcuts";
@@ -16,10 +16,11 @@ interface PmoToolbarProps {
   workspaceName?: string;
   onNewTaskClick?: () => void;
   onNewGroupClick?: () => void;
+  onAutomationsClick?: () => void;
   isReadOnly?: boolean;
 }
 
-export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, isReadOnly }: PmoToolbarProps) {
+export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, onAutomationsClick, isReadOnly }: PmoToolbarProps) {
   const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const setFilterStatus = usePmoStore(s => s.setFilterStatus);
@@ -68,6 +69,13 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
                 className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors shadow-sm"
               >
                  + New Group
+              </button>
+
+              <button 
+                onClick={onAutomationsClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors shadow-sm"
+              >
+                 <Zap className="w-4 h-4" /> Automations
               </button>
 
               <button 

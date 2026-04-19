@@ -27,11 +27,14 @@ import { CommandPalette } from "@/components/pmo/navigation/CommandPalette";
 import { BulkActionBar } from "@/components/pmo/grid/BulkActionBar";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { bulkUpdateTasksAction } from "@/app/actions/pmo/bulk-task-actions";
+import { createGroupAction, updateGroupAction } from "@/app/actions/pmo/group-actions";
 import { Loader2, AlertCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidePeek } from "@/components/pmo/shared/SidePeek";
 import { PresenceProvider } from "@/components/pmo/shared/PresenceProvider";
 import { NewTaskModal } from "@/components/pmo/shared/NewTaskModal";
+import { NewGroupModal } from "@/components/pmo/grid/NewGroupModal";
+import { AutomationsModal } from "@/components/pmo/automations/AutomationsModal";
 import { useSessionStore } from "@/lib/session-store";
 
 interface GridViewProps {
@@ -42,7 +45,7 @@ interface GridViewProps {
 
 type RowItem =
   | { type: "header"; group: PmoGroup; isExpanded: boolean }
-  | { type: "task";   task: PmoTask;   groupColor: string };
+  | { type: "task";   task: PmoTask;   groupColor: string; isSubitem?: boolean; parentTaskId?: string };
 
 // ── COLUMN WIDTH DEFAULTS ────────────────────────────────────────────────────
 const TITLE_COL_WIDTH = 280;  // Always first col
@@ -54,9 +57,12 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [expandedTasks, setExpandedTasks]   = useState<Record<string, boolean>>({});
   const [rowSelection, setRowSelection]     = useState<Record<string, boolean>>({});
   const [activePeekTaskId, setActivePeekTaskId] = useState<string | null>(null);
   const [isNewTaskOpen, setIsNewTaskOpen]   = useState(false);
+  const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
+  const [isAutomationsOpen, setIsAutomationsOpen] = useState(false);
 
   // Dynamically injected columns (when user adds via ColumnTypeSelector)
   const [localColumns, setLocalColumns]     = useState<PmoColumn[]>([]);
@@ -132,11 +138,40 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
             task: { ...task, ...optimisticTasks[task.id] },
             groupColor: group.color ?? "var(--vibe-purple)",
           });
+          
+          // S-13: Subitems Inline Injection
+          if (expandedTasks[task.id] && task.subtasks && task.subtasks.length > 0) {
+            task.subtasks.forEach((sub: any) => {
+              flat.push({
+                type: "task",
+                task: {
+                  id: sub.id,
+                  title: sub.title,
+                  orgId: sub.orgId,
+                  boardId: task.boardId,
+                  groupId: task.groupId,
+                  status: sub.isCompleted ? "done" : "not_started",
+                  dueDate: sub.dueDate,
+                  assigneeId: sub.assigneeId,
+                  customFieldValues: sub.customFieldValues,
+                  subtasks: [],
+                  comments: [],
+                  attachments: [],
+                  createdAt: sub.createdAt,
+                  updatedAt: sub.createdAt,
+                  itemHeight: "simple"
+                } as any,
+                groupColor: group.color ?? "var(--vibe-purple)",
+                isSubitem: true,
+                parentTaskId: task.id
+              });
+            });
+          }
         });
       }
     });
     return flat;
-  }, [board, expandedGroups, filterStatus, filterAssignee, globalSearchQuery, optimisticTasks]);
+  }, [board, expandedGroups, expandedTasks, filterStatus, filterAssignee, globalSearchQuery, optimisticTasks]);
 
   const virtualizer = useVirtualizer({
     count:           flatRows.length,
@@ -148,6 +183,9 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   // ── ACTIONS ─────────────────────────────────────────────────────────────────
   const toggleGroup = (groupId: string) =>
     setExpandedGroups(p => ({ ...p, [groupId]: !p[groupId] }));
+
+  const toggleTaskExpanded = (taskId: string) => 
+    setExpandedTasks(p => ({ ...p, [taskId]: !p[taskId] }));
 
   const clearSelection = () => setRowSelection({});
   const selectedCount  = Object.keys(rowSelection).length;
@@ -171,6 +209,23 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
     }
     return null;
   }, [activePeekTaskId, board, optimisticTasks]);
+
+  const handleCreateGroup = async (title: string, color: string) => {
+    if (!boardId || !orgId) return;
+    const res = await createGroupAction({ boardId, orgId, title, color });
+    if (res.success) {
+      window.dispatchEvent(new Event("pmo-workspaces-updated"));
+      reloadBoard();
+    }
+  };
+
+  const handleUpdateGroup = async (groupId: string, title?: string, color?: string) => {
+    const res = await updateGroupAction({ groupId, boardId, orgId, title, color });
+    if (res.success) {
+      window.dispatchEvent(new Event("pmo-workspaces-updated"));
+      reloadBoard();
+    }
+  };
 
   const defaultGroupId = board?.groups?.[0]?.id ?? "";
 
@@ -211,7 +266,8 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
           orgId={orgId}
           boardName={board?.title ?? "Board"}
           onNewTaskClick={() => setIsNewTaskOpen(true)}
-          onNewGroupClick={() => console.log("New Group — S-13")}
+          onNewGroupClick={() => setIsNewGroupOpen(true)}
+          onAutomationsClick={() => setIsAutomationsOpen(true)}
           isReadOnly={isReadOnly}
         />
 
@@ -293,9 +349,10 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                       !isHeader && rowSelection[row.task.id]
                         ? "bg-[#6161FF]/5"
                         : "",
-                      !isHeader && row.task.isProtected
+                      !isHeader && row.task.isProtected && !row.isSubitem
                         ? "border-l-2 border-l-[#6161FF]"
-                        : ""
+                        : "",
+                      !isHeader && row.isSubitem ? "bg-slate-50/70" : ""
                     )}
                     style={{
                       height:    `${vRow.size}px`,
@@ -308,6 +365,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                         group={row.group}
                         isExpanded={row.isExpanded}
                         onToggle={() => toggleGroup(row.group.id)}
+                        onUpdate={(title, color) => handleUpdateGroup(row.group.id, title, color)}
                         taskCount={row.group.tasks?.length ?? 0}
                       />
                     ) : (
@@ -343,14 +401,36 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                           style={{ width: TITLE_COL_WIDTH }}
                         >
                           {/* Shield Protocol visual indicator */}
-                          {row.task.isProtected && (
+                          {row.task.isProtected && !row.isSubitem && (
                             <Lock className="w-3 h-3 text-[#6161FF] shrink-0" title="Protected by Simo IS" />
                           )}
+                          
+                          {/* S-13 Subitem Indentation & Chevron */}
+                          {row.isSubitem && (
+                             <div className="w-4 shrink-0 flex justify-end text-slate-300 ml-1">
+                               <div className="w-2.5 h-2.5 border-b-2 border-l-2 border-slate-300 rounded-bl" />
+                             </div>
+                          )}
+                          {!row.isSubitem && row.task.subtasks && row.task.subtasks.length > 0 && (
+                             <button 
+                               onClick={(e) => { e.stopPropagation(); toggleTaskExpanded(row.task.id); }} 
+                               className="p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                             >
+                               <svg className={cn("w-3.5 h-3.5 transition-transform", expandedTasks[row.task.id] && "rotate-90")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                               </svg>
+                             </button>
+                          )}
+                          {!row.isSubitem && (!row.task.subtasks || row.task.subtasks.length === 0) && (
+                             <div className="w-[18px] shrink-0" />
+                          )}
+                          
                           {/* TextCell always renders the task title */}
                           <div className="flex-1 min-w-0">
                             <ColumnFactory
                               column={{ id: "_title", boardId, title: "Task", type: "text", position: 0, width: TITLE_COL_WIDTH }}
                               task={row.task}
+                              isSubitem={row.isSubitem}
                             />
                           </div>
                           {/* Salesforce indicator */}
@@ -441,7 +521,18 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
           onClose={() => setIsNewTaskOpen(false)}
           onTaskCreated={reloadBoard}
         />
-      )}
+      {/* ── NEW EVENT LINE FOR GROUPS ── */}
+      <NewGroupModal 
+        isOpen={isNewGroupOpen}
+        onClose={() => setIsNewGroupOpen(false)}
+        onSubmit={handleCreateGroup}
+      />
+      <AutomationsModal
+        isOpen={isAutomationsOpen}
+        onClose={() => setIsAutomationsOpen(false)}
+        boardId={boardId}
+        orgId={orgId}
+      />
     </PresenceProvider>
   );
 };

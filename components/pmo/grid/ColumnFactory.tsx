@@ -44,11 +44,12 @@ interface ColumnFactoryProps {
   column:    PmoColumn;
   task:      PmoTask;
   rowIndex?: number; // for AutoNumberCell
+  isSubitem?: boolean;
 }
 
 // ─── ColumnFactory ────────────────────────────────────────────────────────────
 
-export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowIndex }) => {
+export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowIndex, isSubitem }) => {
   const fieldKey = column.id;
   const settings = column.settings ?? {};
 

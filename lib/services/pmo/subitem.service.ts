@@ -68,6 +68,20 @@ export async function getSubitemsService(taskId: string, orgId: string): Promise
   return (data ?? []).map(mapSubitemFromDb);
 }
 
+export async function getSubitemsByTaskIdsService(taskIds: string[], orgId: string): Promise<PmoSubitem[]> {
+  if (!taskIds.length || !orgId?.trim()) return [];
+  const db = getPmoDB();
+  const { data, error } = await db
+    .from("pmo_subtasks")
+    .select("*")
+    .in("task_id", taskIds)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true });
+
+  throwIfDbError(error, "getSubitemsByTaskIds");
+  return (data ?? []).map(mapSubitemFromDb);
+}
+
 export async function createSubitemService(input: CreateSubitemInput): Promise<PmoSubitem> {
   const db = getPmoDB();
 
