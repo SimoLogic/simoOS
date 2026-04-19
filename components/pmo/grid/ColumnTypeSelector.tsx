@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, X, Type, Hash, ToggleLeft, Calendar, ChevronDown, Link2, Star, Activity, User, ListChecks } from "lucide-react";
+import { Plus, X, Type, Hash, ToggleLeft, Calendar, ChevronDown, Link2, Star, Activity, User, ListChecks, Mail, Phone, Tag, DollarSign, CalendarRange, Sigma, Clock } from "lucide-react";
 import type { PmoFieldType, PmoColumn } from "@/types/pmo.types";
 import { addColumnAction } from "@/app/actions/pmo/column-actions";
 
@@ -20,17 +20,30 @@ interface ColumnTypeOption {
 }
 
 const COLUMN_TYPES: ColumnTypeOption[] = [
-  { type: "text",     label: "Text",      description: "Free-form text entry",       icon: Type,       color: "#6161FF" },
-  { type: "number",   label: "Number",    description: "Currency, percent, plain",   icon: Hash,       color: "#0086C0" },
-  { type: "status",   label: "Status",    description: "Working, Done, Stuck…",      icon: Activity,   color: "#00CA72" },
-  { type: "person",   label: "Person",    description: "Assign a team member",       icon: User,       color: "#FDAB3D" },
-  { type: "date",     label: "Date",      description: "Workday-aware date picker",  icon: Calendar,   color: "#FF3D57" },
-  { type: "checkbox", label: "Checkbox",  description: "Boolean toggle",             icon: ToggleLeft, color: "#6161FF" },
-  { type: "dropdown", label: "Dropdown",  description: "Custom option list",         icon: ChevronDown,color: "#8B5CF6" },
-  { type: "link",     label: "Link",      description: "URL with validation",        icon: Link2,      color: "#0086C0" },
-  { type: "rating",   label: "Rating",    description: "1–5 star rating",            icon: Star,       color: "#FDAB3D" },
-  { type: "progress", label: "Progress",  description: "0–100% progress bar",        icon: Activity,   color: "#00CA72" },
-  { type: "file",     label: "Files",     description: "Upload attachments",         icon: ListChecks, color: "#FF3D57" },
+  // ── Core types ──
+  { type: "text",          label: "Text",         description: "Free-form text entry",            icon: Type,          color: "#6161FF" },
+  { type: "number",        label: "Number",        description: "Numeric: plain, %, currency",      icon: Hash,          color: "#0086C0" },
+  { type: "status",        label: "Status",        description: "Working on it, Done, Stuck…",     icon: Activity,      color: "#00CA72" },
+  { type: "person",        label: "Person",        description: "Assign a team member",            icon: User,          color: "#FDAB3D" },
+  { type: "date",          label: "Date",          description: "Workday-aware date picker",        icon: Calendar,      color: "#FF3D57" },
+  { type: "checkbox",      label: "Checkbox",      description: "Boolean yes/no toggle",           icon: ToggleLeft,    color: "#6161FF" },
+  // ── Selection ──
+  { type: "dropdown",      label: "Dropdown",      description: "Single-select from options",      icon: ChevronDown,   color: "#8B5CF6" },
+  { type: "tags" as PmoFieldType,     label: "Tags",          description: "Multi-select color-coded tags",   icon: Tag,           color: "#6161FF" },
+  // ── Numeric ──
+  { type: "currency" as PmoFieldType, label: "Currency",      description: "Money: USD, COP, EUR",            icon: DollarSign,    color: "#00CA72" },
+  { type: "rating",        label: "Rating",        description: "1–5 star evaluation",             icon: Star,          color: "#FDAB3D" },
+  { type: "progress",      label: "Progress",      description: "0–100% bar with click-to-edit",   icon: Activity,      color: "#00CA72" },
+  { type: "formula",       label: "Formula",       description: "{col1} * {col2} auto-compute",     icon: Sigma,         color: "#8B5CF6" },
+  // ── Date ──
+  { type: "date_range",    label: "Timeline",      description: "Start → end range for Gantt",     icon: CalendarRange, color: "#FF3D57" },
+  { type: "last_updated" as PmoFieldType, label: "Last Updated", description: "Auto timestamp of last edit", icon: Clock,       color: "#676879" },
+  // ── Contact ──
+  { type: "email",         label: "Email",         description: "Email with mailto: link",         icon: Mail,          color: "#0086C0" },
+  { type: "phone",         label: "Phone",         description: "Phone with tel: link",            icon: Phone,         color: "#0086C0" },
+  { type: "link",          label: "Link",          description: "URL with validation",             icon: Link2,         color: "#0086C0" },
+  // ── Files ──
+  { type: "file",          label: "Files",         description: "Upload and manage attachments",   icon: ListChecks,    color: "#FF3D57" },
 ];
 
 export const ColumnTypeSelector: React.FC<ColumnTypeSelectorProps> = ({
