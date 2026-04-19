@@ -29,15 +29,16 @@ const COLUMN_TYPES: ColumnTypeOption[] = [
   { type: "checkbox",      label: "Checkbox",      description: "Boolean yes/no toggle",           icon: ToggleLeft,    color: "#6161FF" },
   // ── Selection ──
   { type: "dropdown",      label: "Dropdown",      description: "Single-select from options",      icon: ChevronDown,   color: "#8B5CF6" },
-  { type: "tags" as PmoFieldType,     label: "Tags",          description: "Multi-select color-coded tags",   icon: Tag,           color: "#6161FF" },
+  { type: "tags",     label: "Tags",          description: "Multi-select color-coded tags",   icon: Tag,           color: "#6161FF" },
   // ── Numeric ──
-  { type: "currency" as PmoFieldType, label: "Currency",      description: "Money: USD, COP, EUR",            icon: DollarSign,    color: "#00CA72" },
+  { type: "currency", label: "Currency",      description: "Money: USD, COP, EUR",            icon: DollarSign,    color: "#00CA72" },
   { type: "rating",        label: "Rating",        description: "1–5 star evaluation",             icon: Star,          color: "#FDAB3D" },
   { type: "progress",      label: "Progress",      description: "0–100% bar with click-to-edit",   icon: Activity,      color: "#00CA72" },
   { type: "formula",       label: "Formula",       description: "{col1} * {col2} auto-compute",     icon: Sigma,         color: "#8B5CF6" },
   // ── Date ──
   { type: "date_range",    label: "Timeline",      description: "Start → end range for Gantt",     icon: CalendarRange, color: "#FF3D57" },
-  { type: "last_updated" as PmoFieldType, label: "Last Updated", description: "Auto timestamp of last edit", icon: Clock,       color: "#676879" },
+  { type: "last_updated", label: "Last Updated", description: "Auto timestamp of last edit", icon: Clock,       color: "#676879" },
+  { type: "auto_number", label: "Auto Number", description: "Auto-generated sequence", icon: Hash, color: "#676879" },
   // ── Contact ──
   { type: "email",         label: "Email",         description: "Email with mailto: link",         icon: Mail,          color: "#0086C0" },
   { type: "phone",         label: "Phone",         description: "Phone with tel: link",            icon: Phone,         color: "#0086C0" },

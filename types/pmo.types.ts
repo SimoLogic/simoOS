@@ -174,7 +174,11 @@ export type PmoFieldType =
     | 'email'
     | 'phone'
     | 'rating'
-    | 'progress';
+    | 'progress'
+    | 'currency'
+    | 'tags'
+    | 'auto_number'
+    | 'last_updated';
 
 // ─── EVENTS & CONNECTIVITY ────────────────────────────────────────
 export interface PmoEvent {

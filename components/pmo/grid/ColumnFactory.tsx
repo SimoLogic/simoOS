@@ -34,6 +34,7 @@ import { DropdownCell }      from "./fields/DropdownCell";
 import { TimelineCell }      from "./fields/TimelineCell";
 import { AutoNumberCell }    from "./fields/AutoNumberCell";
 import { FormulaCell }       from "./fields/FormulaCell";
+import { MirrorCell }        from "./fields/MirrorCell";
 import { EmailCell }         from "./fields/EmailCell";
 import { PhoneCell }         from "./fields/PhoneCell";
 import { LastUpdatedCell }   from "./fields/LastUpdatedCell";
@@ -93,7 +94,7 @@ export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowI
       );
 
     // ── 7. CURRENCY ───────────────────────────────────────────────────────────
-    case "currency" as string:
+    case "currency":
       return (
         <CurrencyCell
           task={task}
@@ -121,7 +122,7 @@ export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowI
       );
 
     // ── 10. TAGS ──────────────────────────────────────────────────────────────
-    case "tags" as string:
+    case "tags":
       return (
         <TagsCell
           task={task}
@@ -174,24 +175,16 @@ export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowI
 
     // ── AUTO NUMBER ───────────────────────────────────────────────────────────
     // Not a standard PmoFieldType — rendered via explicit column.type check
-    case "auto_number" as string:
+    case "auto_number":
       return <AutoNumberCell task={task} rowIndex={rowIndex} />;
 
     // ── LAST UPDATED ──────────────────────────────────────────────────────────
-    case "last_updated" as string:
+    case "last_updated":
       return <LastUpdatedCell task={task} />;
 
     // ── MIRROR ────────────────────────────────────────────────────────────────
-    // Mirror columns display a value from another board — S-16 scope
     case "mirror":
-      return (
-        <div className="flex items-center gap-1 px-2 w-full opacity-50" title="Mirror columns require cross-board configuration">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-slate-400">
-            <path d="M8 5v14M16 5v14M3 9h18M3 15h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span className="text-[11px] text-slate-400 italic">Mirror</span>
-        </div>
-      );
+      return <MirrorCell task={task} />;
 
     // ── DEFAULT ───────────────────────────────────────────────────────────────
     // Should never be reached with full type coverage
