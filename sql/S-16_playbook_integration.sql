@@ -1,39 +1,29 @@
 -- ============================================================================
 -- S-16: Playbook Assignment Integration — pmo_tasks extension
 -- ============================================================================
--- Adds task_type, blocking_task_id, requested_by_eid to pmo_tasks
--- These columns support the My Plan view's differentiation between
--- PLAYBOOK_TASK, SUPPORT_REQUEST, and PERSONAL_TASK items.
+-- EXECUTED SUCCESSFULLY: 2026-04-19
+-- Adds task_type, blocking_task_id, requested_by_eid, assignee_id to pmo_tasks
 -- ============================================================================
 
--- 1. task_type — classifies the origin/nature of the task
-ALTER TABLE public.pmo_tasks
-    ADD COLUMN IF NOT EXISTS task_type TEXT NOT NULL DEFAULT 'PERSONAL_TASK'
-    CHECK (task_type IN ('PLAYBOOK_TASK', 'SUPPORT_REQUEST', 'PERSONAL_TASK'));
+-- 1. Add ALL missing columns
+ALTER TABLE public.pmo_tasks ADD COLUMN IF NOT EXISTS assignee_id TEXT;
+ALTER TABLE public.pmo_tasks ADD COLUMN IF NOT EXISTS task_type TEXT DEFAULT 'PERSONAL_TASK';
+ALTER TABLE public.pmo_tasks ADD COLUMN IF NOT EXISTS blocking_task_id TEXT;
+ALTER TABLE public.pmo_tasks ADD COLUMN IF NOT EXISTS requested_by_eid TEXT;
 
--- 2. blocking_task_id — FK to another pmo_task that blocks this one
-ALTER TABLE public.pmo_tasks
-    ADD COLUMN IF NOT EXISTS blocking_task_id TEXT REFERENCES public.pmo_tasks(id) ON DELETE SET NULL;
-
--- 3. requested_by_eid — EID of the employee who requested this support task
-ALTER TABLE public.pmo_tasks
-    ADD COLUMN IF NOT EXISTS requested_by_eid TEXT;
-
--- 4. Index for My Plan queries (fetch all tasks for an assignee across boards)
+-- 2. Indexes
 CREATE INDEX IF NOT EXISTS idx_pmo_tasks_assignee_org
     ON public.pmo_tasks(org_id, assignee_id)
     WHERE assignee_id IS NOT NULL;
 
--- 5. Index for blocking dependency lookups
 CREATE INDEX IF NOT EXISTS idx_pmo_tasks_blocking
     ON public.pmo_tasks(blocking_task_id)
     WHERE blocking_task_id IS NOT NULL;
 
--- 6. Trigger: Auto-unblock dependent tasks when a SUPPORT_REQUEST is completed
+-- 3. Auto-unblock trigger
 CREATE OR REPLACE FUNCTION public.fn_unblock_dependent_task()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- When a task is marked as 'done', unblock any tasks that depend on it
     IF NEW.status = 'done' AND (OLD.status IS DISTINCT FROM 'done') THEN
         UPDATE public.pmo_tasks
         SET status = 'not_started',
@@ -53,5 +43,4 @@ CREATE TRIGGER trg_unblock_dependent_task
     FOR EACH ROW
     EXECUTE FUNCTION public.fn_unblock_dependent_task();
 
--- 7. Notify PostgREST to reload schema
 NOTIFY pgrst, 'reload schema';
