@@ -6,9 +6,12 @@ export type TaskStatus =
     | 'in_progress' 
     | 'done'
     | 'stuck'
+    | 'blocked'
     | 'pending_review';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type TaskType = 'PLAYBOOK_TASK' | 'SUPPORT_REQUEST' | 'PERSONAL_TASK';
 
 export type FrequencyType = 
     | 'ONCE'
@@ -52,6 +55,11 @@ export interface PmoTask {
     sourcePlaybookId?: string | null;    // Si != null → tarea del Playbook
     sourcePlaybookTaskId?: string | null;
     occurrenceIndex?: number;            // Para tareas repetidas (DAILY×N)
+    
+    // S-16: Playbook Assignment Integration
+    taskType: TaskType;                  // PLAYBOOK_TASK | SUPPORT_REQUEST | PERSONAL_TASK
+    blockingTaskId?: string | null;      // FK to another pmo_task that blocks this one
+    requestedByEid?: string | null;      // EID of the requester (for SUPPORT_REQUESTs)
     
     // Campos del empleado — NUNCA sobreescribir con Mirror Sync (Regla #2)
     subtasks: PmoSubtask[];
