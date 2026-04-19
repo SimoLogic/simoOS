@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { z } from "zod";
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
@@ -14,6 +14,7 @@ export interface ProjectHealthMetrics {
   inProgressTasks: number;
   stuckTasks: number;
   notStartedTasks: number;
+  blockedTasks: number; // S-16: tasks with status = 'blocked'
   burnRate: number; // Percentage 0-100
   slaBreaches: number;
 }
@@ -55,6 +56,7 @@ export async function getProjectHealthAction(
       inProgressTasks: 0,
       stuckTasks: 0,
       notStartedTasks: 0,
+      blockedTasks: 0,
       burnRate: 0,
       slaBreaches: 0,
     };
@@ -72,6 +74,7 @@ export async function getProjectHealthAction(
       if (status === "done") metrics.completedTasks++;
       else if (status === "in_progress") metrics.inProgressTasks++;
       else if (status === "stuck") metrics.stuckTasks++;
+      else if (status === "blocked") metrics.blockedTasks++;
       else if (status === "not_started") metrics.notStartedTasks++;
       
       // SLA Breach Logic: If due_date is past today AND not done
