@@ -35,7 +35,7 @@ export type ModuleId =
     | "ceo-playground";
 
 // PMO sub-modules
-export type PmoSubModuleId = "my-plan" | "my-work" | "my-queue";
+export type PmoSubModuleId = "my-plan" | "my-work" | "my-queue" | "my-projects";
 
 interface PmoSubModule {
     id: PmoSubModuleId;
@@ -48,6 +48,7 @@ const pmoSubModules: PmoSubModule[] = [
     { id: "my-plan", label: "My Plan", icon: CalendarDays, href: "/pmo/my-plan" },
     { id: "my-work", label: "My Work", icon: Briefcase, href: "/pmo/my-work" },
     { id: "my-queue", label: "My Queue", icon: BellRing, href: "/pmo/my-queue" },
+    { id: "my-projects", label: "My Projects", icon: LayoutGrid, href: "/pmo/my-projects" },
 ];
 
 

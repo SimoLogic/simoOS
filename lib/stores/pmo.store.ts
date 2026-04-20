@@ -22,6 +22,8 @@ interface PmoStore extends PmoUIState {
   
   // ─── Contexto de board/workspace (llaves de referencia, no datos) ────
   setActiveBoardId: (boardId: string | null) => void;
+  activePanelId?: string | null;
+  setActivePanelId: (panelId: string | null) => void;
   setActiveWorkspaceId: (workspaceId: string | null) => void;
   
   // ─── mondayDB Performance Flags (Regla de Oro #8) ───────────────────
@@ -77,6 +79,7 @@ const INITIAL_STATE: PmoUIState & {
   itemHeightMode:      "simple",
   isViewLocked:        false,
   activeBoardId:       null,
+  activePanelId:       null,
   activeWorkspaceId:   null,
   widgetCount:         0,
   isHPCMode:           false,
@@ -110,7 +113,10 @@ export const usePmoStore = create<PmoStore>()(
 
       // ── Board/Workspace context ────────────────────────────────────────
       setActiveBoardId: (boardId) =>
-        set({ activeBoardId: boardId }, false, "pmo/setActiveBoardId"),
+        set({ activeBoardId: boardId, activePanelId: null }, false, "pmo/setActiveBoardId"),
+
+      setActivePanelId: (panelId) =>
+        set({ activePanelId: panelId, activeBoardId: null }, false, "pmo/setActivePanelId"),
 
       setActiveWorkspaceId: (workspaceId) =>
         set({ activeWorkspaceId: workspaceId }, false, "pmo/setActiveWorkspaceId"),

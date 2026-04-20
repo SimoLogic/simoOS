@@ -58,6 +58,9 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     ],
     pmo: [
         { id: "my-plan", label: "My Plan" },
+        { id: "my-work", label: "My Work" },
+        { id: "my-queue", label: "My Queue" },
+        { id: "my-projects", label: "My Projects" },
     ],
 };
 

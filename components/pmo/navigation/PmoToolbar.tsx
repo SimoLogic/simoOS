@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw } from "lucide-react";
+import { ChevronRight, Plus, LayoutGrid, CheckCircle2, RefreshCw, Zap, CreditCard } from "lucide-react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { ImportExportMenu } from "@/components/pmo/navigation/ImportExportMenu";
 import { KeyboardShortcuts } from "@/components/pmo/shared/KeyboardShortcuts";
@@ -16,10 +16,11 @@ interface PmoToolbarProps {
   workspaceName?: string;
   onNewTaskClick?: () => void;
   onNewGroupClick?: () => void;
+  onAutomationsClick?: () => void;
   isReadOnly?: boolean;
 }
 
-export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, isReadOnly }: PmoToolbarProps) {
+export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, onAutomationsClick, isReadOnly }: PmoToolbarProps) {
   const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const setFilterStatus = usePmoStore(s => s.setFilterStatus);
@@ -71,23 +72,31 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
               </button>
 
               <button 
+                onClick={onAutomationsClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors shadow-sm"
+              >
+                 <Zap className="w-4 h-4" /> Automations
+              </button>
+
+              <button 
                 onClick={async () => {
-                  if(confirm("¿Seguro que deseas archivar este tablero?")) {
+                  if(confirm("Are you sure you want to archive this board?")) {
                     const res = await archiveBoardAction(boardId, orgId);
                     if (res.success) {
-                        alert("Tablero archivado correctamente.");
-                        window.location.reload(); // Quick refresh to show it's gone from active if filtered
+                        alert("Board archived successfully.");
+                        window.location.reload();
                     } else {
-                        alert("Error al archivar: " + res.error);
+                        alert("Error archiving: " + res.error);
                     }
                   }
                 }}
                 className="px-3 py-1.5 text-sm font-medium text-gray-400 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors shadow-sm"
               >
-                 Archivar
+                 Archive
               </button>
 
               <button 
+                data-onboarding="new-task-btn"
                 onClick={onNewTaskClick}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-vibe-blue rounded hover:bg-blue-600 transition-colors shadow-sm"
               >
@@ -98,7 +107,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
           {isReadOnly && (
             <div className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-              MODO LECTURA
+              READ ONLY
             </div>
           )}
         </div>
@@ -111,13 +120,19 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
               onClick={() => usePmoStore.setState({ activeView: "grid" })}
               className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'grid' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-600 hover:bg-gray-100'}`}
            >
-              <LayoutGrid className="w-4 h-4" /> Principal (Grid)
+              <LayoutGrid className="w-4 h-4" /> Grid
+           </button>
+           <button 
+              onClick={() => usePmoStore.setState({ activeView: "cards" })}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'cards' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}
+           >
+              <CreditCard className="w-4 h-4" /> Cards
            </button>
            <button 
               onClick={() => usePmoStore.setState({ activeView: "gantt" })}
               className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeView === 'gantt' ? 'bg-indigo-50 text-vibe-blue border-b-2 border-vibe-blue' : 'text-gray-500 hover:bg-gray-100'}`}
            >
-              Cronograma (Gantt)
+              Timeline (Gantt)
            </button>
            <button 
               onClick={() => usePmoStore.setState({ activeView: "dashboard" })}
@@ -128,17 +143,17 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
         </div>
 
         <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
-            <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-semibold">Filtros</span>
+            <span className="text-xs text-gray-400 mr-2 uppercase tracking-wider font-semibold">Filters</span>
             <select 
                value={filterStatus || ""} 
                onChange={(e) => setFilterStatus(e.target.value || null)}
                className="text-sm border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-vibe-blue outline-none"
             >
                <option value="">Any Status</option>
-               <option value="not_started">No Iniciado</option>
-               <option value="in_progress">Trabajando</option>
-               <option value="done">Listo</option>
-               <option value="stuck">Estancado</option>
+               <option value="not_started">Not Started</option>
+               <option value="in_progress">In Progress</option>
+               <option value="done">Done</option>
+               <option value="stuck">Stuck</option>
             </select>
 
             <select 
@@ -146,11 +161,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
                onChange={(e) => setFilterAssignee(e.target.value || null)}
                className="text-sm border border-gray-200 rounded px-2 py-1 text-gray-700 outline-none focus:outline-none focus:ring-1 focus:ring-vibe-blue"
             >
-               <option value="">Cualquier Responsable</option>
-               {/* Mock users for filter as well */}
-               <option value="usr1">David Gomez</option>
-               <option value="usr2">Laura Martinez</option>
-               <option value="usr3">Carlos Perez</option>
+               <option value="">Any Assignee</option>
             </select>
         </div>
       </div>
