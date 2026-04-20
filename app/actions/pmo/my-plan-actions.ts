@@ -177,7 +177,7 @@ export async function getMyPlanBoardAction(
           ...t,
           subtasks: subitems.filter(s => s.taskId === t.id).map(s => ({
             ...s,
-            isProtected: false,
+            isProtected: false as const,
           })),
         })),
     }));
@@ -197,7 +197,7 @@ export async function getMyPlanBoardAction(
           ...t,
           subtasks: subitems.filter(s => s.taskId === t.id).map(s => ({
             ...s,
-            isProtected: false,
+            isProtected: false as const,
           })),
         })),
       });
