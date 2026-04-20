@@ -25,7 +25,7 @@ const AddColumnSchema = z.object({
   type:    z.enum([
     "text", "status", "person", "date", "date_range", "number",
     "formula", "checkbox", "dropdown", "file", "mirror", "link",
-    "email", "phone", "rating", "progress", "currency", "tags", "auto_number"
+    "email", "phone", "rating", "progress", "currency", "tags", "auto_number", "last_updated"
   ]),
   widthPx: z.number().optional(),
   settings: z.record(z.string(), z.unknown()).optional(),

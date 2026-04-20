@@ -149,7 +149,7 @@ export const ColumnFactory: React.FC<ColumnFactoryProps> = ({ column, task, rowI
         <FileUploader
           taskId={task.id}
           orgId={task.orgId}
-          boardId={task.boardId}
+          userId={task.assigneeId ?? "unassigned"}
         />
       );
 

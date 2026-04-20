@@ -27,7 +27,7 @@ const CreateViewSchema = z.object({
   orgId:     z.string().min(1),
   name:      z.string().min(1, "View name is required").max(100).trim(),
   viewType:  ViewTypeEnum,
-  config:    z.record(z.unknown()).optional(),
+  config:    z.record(z.string(), z.unknown()).optional(),
   createdBy: z.string().min(1),
 });
 
@@ -36,7 +36,7 @@ const UpdateViewSchema = z.object({
   boardId:   z.string().min(1),
   orgId:     z.string().min(1),
   name:      z.string().min(1).max(100).trim().optional(),
-  config:    z.record(z.unknown()).optional(),
+  config:    z.record(z.string(), z.unknown()).optional(),
   isDefault: z.boolean().optional(),
 });
 
