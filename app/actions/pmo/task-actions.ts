@@ -29,7 +29,7 @@ import { AutomationService } from "@/lib/services/pmo/automation.service";
 const OrgIdSchema = z.string().min(1, "orgId is required");
 
 const TaskStatusEnum = z.enum([
-  "not_started", "in_progress", "done", "stuck", "pending_review"
+  "not_started", "in_progress", "done", "stuck", "pending_review", "blocked"
 ]);
 
 const TaskPriorityEnum = z.enum(["low", "medium", "high", "critical"]);

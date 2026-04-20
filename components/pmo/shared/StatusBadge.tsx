@@ -16,6 +16,7 @@ const STATUS_CONFIG: Record<
   done:           { label: "Done",            bg: "#00CA7220", color: "#00CA72" },
   stuck:          { label: "Stuck",           bg: "#FF3D5720", color: "#FF3D57" },
   pending_review: { label: "Pending Review",  bg: "#6161FF20", color: "#6161FF" },
+  blocked:        { label: "Blocked",         bg: "#E3183720", color: "#E31837" },
 };
 
 interface StatusBadgeProps {
