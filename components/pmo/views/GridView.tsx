@@ -402,7 +402,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                         >
                           {/* Shield Protocol visual indicator */}
                           {row.task.isProtected && !row.isSubitem && (
-                            <Lock className="w-3 h-3 text-[#6161FF] shrink-0" title="Protected by Simo IS" />
+                            <span title="Protected by Simo IS"><Lock className="w-3 h-3 text-[#6161FF] shrink-0" /></span>
                           )}
                           
                           {/* S-13 Subitem Indentation & Chevron */}
@@ -521,6 +521,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
           onClose={() => setIsNewTaskOpen(false)}
           onTaskCreated={reloadBoard}
         />
+      )}
       {/* ── NEW EVENT LINE FOR GROUPS ── */}
       <NewGroupModal 
         isOpen={isNewGroupOpen}

@@ -834,3 +834,18 @@ model PmoAutomation {
   @@index([boardId, isActive])
   @@map("pmo_automations")
 }
+
+model PmoPanel {
+  id         String   @id @default(uuid())
+  orgId      String   @map("org_id")
+  ownerId    String   @map("owner_id")
+  name       String
+  icon       String   @default("📊")
+  config     Json     @default("{\"widgets\": []}")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([orgId, ownerId])
+  @@map("pmo_panels")
+}

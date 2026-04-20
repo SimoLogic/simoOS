@@ -62,6 +62,23 @@ export async function getPanelsAction(orgId: string, ownerId: string) {
   }
 }
 
+// ─── GET PANEL BY ID  ─────────────────────────────────────────────────────────
+export async function getPanelByIdAction(panelId: string, orgId: string) {
+  try {
+    const db = getPmoDB();
+    const { data, error } = await db
+      .from("pmo_panels")
+      .select("*")
+      .eq("id", panelId)
+      .eq("org_id", orgId)
+      .single();
+    throwIfDbError(error, "getPanelById");
+    return { success: true as const, data: mapPanel(data) };
+  } catch (e) {
+    return { success: false as const, error: (e as Error).message };
+  }
+}
+
 // ─── CREATE PANEL ─────────────────────────────────────────────────────────────
 export async function createPanelAction(input: {
   orgId: string;

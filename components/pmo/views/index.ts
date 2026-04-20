@@ -6,4 +6,4 @@ export { default as GanttView } from "./GanttView";
 export { default as CalendarView } from "./CalendarView";
 export { default as DashboardView } from "./DashboardView";
 export { default as CardsView } from "./CardsView";
-export { WIDGETS_WARNING_THRESHOLD, WIDGETS_AI_DISABLE_THRESHOLD, ITEMS_HPC_THRESHOLD } from "./DashboardView";
+export { WIDGETS_WARNING_THRESHOLD } from "./DashboardEngine";

@@ -108,6 +108,12 @@ export const STATUS_OPTIONS: Record<TaskStatus, StatusOption> = {
     color:     `${VIBE_TOKENS.purple}25`, // #6161FF con alpha
     textColor: VIBE_TOKENS.purple,        // #6161FF
   },
+  blocked: {
+    value:     "blocked",
+    label:     "Blocked",
+    color:     `${VIBE_TOKENS.actionRed}25`,
+    textColor: VIBE_TOKENS.actionRed,
+  },
 };
 
 const VALID_STATUSES = new Set<string>(Object.keys(STATUS_OPTIONS));

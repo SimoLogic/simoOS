@@ -180,7 +180,7 @@ export const MyPlanShell: React.FC = () => {
         }
 
         if (activeView === "dashboard") {
-            return <DashboardEngine boardIds={[boardId]} orgId={orgId} isReadOnly={isViewLocked} />;
+            return <DashboardEngine defaultBoardIds={[boardId]} orgId={orgId} isReadOnly={isViewLocked} />;
         }
 
         // Kanban / Gantt / Calendar — need full board object

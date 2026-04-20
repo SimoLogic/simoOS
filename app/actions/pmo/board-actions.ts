@@ -124,7 +124,9 @@ export async function getBoardAction(
       ...g,
       tasks: tasks.filter((t) => t.groupId === g.id).map(t => ({
         ...t,
-        subtasks: subitems.filter(s => s.taskId === t.id)
+        subtasks: subitems
+          .filter(s => s.taskId === t.id)
+          .map(s => ({ ...s, isProtected: false as const }))
       })),
     }));
 

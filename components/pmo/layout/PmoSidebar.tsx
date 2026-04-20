@@ -90,6 +90,7 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
                 }
             } catch (err) {
                 console.error("Sidebar load error", err);
+            }
         };
         
         load();

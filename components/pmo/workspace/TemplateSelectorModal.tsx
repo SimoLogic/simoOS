@@ -31,7 +31,7 @@ const TEMPLATES: Template[] = [
       { title: "Company", type: "text", widthPx: 160 },
       { title: "Email", type: "email", widthPx: 160 },
       { title: "Phone", type: "phone", widthPx: 140 },
-      { title: "Expected Value", type: "currency", widthPx: 140, settings: { currency: "USD" } },
+      { title: "Expected Value", type: "number", widthPx: 140, settings: { currency: "USD" } },
     ],
   },
   {
@@ -55,7 +55,7 @@ const TEMPLATES: Template[] = [
     color: "#FDAB3D",
     columns: [
       { title: "Etapa", type: "status", widthPx: 140 },
-      { title: "Valor Estimado", type: "currency", widthPx: 140, settings: { currency: "USD" } },
+      { title: "Valor Estimado", type: "number", widthPx: 140, settings: { currency: "USD" } },
       { title: "Probabilidad (%)", type: "number", widthPx: 140, settings: { format: "percent" } },
       { title: "Fecha de Cierre", type: "date", widthPx: 140 },
     ],
@@ -101,10 +101,11 @@ export function TemplateSelectorModal({ orgId, workspaceId, isOpen, onClose, onC
         workspaceId,
         title: boardName.trim(),
         seedColumns: isBlank,
+        isPlaybookBoard: false,
       });
 
       if (!res.success || !res.data) {
-        throw new Error(res.error || "Failed to create board");
+        throw new Error(('error' in res ? res.error : undefined) || "Failed to create board");
       }
 
       const boardId = res.data.id;

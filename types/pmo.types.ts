@@ -289,6 +289,7 @@ export interface PmoUIState {
     isViewLocked: boolean;
     activeBoardId: string | null;
     activeWorkspaceId: string | null;
+    activePanelId?: string | null;
     widgetCount: number;       // Para mondayDB limits
     isHPCMode: boolean;        // >3000 items → virtualización agresiva
 }
