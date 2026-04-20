@@ -26,7 +26,7 @@ const CreateSubitemSchema = z.object({
   title:             z.string().min(1, "Subitem title is required").max(500).trim(),
   assigneeId:        z.string().optional(),
   dueDate:           z.string().optional(),
-  customFieldValues: z.record(z.unknown()).optional(),
+  customFieldValues: z.record(z.string(), z.unknown()).optional(),
 });
 
 const UpdateSubitemSchema = z.object({
@@ -37,7 +37,7 @@ const UpdateSubitemSchema = z.object({
   isCompleted:       z.boolean().optional(),
   assigneeId:        z.string().nullable().optional(),
   dueDate:           z.string().nullable().optional(),
-  customFieldValues: z.record(z.unknown()).optional(),
+  customFieldValues: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ─── ACTIONS ──────────────────────────────────────────────────────────────────
