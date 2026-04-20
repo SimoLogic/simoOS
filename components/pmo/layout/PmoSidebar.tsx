@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useSessionStore } from "@/lib/session-store";
 import { getWorkspacesAction, getBoardsAction } from "@/app/actions/pmo/board-actions";
+import { getPanelsAction, createPanelAction } from "@/app/actions/pmo/panel-actions";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 
 interface PmoSidebarProps {
@@ -53,17 +54,23 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
     // S-09 Dynamic Workspace Tree State
     const { tenant_id } = useSessionStore();
     const [workspaces, setWorkspaces] = useState<any[]>([]);
+    const [globalPanels, setGlobalPanels] = useState<any[]>([]);
     const [boardsByWorkspace, setBoardsByWorkspace] = useState<Record<string, any[]>>({});
     const [expandedWs, setExpandedWs] = useState<Record<string, boolean>>({});
     
     // Zustand bindings
     const activeBoardId = usePmoStore(s => s.activeBoardId);
     const setActiveBoardId = usePmoStore(s => s.setActiveBoardId);
+    const activePanelId = usePmoStore(s => s.activePanelId);
+    const setActivePanelId = usePmoStore(s => s.setActivePanelId);
 
     useEffect(() => {
         if (!tenant_id) return;
         const load = async () => {
             try {
+                const pData = await getPanelsAction(tenant_id, "user-fallback");
+                if (pData.success && pData.data) setGlobalPanels(pData.data);
+
                 const wsData = await getWorkspacesAction(tenant_id);
                 setWorkspaces(wsData);
                 
@@ -94,6 +101,17 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
 
     const toggleWs = (id: string) => {
         setExpandedWs(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handleCreateGlobalPanel = async () => {
+        if (!tenant_id) return;
+        const name = prompt("Enter new Dashboard Panel Name:");
+        if (!name?.trim()) return;
+        const res = await createPanelAction({ orgId: tenant_id, ownerId: "user-fallback", name: name.trim() });
+        if (res.success && res.data) {
+            setGlobalPanels(prev => [...prev, res.data!]);
+            setActivePanelId(res.data.id);
+        }
     };
 
     return (
@@ -151,6 +169,38 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
                             </button>
                         );
                     })}
+                </div>
+
+                {/* Global Dashboards Section (S-15) */}
+                <div className="px-3 flex flex-col gap-0.5 mb-6">
+                    {!isCollapsed && (
+                        <div className="flex items-center justify-between px-3 mb-2">
+                            <h3 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Global Dashboards</h3>
+                            <button onClick={handleCreateGlobalPanel} className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#6161FF]/10 text-slate-400 hover:text-[#6161FF] transition">
+                                <Plus className="w-3 h-3" />
+                            </button>
+                        </div>
+                    )}
+                    
+                    {!isCollapsed && globalPanels.length === 0 && (
+                        <span className="text-[11px] text-slate-400 italic px-3">No panels created</span>
+                    )}
+                    
+                    {!isCollapsed && globalPanels.map(p => (
+                        <button
+                            key={p.id}
+                            onClick={() => setActivePanelId(p.id)}
+                            className={cn(
+                                "flex items-center gap-3 px-3 py-2 w-full rounded-md transition-colors",
+                                activePanelId === p.id 
+                                    ? "bg-[#6161FF]/10 text-[#6161FF]" 
+                                    : "text-slate-700 hover:bg-slate-50"
+                            )}
+                        >
+                            <span className="w-4 h-4 text-center shrink-0 text-[12px]">{p.icon}</span>
+                            <span className={cn("text-[14px] truncate", activePanelId === p.id ? "font-bold" : "font-medium")}>{p.name}</span>
+                        </button>
+                    ))}
                 </div>
 
                 {/* My Projects Section */}

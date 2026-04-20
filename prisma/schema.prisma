@@ -819,3 +819,18 @@ model PmoSyncEvent {
   @@map("pmo_sync_events")
 }
 
+model PmoAutomation {
+  id            String   @id @default(uuid())
+  orgId         String   @map("org_id")
+  boardId       String   @map("board_id")
+  name          String
+  triggerType   String   @map("trigger_type")   // "on_status_change", "on_column_change"
+  triggerConfig Json     @map("trigger_config") // { field: "status", value: "done" }
+  actionType    String   @map("action_type")    // "set_column", "notify"
+  actionConfig  Json     @map("action_config")  // { field: "priority", value: "high" }
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([boardId, isActive])
+  @@map("pmo_automations")
+}

@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 /**
  * panel-actions.ts - S-15 Dashboard Panels CRUD
  * Manages cross-board dashboard panels stored in pmo_panels.
@@ -22,6 +22,7 @@ export interface PmoPanel {
 export interface PanelWidget {
   id: string;
   type: "battery" | "workload" | "activity" | "task_type_breakdown" | "sla_heatmap";
+  sourceBoardIds: string[];
   x: number;
   y: number;
   w: number;

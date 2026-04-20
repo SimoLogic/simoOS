@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { z } from "zod";
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
@@ -101,3 +101,74 @@ export async function getProjectHealthAction(
     return { success: false, error: (err as Error).message };
   }
 }
+
+/**
+ * getCrossBoardHealthAction
+ * Single SQL roundtrip utilizing Supabase aggregation over MULTIPLE boards using IN().
+ */
+export async function getCrossBoardHealthAction(
+  boardIds: string[],
+  orgId: string
+): Promise<DashboardActionResult<ProjectHealthMetrics>> {
+  try {
+    const validatedOrgId = OrgIdSchema.parse(orgId);
+    if (!boardIds || boardIds.length === 0) return { success: false, error: "boardIds array required to have at least one element" };
+
+    const db = getPmoDB();
+
+    const { data, error } = await db
+      .from("pmo_tasks")
+      .select("status, due_date")
+      .in("board_id", boardIds)
+      .eq("org_id", validatedOrgId);
+
+    throwIfDbError(error, "getCrossBoardHealth");
+
+    const metrics: ProjectHealthMetrics = {
+      totalTasks: 0,
+      completedTasks: 0,
+      inProgressTasks: 0,
+      stuckTasks: 0,
+      notStartedTasks: 0,
+      blockedTasks: 0,
+      burnRate: 0,
+      slaBreaches: 0,
+    };
+
+    if (!data || data.length === 0) return { success: true, data: metrics };
+
+    metrics.totalTasks = data.length;
+    
+    const today = new Date();
+
+    data.forEach((row) => {
+      const status = row.status as TaskStatus;
+      if (status === "done") metrics.completedTasks++;
+      else if (status === "in_progress") metrics.inProgressTasks++;
+      else if (status === "stuck") metrics.stuckTasks++;
+      else if (status === "blocked") metrics.blockedTasks++;
+      else if (status === "not_started") metrics.notStartedTasks++;
+      
+      if (row.due_date && status !== "done") {
+         const due = new Date(String(row.due_date));
+         if (today > due && today.getDate() !== due.getDate()) {
+             const delayedDays = countWorkdays(due, today, "CO");
+             if (delayedDays > 1) {
+                 metrics.slaBreaches++;
+             }
+         }
+      }
+    });
+
+    metrics.burnRate = metrics.totalTasks > 0 
+        ? Math.round((metrics.completedTasks / metrics.totalTasks) * 100)
+        : 0;
+
+    return { success: true, data: metrics };
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError)
+      return { success: false, error: err.issues.map(i => i.message).join(", ") };
+    return { success: false, error: (err as Error).message };
+  }
+}
+

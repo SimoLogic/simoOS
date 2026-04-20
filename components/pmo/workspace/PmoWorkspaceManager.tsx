@@ -11,6 +11,7 @@ import GridView from "../views/GridView";
 import { CardsView } from "../views/CardsView";
 import { BoardOnboarding } from "../shared/BoardOnboarding";
 import { usePmoStore } from "@/lib/stores/pmo.store";
+import { GlobalDashboardView } from "../views/GlobalDashboardView";
 
 export const PmoWorkspaceManager: React.FC = () => {
     const { tenant_id } = useSessionStore();
@@ -21,6 +22,8 @@ export const PmoWorkspaceManager: React.FC = () => {
     // Binding the board selection to the global store so Sidebar can also control it
     const activeBoardId = usePmoStore(s => s.activeBoardId);
     const setActiveBoardId = usePmoStore(s => s.setActiveBoardId);
+    const activePanelId = usePmoStore(s => s.activePanelId);
+    const setActivePanelId = usePmoStore(s => s.setActivePanelId);
 
     const [selectedWorkspace, setSelectedWorkspace] = useState<any | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -106,6 +109,14 @@ export const PmoWorkspaceManager: React.FC = () => {
                 <div className="flex-1 relative bg-white">
                     {renderBoardView()}
                 </div>
+            </div>
+        );
+    }
+
+    if (activePanelId) {
+        return (
+            <div className="w-full h-full flex flex-col relative motion-preset-slide-up-sm motion-duration-250">
+                <GlobalDashboardView panelId={activePanelId} />
             </div>
         );
     }

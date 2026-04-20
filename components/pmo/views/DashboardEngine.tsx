@@ -1,8 +1,24 @@
-﻿"use client";
+"use client";
 
-import React, { useEffect, useState } from "react";
-import { getProjectHealthAction, type ProjectHealthMetrics } from "@/app/actions/pmo/dashboard-actions";
-import { CheckCircle2, CircleDashed, Clock, AlertCircle, Loader2, BarChart3, Target } from "lucide-react";
+// ═══════════════════════════════════════════════════════════════════════════════
+// DashboardEngine V2 — DUAL NATURE PROPS
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// MODE 1 — Ad-hoc (MyPlanShell, single board views):
+//   <DashboardEngine boardIds={[boardId]} orgId={orgId} />
+//   → Uses the boardIds array directly. Zero DB lookups to pmo_panels.
+//
+// MODE 2 — Panel (GlobalDashboardView, S-15 Cross-Board):
+//   <DashboardEngine boardIds={widget.sourceBoardIds} orgId={orgId} />
+//   → Receives pre-resolved boardIds from the widget config.
+//
+// CRITICAL SAFETY: boardIds is ALWAYS the single source of rendering truth.
+// The component NEVER fetches from pmo_panels internally — callers resolve first.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import React, { useEffect, useMemo, useState } from "react";
+import { getProjectHealthAction, getCrossBoardHealthAction, type ProjectHealthMetrics } from "@/app/actions/pmo/dashboard-actions";
+import { CheckCircle2, CircleDashed, Clock, AlertCircle, Loader2, BarChart3, Target, Layers } from "lucide-react";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 import { WorkloadWidget } from "@/components/pmo/views/WorkloadWidget";
 
@@ -12,7 +28,21 @@ const V = {
   muted: "#676879", bg: "#F7F8FA",
 } as const;
 
-interface DashboardEngineProps { boardId: string; orgId: string; isReadOnly?: boolean; }
+/**
+ * DUAL NATURE PROPS:
+ * - boardIds: string[] — ALWAYS required. The boards to aggregate.
+ *   For single-board (MyPlan): pass [boardId].
+ *   For cross-board (S-15 Panels): pass widget.sourceBoardIds.
+ * - title/subtitle: optional display overrides.
+ * - isReadOnly: disables interactive elements.
+ */
+interface DashboardEngineProps {
+  boardIds: string[];
+  orgId: string;
+  isReadOnly?: boolean;
+  title?: string;
+  subtitle?: string;
+}
 
 const StatCard: React.FC<{
   icon: React.ElementType; label: string; value: number;
@@ -53,24 +83,37 @@ const BurnRateHero: React.FC<{ burnRate: number; completed: number; total: numbe
   );
 };
 
-export function DashboardEngine({ boardId, orgId }: DashboardEngineProps) {
+export function DashboardEngine({ boardIds, orgId, title, subtitle, isReadOnly }: DashboardEngineProps) {
   const [metrics, setMetrics] = useState<ProjectHealthMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const optimisticTasks = usePmoStore(s => s.optimisticTasks);
 
+  // Determine mode from boardIds length
+  const isCrossBoard = boardIds.length > 1;
+  const resolvedTitle = title ?? (isCrossBoard ? "Cross-Board Health" : "Project Health");
+  const resolvedSubtitle = subtitle ?? (isCrossBoard ? `Aggregating ${boardIds.length} boards` : "High Density Dashboard");
+
+  // Stable reference for the dependency array (avoid infinite re-renders)
+  const boardKey = useMemo(() => boardIds.join(","), [boardIds]);
+
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!boardIds || boardIds.length === 0) return;
       setLoading(true);
-      const res = await getProjectHealthAction(boardId, orgId);
+      setError(null);
+      const res = boardIds.length === 1
+        ? await getProjectHealthAction(boardIds[0], orgId)
+        : await getCrossBoardHealthAction(boardIds, orgId);
       if (!alive) return;
       if (res.success && res.data) setMetrics(res.data);
       else setError(res.error || "Failed to load dashboard metrics");
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [boardId, orgId, optimisticTasks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardKey, orgId, optimisticTasks]);
 
   if (loading && !metrics) {
     return (
@@ -97,11 +140,11 @@ export function DashboardEngine({ boardId, orgId }: DashboardEngineProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: V.purple + "14" }}>
-            <BarChart3 className="w-5 h-5" style={{ color: V.purple }} />
+            {isCrossBoard ? <Layers className="w-5 h-5" style={{ color: V.purple }} /> : <BarChart3 className="w-5 h-5" style={{ color: V.purple }} />}
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight" style={{ color: V.dark }}>Project Health</h2>
-            <p className="text-xs font-medium" style={{ color: V.muted }}>High Density Dashboard</p>
+            <h2 className="text-xl font-bold tracking-tight" style={{ color: V.dark }}>{resolvedTitle}</h2>
+            <p className="text-xs font-medium" style={{ color: V.muted }}>{resolvedSubtitle}</p>
           </div>
         </div>
         <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 flex items-center gap-2">
@@ -118,7 +161,7 @@ export function DashboardEngine({ boardId, orgId }: DashboardEngineProps) {
         <StatCard icon={CircleDashed} label="Not Started" value={metrics.notStartedTasks} color={V.muted} />
       </div>
       <div className="flex w-full">
-        <WorkloadWidget boardId={boardId} />
+        {boardIds.length === 1 && <WorkloadWidget boardId={boardIds[0]} />}
       </div>
     </div>
   );
