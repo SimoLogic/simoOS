@@ -17,6 +17,7 @@ const statusConfig: Record<TaskStatus, { label: string; colorClass: string }> = 
   in_progress: { label: "Working", colorClass: "bg-vibe-blue text-white" },
   done: { label: "Done", colorClass: "bg-green-500 text-white" },
   stuck: { label: "Stuck", colorClass: "bg-vibe-red text-white" },
+  blocked: { label: "Blocked", colorClass: "bg-red-500 text-white" },
   pending_review: { label: "Review", colorClass: "bg-yellow-400 text-black" },
 };
 

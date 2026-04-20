@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import "react-grid-layout/css/styles.css";
@@ -43,9 +43,9 @@ interface DashboardViewProps {
 }
 
 const DEFAULT_WIDGETS: PanelWidget[] = [
-  { id: "battery", type: "battery", x: 0, y: 0, w: 4, h: 4, config: {} },
-  { id: "workload", type: "workload", x: 4, y: 0, w: 8, h: 4, config: {} },
-  { id: "activity", type: "activity", x: 0, y: 4, w: 12, h: 6, config: {} },
+  { id: "battery", type: "battery", sourceBoardIds: [], x: 0, y: 0, w: 4, h: 4, config: {} },
+  { id: "workload", type: "workload", sourceBoardIds: [], x: 4, y: 0, w: 8, h: 4, config: {} },
+  { id: "activity", type: "activity", sourceBoardIds: [], x: 0, y: 4, w: 12, h: 6, config: {} },
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({

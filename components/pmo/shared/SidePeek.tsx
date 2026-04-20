@@ -203,7 +203,7 @@ export function SidePeek({
         <div className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-[#E6E9EF]">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              {task.isProtected && <PlaybookBadge />}
+              {task.isProtected && <PlaybookBadge simoPlaybookId={task.simoPlaybookId ?? ""} />}
               <StatusBadge status={task.status} />
               {task.priority && <PriorityBadge priority={task.priority} />}
             </div>

@@ -30,6 +30,7 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: strin
   in_progress:    { label: "In Progress",    bg: "bg-amber-100",  text: "text-amber-700",  border: "border-amber-200" },
   done:           { label: "Done",           bg: "bg-emerald-100",text: "text-emerald-700",border: "border-emerald-200" },
   stuck:          { label: "Stuck",          bg: "bg-red-100",    text: "text-red-700",    border: "border-red-200" },
+  blocked:        { label: "Blocked",        bg: "bg-rose-100",   text: "text-rose-700",   border: "border-rose-200" },
   pending_review: { label: "Pending Review", bg: "bg-blue-100",   text: "text-blue-700",   border: "border-blue-200" },
 };
 
@@ -305,7 +306,6 @@ export const CardsView: React.FC<CardsViewProps> = ({
       {peekTask && (
         <SidePeek
           task={peekTask}
-          columns={board?.columns ?? []}
           orgId={orgId}
           userId={user_ide ?? "system"}
           isOpen={!!activePeekTaskId}
