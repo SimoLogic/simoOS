@@ -18,11 +18,8 @@ import {
 } from "@/app/actions/pmo/panel-actions";
 import type { LayoutItem } from "react-grid-layout";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const ReactGridLayout = (require("react-grid-layout") as any).default || (require("react-grid-layout") as any);
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const WidthProvider = (require("react-grid-layout") as any).WidthProvider;
-const GridLayout = WidthProvider(ReactGridLayout) as React.ComponentType<{
+// ── react-grid-layout: dynamic import (SSR-safe) ────────────────────────────
+type GridLayoutComponent = React.ComponentType<{
   className?: string; layout: LayoutItem[]; cols: number; rowHeight: number;
   isDraggable?: boolean; isResizable?: boolean; margin?: [number, number];
   onLayoutChange?: (layout: LayoutItem[]) => void; children?: React.ReactNode;
@@ -55,6 +52,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [widgets, setWidgets] = useState<PanelWidget[]>(DEFAULT_WIDGETS);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [GridLayout, setGridLayout] = useState<GridLayoutComponent | null>(null);
+
+  // Dynamic import of react-grid-layout (client-only)
+  useEffect(() => {
+    import("react-grid-layout").then((mod) => {
+      const RGL = mod.default || mod;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const WP = (mod as any).WidthProvider;
+      setGridLayout(() => WP(RGL));
+    });
+  }, []);
 
   // Load panel from DB
   useEffect(() => {
@@ -166,13 +174,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <GridLayout className="layout" layout={layout} cols={12} rowHeight={80}
-          isDraggable={true} isResizable={true} margin={[16, 16]}
-          onLayoutChange={handleLayoutChange}>
-          {widgets.map(w => (
-            <div key={w.id}>{renderWidget(w)}</div>
-          ))}
-        </GridLayout>
+        {GridLayout ? (
+          <GridLayout className="layout" layout={layout} cols={12} rowHeight={80}
+            isDraggable={true} isResizable={true} margin={[16, 16]}
+            onLayoutChange={handleLayoutChange}>
+            {widgets.map(w => (
+              <div key={w.id}>{renderWidget(w)}</div>
+            ))}
+          </GridLayout>
+        ) : (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-6 h-6 animate-spin text-[#6161FF]" />
+          </div>
+        )}
       </div>
     </div>
   );
