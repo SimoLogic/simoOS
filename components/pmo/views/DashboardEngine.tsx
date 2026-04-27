@@ -28,11 +28,10 @@ import { TaskLogWidget } from "@/components/pmo/widgets/TaskLogWidget";
 import { AlertCircle, LayoutDashboard, Loader2, Save, Layers, Play } from "lucide-react";
 import type { LayoutItem } from "react-grid-layout";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const ReactGridLayout = (require("react-grid-layout") as any).default || (require("react-grid-layout") as any);
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const WidthProvider = (require("react-grid-layout") as any).WidthProvider;
-const GridLayout = WidthProvider(ReactGridLayout) as React.ComponentType<{
+// ── react-grid-layout: dynamic import (SSR-safe) ────────────────────────────
+// Webpack statically analyzes require() even inside typeof window guards.
+// The only safe pattern is dynamic import() deferred to useEffect.
+type GridLayoutComponent = React.ComponentType<{
   className?: string; layout: LayoutItem[]; cols: number; rowHeight: number;
   isDraggable?: boolean; isResizable?: boolean; margin?: [number, number];
   onLayoutChange?: (layout: LayoutItem[]) => void; children?: React.ReactNode;
@@ -68,6 +67,17 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [GridLayout, setGridLayout] = useState<GridLayoutComponent | null>(null);
+
+  // Dynamic import of react-grid-layout (client-only)
+  useEffect(() => {
+    import("react-grid-layout").then((mod) => {
+      const RGL = mod.default || mod;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const WP = (mod as any).WidthProvider;
+      setGridLayout(() => WP(RGL));
+    });
+  }, []);
 
   const optimisticTasks = usePmoStore(s => s.optimisticTasks);
 
@@ -247,15 +257,21 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
           </div>
         </div>
 
-        <GridLayout className="layout" layout={layout} cols={12} rowHeight={80}
-          isDraggable={!isReadOnly} isResizable={!isReadOnly} margin={[16, 16]}
-          onLayoutChange={handleLayoutChange}>
-          {widgets.map(w => (
-            <div key={w.id} className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden border border-gray-100">
-               {renderWidget(w)}
-            </div>
-          ))}
-        </GridLayout>
+        {GridLayout ? (
+          <GridLayout className="layout" layout={layout} cols={12} rowHeight={80}
+            isDraggable={!isReadOnly} isResizable={!isReadOnly} margin={[16, 16]}
+            onLayoutChange={handleLayoutChange}>
+            {widgets.map(w => (
+              <div key={w.id} className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden border border-gray-100">
+                 {renderWidget(w)}
+              </div>
+            ))}
+          </GridLayout>
+        ) : (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-6 h-6 animate-spin text-[#6161FF]" />
+          </div>
+        )}
       </div>
     </div>
   );
