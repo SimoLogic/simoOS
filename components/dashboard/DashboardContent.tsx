@@ -22,6 +22,7 @@ import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
 import { MyPlanShell } from "../pmo/MyPlan/MyPlanShell";
 import { PlaybookDesignerApp } from "../playbook-designer/PlaybookDesignerApp";
 import { PlaybookMarketplaceApp } from "../business-plan/playbooks/PlaybookMarketplaceApp";
+import { JourneyMapApp } from "../ceo-playground/JourneyMapApp";
 import {
     LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
 } from "lucide-react";
@@ -128,6 +129,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                             initialPlaybookId={searchParams.get("id") ?? null}
                             duplicateFromId={searchParams.get("duplicate") ?? null}
                         />
+                    ) : activeSubModule === "journey-map" ? (
+                        <JourneyMapApp />
                     ) : (
                         <SplitView subModuleId={activeSubModule} />
                     )}
