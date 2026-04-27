@@ -55,6 +55,7 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     "ceo-playground": [
         { id: "strategy", label: "Strategic Overview" },
         { id: "market-analysis", label: "Market Analysis" },
+        { id: "journey-map", label: "Journey Map" },
     ],
     pmo: [
         { id: "my-plan", label: "My Plan" },
