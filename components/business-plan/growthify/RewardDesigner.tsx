@@ -571,7 +571,7 @@ export const RewardDesigner: React.FC = () => {
                                                     <div className="flex gap-2">
                                                         {s.approver1_status !== "Active" && (
                                                             <span className="bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                                                                Fin: {s.approver1_status}
+                                                                End: {s.approver1_status}
                                                             </span>
                                                         )}
                                                         {s.approver2_status !== "Active" && (

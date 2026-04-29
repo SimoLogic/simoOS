@@ -1,65 +1,108 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Filter, BookOpen, Clock, Users, ShieldAlert, ArrowRight } from "lucide-react";
-import { getActiveRoleTitlesForPlaybookAction } from "@/app/actions/business-plan-actions";
-import { getPublishedPlaybooksAction } from "@/app/actions/playbook-assignment-actions";
+import { useRouter } from "next/navigation";
+import {
+  Search, BookOpen, Clock, ShieldAlert, Pencil, Copy, Archive
+} from "lucide-react";
+import { getPlaybooksForMarketplaceAction, duplicatePlaybookAction } from "@/app/actions/business-plan-actions";
 import { useTenant } from "@/lib/tenant-context";
 import { PlaybookPreviewModal } from "./PlaybookPreviewModal";
 
+type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
+
 export const PlaybookMarketplaceApp: React.FC = () => {
-  const { currentTenant } = useTenant();
-  const orgId = currentTenant?.tenant_id;
+  const { currentTenant, isLoading: tenantLoading } = useTenant();
+  const orgId = currentTenant?.tenant_id ?? '';
+  const router = useRouter();
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
-  const [roleTitles, setRoleTitles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters State
+  // Filters
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [familyFilter, setFamilyFilter] = useState("");
   const [strategyFilter, setStrategyFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-
+  const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilter>('ALL');
   const [selectedPlaybook, setSelectedPlaybook] = useState<any | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const fetchPlaybooks = async (statusFilter: StatusFilter) => {
+    if (!orgId) return;
+    setLoading(true);
+    const statusArr =
+      statusFilter === "ALL"
+        ? ["DRAFT", "PUBLISHED", "INACTIVE"]
+        : [statusFilter];
+    const data = await getPlaybooksForMarketplaceAction(orgId, statusArr);
+    setPlaybooks(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    if (!orgId) return;
-    const fetchMarketplaceData = async () => {
-      setLoading(true);
-      const [pbData, rtData] = await Promise.all([
-        getPublishedPlaybooksAction(orgId),
-        getActiveRoleTitlesForPlaybookAction(orgId)
-      ]);
-      setPlaybooks(pbData);
-      setRoleTitles(rtData.map((r: any) => r.role_title));
-      setLoading(false);
+    if (tenantLoading || !orgId) return;
+    fetchPlaybooks(activeStatusFilter);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchPlaybooks(activeStatusFilter);
     };
-    fetchMarketplaceData();
-  }, [orgId]);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, activeStatusFilter, tenantLoading]);
 
-  // Derived filtered results
   const filteredPlaybooks = playbooks.filter((pb) => {
     const term = search.toLowerCase();
-    const matchSearch = pb.name?.toLowerCase().includes(term) || pb.purpose?.toLowerCase().includes(term);
+    const matchSearch =
+      pb.name?.toLowerCase().includes(term) ||
+      pb.purpose?.toLowerCase().includes(term);
     const matchType = typeFilter ? pb.type === typeFilter : true;
     const matchFamily = familyFilter ? pb.family === familyFilter : true;
     const matchStrategy = strategyFilter ? pb.strategy === strategyFilter : true;
-    
-    // Check if the current roleFilter exists in the playbook's responsibles (steps)
-    let matchRole = true;
-    if (roleFilter) {
-      matchRole = pb.bp_playbook_steps?.some((step: any) => step.stakeholder === roleFilter || step.requested_to === roleFilter);
-    }
-
-    return matchSearch && matchType && matchFamily && matchStrategy && matchRole;
+    return matchSearch && matchType && matchFamily && matchStrategy;
   });
+
+  const goToDesigner = (params: string) => {
+    // _t cache-buster ensures searchParams always change, triggering useEffect re-load
+    router.push("?sub=playbook-designer&" + params + "&_t=" + Date.now());
+  };
+
+  const handleCardClick = (pb: any) => {
+    if (pb.status === "DRAFT") {
+      goToDesigner("id=" + pb.id);
+    } else {
+      setSelectedPlaybook(pb);
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, pb: any) => {
+    e.stopPropagation();
+    setDuplicatingId(pb.id);
+    try {
+      const result = await duplicatePlaybookAction(orgId, pb.id);
+      if (result.error) {
+        alert("Duplicate failed: " + result.error);
+      } else {
+        await fetchPlaybooks(activeStatusFilter);
+      }
+    } catch (err) {
+      alert("Duplicate failed: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
+  const STATUS_FILTERS: { label: string; value: StatusFilter; color: string }[] = [
+    { label: "All", value: "ALL", color: "bg-slate-800 text-white" },
+    { label: "Active", value: "PUBLISHED", color: "bg-emerald-600 text-white" },
+    { label: "Draft", value: "DRAFT", color: "bg-amber-500 text-white" },
+    { label: "Inactive", value: "INACTIVE", color: "bg-slate-400 text-white" },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative">
+      {/* Header */}
       <div className="bg-white border-b border-slate-200 px-8 py-8 shrink-0 relative overflow-hidden">
-        {/* Background Graphic */}
         <div className="absolute right-0 top-0 bottom-0 opacity-5 pointer-events-none">
           <svg width="400" height="400" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
             <circle cx="50" cy="50" r="40" stroke="#002B5B" strokeWidth="10" fill="none" />
@@ -71,14 +114,31 @@ export const PlaybookMarketplaceApp: React.FC = () => {
           PLAYBOOK MARKETPLACE
         </h1>
         <p className="text-slate-500 font-medium max-w-2xl mt-2 relative z-10 text-sm">
-          Explore and assign verified institutional playbooks tailored to your operational and commercial teams.
+          Explore, edit, duplicate, and assign institutional playbooks for your operational and commercial teams.
         </p>
 
-        {/* Filters Toolbar */}
-        <div className="mt-8 flex flex-wrap gap-4 items-center relative z-10">
+        {/* Status Filter Chips */}
+        <div className="mt-5 flex gap-2 relative z-10">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setActiveStatusFilter(f.value)}
+              className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${
+                activeStatusFilter === f.value
+                  ? f.color + " shadow-md scale-105"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search & Filters Toolbar */}
+        <div className="mt-5 flex flex-wrap gap-4 items-center relative z-10">
           <div className="relative flex-1 min-w-[250px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
+            <input
               type="text"
               placeholder="Search playbook name or mission..."
               value={search}
@@ -105,18 +165,15 @@ export const PlaybookMarketplaceApp: React.FC = () => {
               <option value="B2C">B2C</option>
               <option value="NPPM">NPPM</option>
             </select>
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="bg-white border border-slate-200 rounded text-xs px-2 py-1.5 font-bold text-slate-700 outline-none cursor-pointer max-w-[150px]">
-              <option value="">ALL ROLES</option>
-              {roleTitles.map(rt => <option key={rt} value={rt}>{rt}</option>)}
-            </select>
           </div>
         </div>
       </div>
 
+      {/* Grid */}
       <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
         {loading ? (
           <div className="w-full flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--cobalt-blue)]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--cobalt-blue)]" />
           </div>
         ) : filteredPlaybooks.length === 0 ? (
           <div className="w-full flex flex-col items-center justify-center py-20 text-slate-400">
@@ -127,26 +184,23 @@ export const PlaybookMarketplaceApp: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredPlaybooks.map((pb) => (
-              <div 
+              <div
                 key={pb.id}
-                onClick={() => setSelectedPlaybook(pb)}
+                onClick={() => handleCardClick(pb)}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all p-6 group cursor-pointer active:scale-[0.98] flex flex-col relative overflow-hidden"
               >
-                {/* Decorative background shape */}
-                <div className="absolute top-0 right-0 p-4 -mr-8 -mt-8 opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none">
-                  <PlaybookDecoIcon type={pb.type} />
-                </div>
-
-                <div className="flex gap-2 mb-4 flex-wrap">
-                  <Badge type={pb.type} />
-                  <Badge type="info">{pb.family}</Badge>
-                  <Badge type="outline">{pb.strategy}</Badge>
+                {/* Status + Version badge row */}
+                <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
+                  <div className="flex gap-2 flex-wrap">
+                    <TypeBadge type={pb.type} />
+                    <StatusBadge status={pb.status} version={pb.version} />
+                  </div>
                 </div>
 
                 <h3 className="text-xl font-black text-slate-800 leading-tight mb-2 group-hover:text-blue-600 transition-colors">
                   {pb.name}
                 </h3>
-                
+
                 <p className="text-xs text-slate-500 mb-6 line-clamp-3 font-medium flex-1">
                   {pb.purpose || "No operational mission defined for this playbook."}
                 </p>
@@ -154,10 +208,28 @@ export const PlaybookMarketplaceApp: React.FC = () => {
                 <div className="flex items-center justify-between border-t border-slate-50 pt-4 mt-auto">
                   <div className="flex items-center gap-1.5 text-slate-400">
                     <Clock size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{pb.bp_playbook_steps?.length || 0} STEPS</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {pb.bp_playbook_steps?.length || 0} STEPS
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-emerald-500 bg-emerald-50 px-2 py-1 rounded">
-                    <span className="text-[9px] font-black uppercase tracking-widest">{pb.status}</span>
+
+                  {/* Action Icons — SPA navigation */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); goToDesigner("id=" + pb.id); }}
+                      title="Edit this playbook"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDuplicate(e, pb)}
+                      disabled={duplicatingId === pb.id}
+                      title="Duplicate this playbook"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40"
+                    >
+                      <Copy size={13} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -167,36 +239,48 @@ export const PlaybookMarketplaceApp: React.FC = () => {
       </div>
 
       {selectedPlaybook && (
-         <PlaybookPreviewModal 
-            playbook={selectedPlaybook} 
-            onClose={() => setSelectedPlaybook(null)} 
-         />
+        <PlaybookPreviewModal
+          playbook={selectedPlaybook}
+          onClose={() => setSelectedPlaybook(null)}
+          onRefresh={() => fetchPlaybooks(activeStatusFilter)}
+        />
       )}
     </div>
   );
 };
 
-// --- Helpers internal for this component ---
+// --- Helpers ---
 
-const Badge = ({ children, type }: { children?: React.ReactNode, type: string }) => {
+const TypeBadge = ({ type }: { type: string }) => {
   let styles = "bg-slate-100 text-slate-600";
-  if (type === "CORE") styles = "bg-navy-blue text-white";
+  if (type === "CORE") styles = "bg-[#002B5B] text-white";
   else if (type === "GROWTH") styles = "bg-[#0056C0] text-white";
   else if (type === "ELITE") styles = "bg-indigo-600 text-white";
-  else if (type === "info") styles = "bg-blue-50 text-blue-600";
-  else if (type === "outline") styles = "border border-slate-200 text-slate-500";
-  
   return (
     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${styles}`}>
-      {children || type}
+      {type}
     </span>
   );
 };
 
-const PlaybookDecoIcon = ({ type }: { type: string }) => {
+const StatusBadge = ({ status, version }: { status: string; version?: number }) => {
+  if (status === "PUBLISHED") {
+    return (
+      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700">
+        ACTIVE {version && version > 1 ? `v${version}` : ""}
+      </span>
+    );
+  }
+  if (status === "DRAFT") {
+    return (
+      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 flex items-center gap-1">
+        <Pencil size={8} /> DRAFT
+      </span>
+    );
+  }
   return (
-    <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2L2 22h20L12 2z" />
-    </svg>
+    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-400 flex items-center gap-1">
+      <Archive size={8} /> INACTIVE
+    </span>
   );
 };

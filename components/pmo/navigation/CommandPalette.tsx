@@ -73,7 +73,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
               <Command.Input 
                 value={query}
                 onValueChange={setQuery}
-                placeholder="Busca tareas, integra con Simo o ejecuta acciones..." 
+                placeholder="Search tasks, integrate with Simo, or execute actions..." 
                 className="w-full bg-transparent border-0 h-14 text-sm outline-none placeholder:text-gray-400 text-vibe-dark"
                 autoFocus
               />
@@ -82,7 +82,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
 
             <Command.List className="max-h-[60vh] overflow-y-auto p-2">
               <Command.Empty className="p-4 text-sm text-center text-gray-500">
-                {query ? "No se encontraron resultados." : "Escribe algo para buscar."}
+                {query ? "No results found." : "Type something to search."}
               </Command.Empty>
 
               <Command.Group heading="Simo IS" className="px-2 py-1 text-xs font-semibold text-vibe-purple uppercase tracking-wider">
@@ -97,7 +97,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
                   onSelect={() => alert("Viewing Integration Status...")}
                   className="px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer data-[selected=true]:bg-vibe-purple/10 data-[selected=true]:text-vibe-purple transition-colors"
                 >
-                  Estado de Integración
+                  Integration Status
                 </Command.Item>
               </Command.Group>
 
@@ -130,12 +130,12 @@ export function CommandPalette({ orgId }: { orgId: string }) {
                 </Command.Group>
               )}
 
-              <Command.Group heading="Acciones" className="px-2 py-1 text-xs font-semibold text-gray-500 mt-2 border-t border-gray-50 pt-2">
+              <Command.Group heading="Actions" className="px-2 py-1 text-xs font-semibold text-gray-500 mt-2 border-t border-gray-50 pt-2">
                 <Command.Item 
                   onSelect={() => alert("Creating task...")}
                   className="px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer data-[selected=true]:bg-gray-100 transition-colors"
                 >
-                  ✨ Nueva Tarea
+                  ✨ New Task
                 </Command.Item>
                 <Command.Item 
                   onSelect={() => alert("Navigating to My Tasks...")}

@@ -9,7 +9,7 @@ import {
 // ─── Supabase Client ───────────────────────────────────────────
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 function getSupabase() {
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
@@ -183,6 +183,13 @@ export async function getEmployeesService(tenantId: string): Promise<FullEmploye
     if (!tenantId?.trim()) return [];
 
     try {
+        const maskedKey = supabaseKey?.substring(0, 10) + "...";
+        const isServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+        console.log(`\n\n[Vercel Runtime Audit] getEmployeesService called!`);
+        console.log(`=> tenantId recibida desde la UI: '${tenantId}'`);
+        console.log(`=> Key detectada: ${maskedKey}`);
+        console.log(`=> Usando SERVICE_ROLE_KEY? ${isServiceRole}\n\n`);
+
         const supabase = getSupabase();
         const { data, error } = await supabase
             .from('dim_employee')

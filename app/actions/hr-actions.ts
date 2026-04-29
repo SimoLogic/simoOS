@@ -36,7 +36,7 @@ const HistorialLaboralSchema = z.object({
     contractType: z.string().max(50),
     salaryType: z.string().max(50),
     baseSalary: z.number().min(0),
-    taxProcedure: z.union([z.literal(1), z.literal(2), z.literal(0)]),
+    taxProcedure: z.coerce.number().pipe(z.union([z.literal(1), z.literal(2), z.literal(0)])),
     legalEntity: z.string().optional().nullable(),
     area: z.string().max(100),
     subArea: z.string().max(100),
@@ -89,11 +89,11 @@ export async function addEmployeeAction(employee: FullEmployeeRecord, tenantId: 
         const data = await addEmployeeService(validatedEmployee as FullEmployeeRecord, tenantId);
         return { success: true, data };
     } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+        if (error?.name === "ZodError" || error instanceof z.ZodError) {
+            return { success: false, error: "Validation Error: " + error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] addEmployee error:', error);
-        throw new Error(`Critical Action Error (Add Employee): ${error.message}`);
+        return { success: false, error: `Critical Action Error (Add Employee): ${error.message}` };
     }
 }
 
@@ -107,11 +107,11 @@ export async function updateEmployeeAction(employee: FullEmployeeRecord, tenantI
         const data = await updateEmployeeService(validatedEmployee as FullEmployeeRecord, tenantId);
         return { success: true, data };
     } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+        if (error?.name === "ZodError" || error instanceof z.ZodError) {
+            return { success: false, error: "Validation Error: " + error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] updateEmployee error:', error);
-        throw new Error(`Critical Action Error (Update Employee): ${error.message}`);
+        return { success: false, error: `Critical Action Error (Update Employee): ${error.message}` };
     }
 }
 
@@ -126,11 +126,11 @@ export async function saveEmployeesAction(employees: FullEmployeeRecord[], tenan
         await saveEmployeesService(validatedEmployees as FullEmployeeRecord[], tenantId);
         return { success: true };
     } catch (error: any) {
-        if (error instanceof z.ZodError) {
-            return { success: false, error: "Validation Error: " + error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ") };
+        if (error?.name === "ZodError" || error instanceof z.ZodError) {
+            return { success: false, error: "Validation Error: " + error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(", ") };
         }
         console.error('[HR Action] saveEmployees error:', error);
-        throw new Error(`Critical DB Error (Batch Save): ${error.message}`);
+        return { success: false, error: `Critical DB Error (Batch Save): ${error.message}` };
     }
 }
 

@@ -177,7 +177,7 @@ model BpPlaybook {
   strategy         String          @default("B2B")         // B2B | B2C | NPPM
   purpose          String?
   status           String          @default("DRAFT")       // DRAFT | SUBMITTED
-  globalOwners     String[]        @map("global_owners")   // Array of role names
+  globalOwnerIds   String[]        @map("global_owner_ids") @db.Uuid
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
@@ -200,14 +200,14 @@ model BpPlaybookStep {
   activityDescription      String?    @map("activity_description")
   deliverable              String?                             // UPPERCASE output
   deliverableDescription   String?    @map("deliverable_description")
-  stakeholder              String?                             // UPPERCASE role
+  stakeholderId            String?    @map("stakeholder_id") @db.Uuid
   frequency                String     @default("DAILY")        // DAILY | WEEKLY | MONTHLY | YEARLY
   repetitions              Int        @default(1)
   freqNotes                String?    @map("freq_notes")
   schedulerValue           Int        @default(0) @map("scheduler_value") // Workday offset (WorkdayHelper Llave #2)
   supportingTask           String?    @map("supporting_task")  // UPPERCASE counteraction
   counteractionDescription String?    @map("counteraction_description")
-  requestedTo              String?    @map("requested_to")     // Employee ID
+  requestedToId            String?    @map("requested_to_id")  @db.Uuid
   sla                      String?                             // UPPERCASE success metric
   slaDescription           String?    @map("sla_description")
   isLocked                 Boolean    @default(false) @map("is_locked")     // Shield Protocol
@@ -454,4 +454,398 @@ model SimoNotification {
 
   @@index([orgId, userId, status])
   @@map("simo_notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHIELD MODELS — These models exist to prevent Prisma db push from dropping
+// tables that the application queries via the Supabase JS client.
+// DO NOT REMOVE — they are the "armor" against destructive migrations.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DimTenant {
+  tcode             String   @id
+  legalName         String   @map("legal_name")
+  dbaName           String   @map("dba_name")
+  reportingCurrency String   @map("reporting_currency")
+  status            Boolean  @default(true)
+  hqAddress         Json?    @map("hq_address")
+  pocs              Json?
+  accountManagers   Json?    @map("account_managers")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("dim_tenant")
+}
+
+model DimEmployee {
+  eid                    String   @id
+  tenantId               String?  @map("tenant_id")
+  numeroIdentificacion   String   @map("numero_identificacion")
+  tipoDocumentoId        String   @map("tipo_documento_id")
+  primerNombre           String   @map("primer_nombre")
+  otrosNombres           String?  @map("otros_nombres")
+  primerApellido         String   @map("primer_apellido")
+  segundoApellido        String   @map("segundo_apellido")
+  fechaNacimiento        DateTime @map("fecha_nacimiento") @db.Date
+  genero                 String   @db.VarChar(1)
+  emailPersonal          String   @map("email_personal")
+  municipioDane          String   @map("municipio_dane")
+  direccionResidencia    String   @map("direccion_residencia")
+  fotoUrl                String?  @map("foto_url")
+  status                 String?  @default("Active")
+  emailCorporativo       String?  @map("email_corporativo")
+  fechaInicio            DateTime @map("fecha_inicio") @db.Date
+  fechaFin               DateTime? @map("fecha_fin") @db.Date
+  tipoContrato           String   @map("tipo_contrato")
+  tipoSalario            String   @map("tipo_salario")
+  salarioBase            Decimal  @map("salario_base")
+  procedimientoRenta     Int?     @default(1) @map("procedimiento_renta")
+  area                   String
+  subArea                String   @map("sub_area")
+  centroCosto            String   @map("centro_costo")
+  nombreCentroCosto      String?  @map("nombre_centro_costo")
+  subCentroCosto         String?  @map("sub_centro_costo")
+  nombreSubCentroCosto   String?  @map("nombre_sub_centro_costo")
+  branch                 String?  @map("branch")
+  cliente                String?  @map("cliente")
+  project                String?  @map("project")
+  digitoDedicacion       Int?     @map("digito_dedicacion")
+  directLeader           String?  @map("direct_leader")
+  directLeaderId         String?  @map("direct_leader_id")
+  entidadLegal           String?  @map("entidad_legal")
+  salaryCurrency         String?  @map("salary_currency")
+  jobTitle               String?  @map("job_title")
+  roleTitle              String?  @map("role_title")
+  jobTitleId             String?  @map("job_title_id") @db.Uuid
+  roleTitleId            String?  @map("role_title_id") @db.Uuid
+  assignedBranchCode     String?  @map("assigned_branch_code")
+  afiliaciones           Json?    @default("{}")
+  sst                    Json?    @default("{}")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("dim_employee")
+}
+
+model DimJobTitle {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String?  @map("tenant_id") @db.VarChar(15)
+  title           String   @db.VarChar(255)
+  area            String?  @db.VarChar(100)
+  subArea         String?  @map("sub_area") @db.VarChar(100)
+  costCenter      String?  @map("cost_center") @db.VarChar(20)
+  status          String   @default("Draft") @db.VarChar(20)
+  requesterId     String?  @map("requester_id") @db.VarChar(15)
+  approver1Id     String?  @map("approver1_id") @db.VarChar(15)
+  approver1Status String   @default("Pending") @map("approver1_status") @db.VarChar(20)
+  approver2Id     String?  @map("approver2_id") @db.VarChar(15)
+  approver2Status String   @default("Pending") @map("approver2_status") @db.VarChar(20)
+  jdfData         Json?    @default("{}") @map("jdf_data")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, title])
+  @@index([tenantId])
+  @@index([status])
+  @@map("dim_job_title")
+}
+
+model DimRoleTitle {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.VarChar(15)
+  jobTitleId  String?  @map("job_title_id") @db.Uuid
+  roleTitle   String   @map("role_title") @db.VarChar(60)
+  describeRole String? @map("describe_role") @db.VarChar(500)
+  status      String   @default("Active") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([jobTitleId, roleTitle])
+  @@index([tenantId])
+  @@index([jobTitleId])
+  @@map("dim_role_title")
+}
+
+model DimExternalRole {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id")
+  name          String   @db.VarChar(50)
+  businessType  String?  @map("business_type")
+  size          String?
+  annualVolume  String?  @map("annual_volume")
+  numAgents     String?  @map("num_agents")
+  notes         String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([orgId, name])
+  @@index([orgId, status])
+  @@map("dim_external_role")
+}
+
+model DimBranch {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.VarChar(20)
+  branchCode         String   @map("branch_code") @db.VarChar(20)
+  branchName         String?  @map("branch_name") @db.VarChar(255)
+  branchManagerEid   String?  @map("branch_manager_eid") @db.VarChar(20)
+  statesLicensed     String[] @default([]) @map("states_licensed")
+  fieldOfficeType    String   @default("Physical") @map("field_office_type")
+  officeAddress      String?  @map("office_address")
+  hasLease           Boolean  @default(false) @map("has_lease")
+  leaseData          Json?    @map("lease_data")
+  hierarchyLevel     String   @default("Branch") @map("hierarchy_level")
+  parentBranchId     String?  @map("parent_branch_id") @db.Uuid
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, branchCode])
+  @@index([tenantId])
+  @@map("dim_branch")
+}
+
+model DimFxRate {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.VarChar(20)
+  effectiveDate DateTime @map("effective_date") @db.Date
+  exchangeRate  Decimal  @map("exchange_rate") @db.Decimal(18, 4)
+  currencyFrom  String   @default("COP") @map("currency_from") @db.VarChar(3)
+  currencyTo    String   @default("USD") @map("currency_to") @db.VarChar(3)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, effectiveDate, currencyFrom, currencyTo])
+  @@index([tenantId])
+  @@map("dim_fx_rates")
+}
+
+model DimLocalLegalEntity {
+  id            String   @id @default(uuid()) @db.Uuid
+  entityName    String   @unique @map("entity_name") @db.VarChar(255)
+  localTaxId    String?  @map("local_tax_id") @db.VarChar(50)
+  entityCountry String   @default("Colombia") @map("entity_country") @db.VarChar(100)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("dim_local_legal_entity")
+}
+
+model GrowthifyStrategy {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.VarChar(15)
+  name      String   @db.VarChar(255)
+  purpose   String
+  isActive  Boolean  @default(false) @map("isActive")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, name])
+  @@map("growthify_strategies")
+}
+
+model GrowthifyAssignment {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String?  @map("tenant_id") @db.VarChar(15)
+  employeeId     String?  @map("employee_id") @db.VarChar(15)
+  strategies     Json     @default("[]")
+  isApproved     Boolean  @default(false) @map("isApproved")
+  approver1Status String  @default("Pending") @map("approver1_status")
+  approver2Status String  @default("Pending") @map("approver2_status")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("growthify_assignments")
+}
+
+model DimPlaybooks {
+  id          String   @id @db.VarChar(50)
+  tenantId    String?  @map("tenant_id") @db.VarChar(15)
+  name        String   @db.VarChar(255)
+  description String?
+  category    String   @default("commercial") @db.VarChar(20)
+  tasks       Json     @default("[]")
+  kpis        Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("dim_playbooks")
+}
+
+model BpWorkflow {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.VarChar(15)
+  eid                  String   @db.VarChar(15)
+  fullName             String?  @map("fullName") @db.VarChar(255)
+  area                 String?  @db.VarChar(100)
+  commercialPlaybooks  Json     @default("[]") @map("commercialPlaybooks")
+  supportingPlaybooks  Json     @default("[]") @map("supportingPlaybooks")
+  specialPlaybooks     Json     @default("[]") @map("specialPlaybooks")
+  lastModified         DateTime @default(now()) @map("lastModified")
+  modifiedBy           String?  @map("modifiedBy") @db.VarChar(15)
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, eid])
+  @@map("bp_workflow")
+}
+
+model ProcessDesign {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.VarChar(15)
+  name      String   @db.VarChar(255)
+  area      String   @db.VarChar(100)
+  status    String   @default("Draft") @db.VarChar(10)
+  rows      Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("process_designs")
+}
+
+model EmployeeApprover {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.VarChar(15)
+  eid         String   @db.VarChar(15)
+  approver1Id String?  @map("approver1Id") @db.VarChar(15)
+  approver2Id String?  @map("approver2Id") @db.VarChar(15)
+  approver3Id String?  @map("approver3Id") @db.VarChar(15)
+  updatedAt   DateTime @default(now()) @map("updated_at")
+
+  @@unique([tenantId, eid])
+  @@map("employee_approvers")
+}
+
+model PmoBoard {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  workspaceId      String   @map("workspace_id")
+  name             String?
+  title            String?
+  description      String?
+  type             String   @default("personal")
+  ownerId          String?  @map("owner_id")
+  simoPlaybookId   String?  @map("simo_playbook_id")
+  isPlaybookBoard  Boolean  @default(false) @map("is_playbook_board")
+  lastSyncedAt     DateTime? @map("last_synced_at")
+  activeView       String   @default("grid") @map("active_view")
+  isViewLocked     Boolean  @default(false) @map("is_view_locked")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([orgId])
+  @@map("pmo_boards")
+}
+
+model PmoWorkspace {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([orgId])
+  @@map("pmo_workspaces")
+}
+
+model PmoGroup {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  boardId     String   @map("board_id")
+  title       String
+  color       String   @default("#6161FF")
+  position    Int      @default(0)
+  isCollapsed Boolean  @default(false) @map("is_collapsed")
+
+  @@index([boardId])
+  @@map("pmo_groups")
+}
+
+model PmoColumn {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  boardId   String   @map("board_id")
+  title     String
+  type      String   @default("text")
+  position  Int      @default(0)
+  widthPx   Int      @default(200) @map("width_px")
+  settings  Json?
+
+  @@index([boardId])
+  @@map("pmo_columns")
+}
+
+model PmoSubtask {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  taskId      String   @map("task_id")
+  title       String
+  isCompleted Boolean  @default(false) @map("is_completed")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@map("pmo_subtasks")
+}
+
+model PmoComment {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  taskId    String   @map("task_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([taskId])
+  @@map("pmo_comments")
+}
+
+model PmoSyncEvent {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  taskId          String   @map("task_id")
+  syncedFields    String[] @map("synced_fields")
+  conflictsFound  String[] @map("conflicts_found")
+  resolvedBy      String?  @map("resolved_by")
+  idempotencyKey  String   @unique @map("idempotency_key")
+  timestampAt     DateTime @default(now()) @map("timestamp_at")
+
+  @@index([taskId])
+  @@index([orgId])
+  @@map("pmo_sync_events")
+}
+
+model PmoAutomation {
+  id            String   @id @default(uuid())
+  orgId         String   @map("org_id")
+  boardId       String   @map("board_id")
+  name          String
+  triggerType   String   @map("trigger_type")   // "on_status_change", "on_column_change"
+  triggerConfig Json     @map("trigger_config") // { field: "status", value: "done" }
+  actionType    String   @map("action_type")    // "set_column", "notify"
+  actionConfig  Json     @map("action_config")  // { field: "priority", value: "high" }
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([boardId, isActive])
+  @@map("pmo_automations")
+}
+
+model PmoPanel {
+  id         String   @id @default(uuid())
+  orgId      String   @map("org_id")
+  ownerId    String   @map("owner_id")
+  name       String
+  icon       String   @default("📊")
+  config     Json     @default("{\"widgets\": []}")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([orgId, ownerId])
+  @@map("pmo_panels")
 }

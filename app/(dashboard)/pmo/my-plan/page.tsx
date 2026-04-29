@@ -4,6 +4,8 @@
 
 import { MyPlanShell } from "@/components/pmo/MyPlan/MyPlanShell";
 
+export const dynamic = "force-dynamic";
+
 export default function MyPlanPage() {
     return <MyPlanShell />;
 }

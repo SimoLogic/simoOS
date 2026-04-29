@@ -542,9 +542,7 @@ const Step2: React.FC<{
                                 onChange({ ...data, jobTitleId: e.target.value, roleTitleId: null } as any);
                             }}
                             placeholder="— Select Job Title —"
-                            options={jobTitleOptions
-                                .filter(jt => !data.area || !jt.area || jt.area === data.area)
-                                .map(jt => ({ value: jt.id, label: jt.title }))} />
+                            options={jobTitleOptions.map(jt => ({ value: jt.id, label: jt.title }))} />
                     </Field>
                     <Field label="Role Title" error={(errors as any).roleTitleId}
                         hint={data.jobTitleId ? "Select an operational role assigned to this employee" : "Select a Job Title first"}>

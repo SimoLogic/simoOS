@@ -105,6 +105,10 @@ function mapTaskFromDb(row: Record<string, unknown>): PmoTask {
     sourcePlaybookId:     row.source_playbook_id ? String(row.source_playbook_id) : null,
     sourcePlaybookTaskId: row.source_playbook_task_id ? String(row.source_playbook_task_id) : null,
     occurrenceIndex:      row.occurrence_index != null ? Number(row.occurrence_index) : undefined,
+    // S-16: Playbook Assignment Integration
+    taskType:             (row.task_type as import("@/types/pmo.types").TaskType) ?? "PERSONAL_TASK",
+    blockingTaskId:       row.blocking_task_id ? String(row.blocking_task_id) : null,
+    requestedByEid:       row.requested_by_eid ? String(row.requested_by_eid) : null,
     subtasks:             [],
     comments:             [],
     attachments:          [],

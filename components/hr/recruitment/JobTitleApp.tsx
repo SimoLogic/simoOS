@@ -5,13 +5,13 @@ import {
     Plus, X, Save, CheckCircle2, Clock, Power, PowerOff,
     Briefcase, Users, ChevronDown, ChevronUp, AlertTriangle,
     BookOpen, Globe, Award, FlaskConical, Brain, FileText, Search, RefreshCw,
-    Copy, Tag, Eye, EyeOff,
+    Copy, Tag, Eye, EyeOff, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/lib/tenant-context";
 import {
     JobTitle, JobDescriptionData, JobTitleRef,
-    blankJobTitle, blankJdfData,
+    blankJobTitle, blankJdfData, parseJdfData,
     EDUCATION_LEVELS, LANGUAGE_LEVELS, LANGUAGES_CATALOG,
     PSYCHOMETRIC_TESTS, SKILLS_TESTS, SOFT_SKILLS_OPTIONS,
     RoleTitleRef,
@@ -324,7 +324,7 @@ export const JobTitleApp: React.FC = () => {
     const openEdit = (jt: JobTitle) => {
         setEditId(jt.id);
         setForm({ ...jt });
-        setJdf(jt.jdf_data);
+        setJdf(parseJdfData(jt.jdf_data));
         // Map existing role titles to rows
         setRoleTitleRows((jt.role_titles ?? []).map(rt => ({
             _localId: rt.id,
@@ -340,7 +340,7 @@ export const JobTitleApp: React.FC = () => {
         // Pre-fill the drawer as if creating a new record from this one
         setEditId(null);
         setForm({ ...jt, title: `${jt.title} (Copy)`, status: "Draft", approver1_status: "Pending", approver2_status: "Pending" });
-        setJdf(jt.jdf_data);
+        setJdf(parseJdfData(jt.jdf_data));
         setRoleTitleRows((jt.role_titles ?? []).map(rt => ({
             _localId: Math.random().toString(36).slice(2),
             role_title: rt.role_title,
@@ -620,9 +620,10 @@ export const JobTitleApp: React.FC = () => {
                                         <div className="flex items-center gap-1.5 justify-end">
                                             <button
                                                 onClick={() => openEdit(jt)}
-                                                className="text-xs text-cobalt-blue hover:underline font-bold px-2 py-1 hover:bg-cobalt-blue/5 rounded transition-colors"
+                                                className="p-1.5 text-cobalt-blue hover:text-navy-blue hover:bg-cobalt-blue/10 rounded-lg transition-colors"
+                                                title="Edit JDF"
                                             >
-                                                Edit JDF
+                                                <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleDuplicate(jt)}

@@ -5,6 +5,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { ModuleId } from "../layout/SideMenu";
 import { ModuleNavigation, moduleSubModules } from "./ModuleNavigation";
 import { SplitView } from "./SplitView";
+import { PmoSidebar } from "../pmo/layout/PmoSidebar";
+import { PmoDashboardHome } from "../pmo/PmoDashboardHome";
+import { PmoWorkspaceManager } from "../pmo/workspace/PmoWorkspaceManager";
 import { PayrollNovedades } from "../hr/PayrollNovedades";
 import { HCMaestro } from "../hr/HCMaestro";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
@@ -19,6 +22,7 @@ import { FxManagerApp } from "../finance/fx-manager/FxManagerApp";
 import { MyPlanShell } from "../pmo/MyPlan/MyPlanShell";
 import { PlaybookDesignerApp } from "../playbook-designer/PlaybookDesignerApp";
 import { PlaybookMarketplaceApp } from "../business-plan/playbooks/PlaybookMarketplaceApp";
+import { JourneyMapApp } from "../ceo-playground/JourneyMapApp";
 import {
     LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
 } from "lucide-react";
@@ -63,54 +67,74 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
 
     return (
         <div className="flex flex-col h-full bg-white">
-            {/* Module Header Bar */}
-            <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-100 shrink-0">
-                <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
-                    <Icon className={`w-4 h-4 ${config.color}`} />
-                </div>
-                <h1 className="text-base font-bold text-navy-blue">{config.label}</h1>
-            </div>
+            {activeModule !== "pmo" && (
+                <>
+                    {/* Module Header Bar */}
+                    <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-100 shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
+                            <Icon className={`w-4 h-4 ${config.color}`} />
+                        </div>
+                        <h1 className="text-base font-bold text-navy-blue">{config.label}</h1>
+                    </div>
 
-            {/* Sub-module Tab Navigation */}
-            <ModuleNavigation
-                activeModule={activeModule}
-                activeSubModule={activeSubModule}
-                onSelectSubModule={setActiveSubModule}
-            />
+                    {/* Sub-module Tab Navigation */}
+                    <ModuleNavigation
+                        activeModule={activeModule}
+                        activeSubModule={activeSubModule}
+                        onSelectSubModule={setActiveSubModule}
+                    />
+                </>
+            )}
 
             {/* Sub-module Content — fills remaining height */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-                {activeModule === "pmo" ? (
-                    // PMO has its own full-featured UI — renders MyPlanShell directly
-                    <MyPlanShell />
-                ) : activeModule === "growthify" ? (
-                    <GrowthifyModule activeSubModule={activeSubModule} />
-                ) : activeSubModule === "hc-master" ? (
-                    <HCMaestro />
-                ) : activeSubModule === "payroll-changes" ? (
-                    <PayrollNovedades />
-                ) : activeSubModule === "performance" ? (
-                    <PerformanceModule />
-                ) : activeSubModule === "hr-metrics" ? (
-                    <HRMetricsDashboard />
-
-                ) : activeSubModule === "branches-master" ? (
-                    <BranchMasterApp />
-                ) : activeSubModule === "hierarchy-map" ? (
-                    <HierarchyMapApp />
-                ) : activeSubModule === "proformas" ? (
-                    <ProformasApp />
-                ) : activeSubModule === "job-titles" || activeSubModule === "job-description" ? (
-                    <JobTitleApp />
-                ) : activeSubModule === "fx-manager" ? (
-                    <FxManagerApp />
-                ) : activeSubModule === "playbooks" ? (
-                    <PlaybookMarketplaceApp />
-                ) : activeSubModule === "playbook-designer" ? (
-                    <PlaybookDesignerApp />
-                ) : (
-                    <SplitView subModuleId={activeSubModule} />
+            <div className="flex-1 min-h-0 overflow-hidden flex">
+                {activeModule === "pmo" && (
+                    <PmoSidebar 
+                        activeSubModule={activeSubModule} 
+                        onSelectSubModule={setActiveSubModule} 
+                    />
                 )}
+                
+                <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
+                    {activeModule === "pmo" ? (
+                        activeSubModule === "my-plan" ? <MyPlanShell /> :
+                        activeSubModule === "my-work" ? <div className="p-8">My Work / No modificar</div> :
+                        activeSubModule === "my-queue" ? <div className="p-8">My Queue / No modificar</div> :
+                        activeSubModule === "my-projects" ? <PmoWorkspaceManager /> :
+                        <PmoDashboardHome onNavigate={setActiveSubModule} />
+                    ) : activeModule === "growthify" ? (
+                        <GrowthifyModule activeSubModule={activeSubModule} />
+                    ) : activeSubModule === "hc-master" ? (
+                        <HCMaestro />
+                    ) : activeSubModule === "payroll-changes" ? (
+                        <PayrollNovedades />
+                    ) : activeSubModule === "performance" ? (
+                        <PerformanceModule />
+                    ) : activeSubModule === "hr-metrics" ? (
+                        <HRMetricsDashboard />
+                    ) : activeSubModule === "branches-master" ? (
+                        <BranchMasterApp />
+                    ) : activeSubModule === "hierarchy-map" ? (
+                        <HierarchyMapApp />
+                    ) : activeSubModule === "proformas" ? (
+                        <ProformasApp />
+                    ) : activeSubModule === "job-titles" || activeSubModule === "job-description" ? (
+                        <JobTitleApp />
+                    ) : activeSubModule === "fx-manager" ? (
+                        <FxManagerApp />
+                    ) : activeSubModule === "playbooks" ? (
+                        <PlaybookMarketplaceApp />
+                    ) : activeSubModule === "playbook-designer" ? (
+                        <PlaybookDesignerApp
+                            initialPlaybookId={searchParams.get("id") ?? null}
+                            duplicateFromId={searchParams.get("duplicate") ?? null}
+                        />
+                    ) : activeSubModule === "journey-map" ? (
+                        <JourneyMapApp />
+                    ) : (
+                        <SplitView subModuleId={activeSubModule} />
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -28,7 +28,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, orgId, userI
     const validateAndUpload = async (file: File) => {
         setError(null);
         if (file.size > MAX_SIZE_BYTES) {
-            setError(`El archivo "${file.name}" excede el límite de ${MAX_SIZE_MB}MB.`);
+            setError(`File "${file.name}" exceeds the ${MAX_SIZE_MB}MB limit.`);
             return;
         }
 
@@ -91,7 +91,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, orgId, userI
                  <>
                     <UploadCloud className={`w-10 h-10 mb-3 ${isDragging ? 'text-vibe-blue' : 'text-gray-400'}`} />
                     <p className="text-sm font-semibold text-vibe-dark text-center mb-1">
-                       Arrastra un archivo o <span className="text-vibe-blue underline cursor-pointer hover:text-blue-700 relative">explora<input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleChange} /></span>
+                       Drag a file or <span className="text-vibe-blue underline cursor-pointer hover:text-blue-700 relative">browse<input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleChange} /></span>
                     </p>
                     <p className="text-xs text-gray-500 font-medium">Límite: {MAX_SIZE_MB}MB (PDF, DOCX, XLSX, JPG, PNG)</p>
                  </>

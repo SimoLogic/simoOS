@@ -53,11 +53,15 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "security", label: "Data Security" },
     ],
     "ceo-playground": [
+        { id: "journey-map", label: "Journey Map" },
         { id: "strategy", label: "Strategic Overview" },
         { id: "market-analysis", label: "Market Analysis" },
     ],
     pmo: [
         { id: "my-plan", label: "My Plan" },
+        { id: "my-work", label: "My Work" },
+        { id: "my-queue", label: "My Queue" },
+        { id: "my-projects", label: "My Projects" },
     ],
 };
 

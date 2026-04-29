@@ -91,6 +91,21 @@ export const blankJdfData = (): JobDescriptionData => ({
     job_description: "",
 });
 
+export const parseJdfData = (raw: any): JobDescriptionData => {
+    const base = blankJdfData();
+    if (!raw || typeof raw !== "object") return base;
+    return {
+        ...base,
+        ...raw,
+        languages: Array.isArray(raw.languages) ? raw.languages : base.languages,
+        soft_skills: Array.isArray(raw.soft_skills) ? raw.soft_skills : base.soft_skills,
+        specific_knowledge: Array.isArray(raw.specific_knowledge) ? raw.specific_knowledge : base.specific_knowledge,
+        certifications: Array.isArray(raw.certifications) ? raw.certifications : base.certifications,
+        psychometric_tests: Array.isArray(raw.psychometric_tests) ? raw.psychometric_tests : base.psychometric_tests,
+        skills_tests: Array.isArray(raw.skills_tests) ? raw.skills_tests : base.skills_tests,
+    };
+};
+
 // ── Main Job Title entity ─────────────────────────────────────────────────────
 export interface JobTitle {
     id: string;

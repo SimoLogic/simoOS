@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
     Search, Download, Save, Filter, ArrowUpDown,
-    CheckCircle2, AlertTriangle, Lock, Info
+    CheckCircle2, AlertTriangle, Lock, Info, Pencil, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +11,8 @@ import {
     AREAS_EMPRESA, EPS_OPTIONS, ARL_OPTIONS, AFP_OPTIONS, CCF_OPTIONS, TIPOS_CONTRATO, ENTIDADES_LEGALES
 } from "@/lib/hr-types";
 import { getLocalLegalEntitiesAction } from "@/app/actions/legal-entity-actions";
+import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
+import { JobTitleRef } from "@/lib/job-title-types";
 import {
     getEmployeesAction as getEmployees,
     saveEmployeesAction as saveEmployees,
@@ -79,7 +81,8 @@ const COLUMNS: ColumnDef[] = [
     { key: "historialLaboral.legalEntity", label: "Local Entity", width: "w-40", type: "select", options: [], group: "Professional" },
     { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
     { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
-    { key: "historialLaboral.job_title", label: "Job Title", width: "w-44", group: "Professional" },
+    { key: "historialLaboral.jobTitleName", label: "Job Title", width: "w-44", type: "select", group: "Professional" },
+    { key: "historialLaboral.roleTitleName", label: "Role Title", width: "w-44", type: "select", group: "Professional" },
     {
         key: "historialLaboral.contractType", label: "Contract", width: "w-44", type: "select",
         options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value || "", label: t.label })),
@@ -124,7 +127,8 @@ const ESSENTIAL_KEYS = new Set([
     "maestro.identificationNumber",
     "status",
     "historialLaboral.area",
-    "historialLaboral.job_title",
+    "historialLaboral.jobTitleName",
+    "historialLaboral.roleTitleName",
     "historialLaboral.legalEntity",
     "historialLaboral.directLeader",
     "historialLaboral.baseSalary",
@@ -238,13 +242,28 @@ export const HCMaestro: React.FC = () => {
     const [allTenants, setAllTenants] = useState<{ tenant_id: string; dba_name: string }[]>([]);
 
     const [localEntities, setLocalEntities] = useState<LocalLegalEntity[]>([]);
+    const [jobTitles, setJobTitles] = useState<JobTitleRef[]>([]);
+    const [unlockedRows, setUnlockedRows] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         getTenants().then(list =>
             setAllTenants(list.map((t: any) => ({ tenant_id: t.tenant_id, dba_name: t.dba_name })))
         );
         getLocalLegalEntitiesAction().then(entities => setLocalEntities(entities));
-    }, []);
+        if (currentTenant) {
+            getActiveJobTitlesAction(currentTenant.tenant_id).then(ts => setJobTitles(ts));
+        }
+    }, [currentTenant]);
+
+    const toggleRowLock = (eid: string) => {
+        setUnlockedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(eid)) next.delete(eid);
+            else next.add(eid);
+            return next;
+        });
+        setEditingCell(null);
+    };
 
 
     const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
@@ -309,7 +328,24 @@ export const HCMaestro: React.FC = () => {
             prev.map((e) => {
                 if (e.eid !== eid) return e;
                 const clone = JSON.parse(JSON.stringify(e)) as FullEmployeeRecord;
-                setValue(clone, key, val);
+                
+                if (key === "historialLaboral.jobTitleName") {
+                    const jt = jobTitles.find(j => j.title === val);
+                    setValue(clone, "historialLaboral.jobTitleName", val);
+                    setValue(clone, "historialLaboral.jobTitleId", jt?.id || null);
+                    // Clear role title on job title change
+                    setValue(clone, "historialLaboral.roleTitleName", "");
+                    setValue(clone, "historialLaboral.roleTitleId", null);
+                } else if (key === "historialLaboral.roleTitleName") {
+                    const currentJtName = getValue(clone, "historialLaboral.jobTitleName") as string;
+                    const jt = jobTitles.find(j => j.title === currentJtName);
+                    const roleTitle = jt?.role_titles?.find(r => r.role_title === val);
+                    setValue(clone, "historialLaboral.roleTitleName", val);
+                    setValue(clone, "historialLaboral.roleTitleId", roleTitle?.id || null);
+                } else {
+                    setValue(clone, key, val);
+                }
+                
                 return clone;
             })
         );
@@ -713,8 +749,8 @@ export const HCMaestro: React.FC = () => {
                 <table className="w-full text-sm border-collapse min-w-max">
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-3 py-2.5 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 w-14 text-[10px] font-bold text-slate-400 uppercase">
-                                Save
+                            <th className="px-3 py-2.5 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 w-24 text-[10px] font-bold text-slate-400 uppercase text-center">
+                                Edit / Save
                             </th>
                             <th className="px-3 py-2.5 w-10 bg-slate-50 border-l border-slate-100" />
                             {activeColumnsWithEntities.map((col) => (
@@ -742,22 +778,31 @@ export const HCMaestro: React.FC = () => {
                                     savedRows.has(emp.eid) && "bg-emerald-50/30"
                                 )}
                             >
-                                <td className="px-3 py-1.5 sticky left-0 z-10 border-r border-slate-100 bg-inherit">
-                                    <button
-                                        onClick={() => handleRowSave(emp.eid)}
-                                        disabled={!dirtyRows.has(emp.eid)}
-                                        title={dirtyRows.has(emp.eid) ? "Save this row" : "No changes"}
-                                        className={cn(
-                                            "w-7 h-7 rounded-lg flex items-center justify-center transition-all",
-                                            dirtyRows.has(emp.eid)
-                                                ? "bg-cobalt-blue text-white shadow-md shadow-cobalt-blue/20 hover:scale-105"
-                                                : savedRows.has(emp.eid)
-                                                    ? "text-emerald-500"
-                                                    : "text-slate-200 cursor-default"
-                                        )}
-                                    >
-                                        {savedRows.has(emp.eid) ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                    </button>
+                                <td className="px-2 py-1.5 sticky left-0 z-10 border-r border-slate-100 bg-inherit w-24">
+                                   <div className="flex items-center justify-center gap-1.5">
+                                       <button
+                                           onClick={() => toggleRowLock(emp.eid)}
+                                           className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-all", unlockedRows.has(emp.eid) ? "text-cobalt-blue bg-cobalt-blue/10 hover:bg-cobalt-blue/20" : "text-slate-400 hover:bg-slate-100")}
+                                           title={unlockedRows.has(emp.eid) ? "Lock Edit Mode" : "Unlock for editing"}
+                                       >
+                                           {unlockedRows.has(emp.eid) ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+                                       </button>
+                                       <button
+                                           onClick={() => handleRowSave(emp.eid)}
+                                           disabled={!dirtyRows.has(emp.eid)}
+                                           title={dirtyRows.has(emp.eid) ? "Save this row" : "No changes"}
+                                           className={cn(
+                                               "w-7 h-7 rounded-lg flex items-center justify-center transition-all shadow-sm",
+                                               dirtyRows.has(emp.eid)
+                                                   ? "bg-cobalt-blue text-white shadow-md shadow-cobalt-blue/20 hover:scale-105"
+                                                   : savedRows.has(emp.eid)
+                                                       ? "text-emerald-500 bg-emerald-50"
+                                                       : "text-slate-200 bg-slate-50 cursor-default"
+                                           )}
+                                       >
+                                           {savedRows.has(emp.eid) ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                       </button>
+                                   </div>
                                 </td>
                                 {/* Avatar thumbnail */}
                                 <td className="px-2 py-1 w-10 border-l border-slate-50">
@@ -771,21 +816,31 @@ export const HCMaestro: React.FC = () => {
                                         )}
                                     </div>
                                 </td>
-                                {activeColumnsWithEntities.map((col) => (
-                                    <td
-                                        key={col.key}
-                                        data-cell="true"
-                                        className={cn("px-2 py-1 align-middle border-l border-slate-50", col.width, col.locked && "bg-slate-50/40")}
-                                    >
-                                        <InlineCell
-                                            col={col}
-                                            record={emp}
-                                            isEditing={editingCell?.eid === emp.eid && editingCell?.key === col.key}
-                                            onStartEdit={() => setEditingCell({ eid: emp.eid, key: col.key })}
-                                            onChange={(val) => handleCellChange(emp.eid, col.key, val)}
-                                        />
-                                    </td>
-                                ))}
+                                {activeColumnsWithEntities.map((col) => {
+                                    let dynamicCol = col;
+                                    if (unlockedRows.has(emp.eid) && col.key === "historialLaboral.jobTitleName") {
+                                        dynamicCol = { ...col, options: jobTitles.map(j => ({ value: j.title, label: j.title })) };
+                                    } else if (unlockedRows.has(emp.eid) && col.key === "historialLaboral.roleTitleName") {
+                                        const currentJt = emp.historialLaboral?.jobTitleName ?? "";
+                                        const jt = jobTitles.find(j => j.title === currentJt);
+                                        dynamicCol = { ...col, options: jt ? (jt.role_titles || []).map(r => ({ value: r.role_title, label: r.role_title })) : [] };
+                                    }
+                                    return (
+                                        <td
+                                            key={col.key}
+                                            data-cell="true"
+                                            className={cn("px-2 py-1 align-middle border-l border-slate-50", col.width, col.locked && "bg-slate-50/40")}
+                                        >
+                                            <InlineCell
+                                                col={dynamicCol}
+                                                record={emp}
+                                                isEditing={unlockedRows.has(emp.eid) && editingCell?.eid === emp.eid && editingCell?.key === col.key}
+                                                onStartEdit={() => { if(unlockedRows.has(emp.eid)) setEditingCell({ eid: emp.eid, key: col.key }); }}
+                                                onChange={(val) => handleCellChange(emp.eid, col.key, val)}
+                                            />
+                                        </td>
+                                    );
+                                })}
                             </tr>
                         ))}
                         {displayed.length === 0 && (

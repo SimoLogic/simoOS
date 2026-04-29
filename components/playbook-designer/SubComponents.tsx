@@ -43,9 +43,11 @@ export const MetadataField: React.FC<MetadataFieldProps> = ({ label, value, onCh
 
 // ─── RoleGroup ────────────────────────────────────────────────────────────────
 
+import { PlaybookOwner } from './types';
+
 interface RoleGroupProps {
   title: string;
-  roles: string[];
+  roles: PlaybookOwner[];
   color: 'indigo' | 'emerald';
 }
 
@@ -57,12 +59,16 @@ export const RoleGroup: React.FC<RoleGroupProps> = ({ title, roles, color }) => 
     <div className="flex flex-wrap gap-2 text-slate-800">
       {roles.map(role => (
         <div
-          key={role}
+          key={role.id}
           draggable
-          onDragStart={e => e.dataTransfer.setData("roleName", role)}
+          onDragStart={e => {
+            // Support both object and legacy string lookups
+            e.dataTransfer.setData("role", JSON.stringify(role));
+            e.dataTransfer.setData("roleName", role.name);
+          }}
           className={`px-2.5 py-1.5 rounded-lg border text-[8px] font-black cursor-grab active:scale-95 shadow-sm transition-all ${color === 'indigo' ? 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:border-indigo-400' : 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:border-emerald-400'}`}
         >
-          {role}
+          {role.name}
         </div>
       ))}
     </div>
@@ -74,10 +80,10 @@ export const RoleGroup: React.FC<RoleGroupProps> = ({ title, roles, color }) => 
 interface DropAreaProps {
   label?: string;
   icon?: React.ReactNode;
-  value: string | string[];
+  value: PlaybookOwner | PlaybookOwner[] | null;
   isMultiple: boolean;
   disabled?: boolean;
-  onDrop: (val: string) => void;
+  onDrop: (val: PlaybookOwner) => void;
   onRemove?: (val: string) => void;
   hideLabel?: boolean;
 }
@@ -95,30 +101,53 @@ export const DropArea: React.FC<DropAreaProps> = ({
   const [isOver, setIsOver] = useState(false);
   return (
     <div
-      onDragOver={e => { e.preventDefault(); if (!disabled) setIsOver(true); }}
-      onDragLeave={() => setIsOver(false)}
-      onDrop={e => { e.preventDefault(); setIsOver(false); if (!disabled) onDrop(e.dataTransfer.getData("roleName")); }}
-      className={`relative transition-all text-left text-slate-800 ${isOver ? 'bg-indigo-50/50 scale-105 shadow-md z-10 rounded-lg' : ''} ${disabled ? 'opacity-80' : ''}`}
+      onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (!disabled) setIsOver(true); }}
+      onDragLeave={e => { e.stopPropagation(); setIsOver(false); }}
+      onDrop={e => {
+        e.preventDefault();
+        e.stopPropagation(); // Shield Protocol: Prevent triggering parent step reorder or replacement
+        setIsOver(false);
+        if (!disabled) {
+          const roleData = e.dataTransfer.getData("role");
+          const roleName = e.dataTransfer.getData("roleName");
+          
+          if (roleData) {
+            try {
+              onDrop(JSON.parse(roleData));
+            } catch (err) {
+              if (roleName) onDrop({ id: roleName, name: roleName });
+            }
+          } else if (roleName) {
+            onDrop({ id: roleName, name: roleName });
+          }
+        }
+      }}
+      className={`relative transition-all text-left text-slate-800 min-h-[28px] ${isOver ? 'bg-indigo-50/80 scale-[1.02] shadow-md z-10 rounded-lg ring-1 ring-indigo-300' : ''} ${disabled ? 'opacity-80' : ''}`}
     >
       {!hideLabel && (
         <label className="text-[7px] text-slate-400 font-black uppercase flex items-center gap-1.5 mb-1 leading-none h-[10px]">
           {icon} {label}
         </label>
       )}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 min-h-[22px]">
         {isMultiple ? (
-          (value as string[]).map((role, i) => (
-            <div key={i} className="bg-indigo-900 text-white px-2 py-1 rounded-lg text-[6px] font-black flex items-center gap-1.5 shadow-sm animate-in fade-in zoom-in duration-200">
-              {role}
-              {!disabled && onRemove && (
-                <X size={8} className="cursor-pointer text-indigo-400 hover:text-white transition-colors" onClick={() => onRemove(role)} />
-              )}
-            </div>
-          ))
+          ((value as PlaybookOwner[]) || []).length > 0 ? (
+            ((value as PlaybookOwner[]) || []).map((role) => (
+              <div key={role.id} className="bg-indigo-900 text-white px-2 py-1 rounded-lg text-[6px] font-black flex items-center gap-1.5 shadow-sm animate-in fade-in zoom-in duration-200">
+                {role.name}
+                {!disabled && onRemove && (
+                  <X size={8} className="cursor-pointer text-indigo-400 hover:text-white transition-colors" onClick={() => onRemove(role.id)} />
+                )}
+              </div>
+            ))
+          ) : (
+            // Empty state placeholder — matches Stakeholder visual parity
+            <div className="text-[7px] text-slate-200 italic font-black uppercase text-center w-full border border-dashed border-slate-200 rounded-lg py-1">DROP ROLE</div>
+          )
         ) : (
-          (value as string) && (value as string) !== 'DROP' ? (
+          (value as PlaybookOwner) ? (
             <div className="bg-emerald-500 text-white px-2 py-1 rounded-lg text-[7px] font-black truncate shadow-sm uppercase w-full text-center animate-in fade-in duration-300 tracking-tighter">
-              {value as string}
+              {(value as PlaybookOwner).name}
             </div>
           ) : (
             <div className="text-[7px] text-slate-200 italic font-black uppercase text-center w-full border border-dashed border-slate-200 rounded-lg py-1">DROP</div>

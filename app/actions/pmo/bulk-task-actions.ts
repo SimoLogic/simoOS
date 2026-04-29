@@ -34,10 +34,13 @@ export async function bulkUpdateTasksAction(
                 org_id: orgId,
                 task_id: task.id,
                 user_id: userId,
-                action_type: "BULK_UPDATE",
-                new_value: JSON.stringify(updates)
+                action: "bulk_update",
+                field_name: Object.keys(updates).join(", "),
+                old_value: null,
+                new_value: JSON.stringify(updates),
             }));
-            await db.from("pmo_activity_logs").insert(logs);
+            await db.from("pmo_item_activity").insert(logs);
+
         }
 
         return { success: true, count: data?.length || 0 };

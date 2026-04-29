@@ -44,3 +44,7 @@ Este documento es la "Constitución Tecnológica" de Simo Intellisense. Todo age
 ## 9. Archivos de Diagnóstico
 - **REGLA PERMANENTE:** Nunca incluyas archivos temporales de diagnóstico (`tmp_*.js`, `query.sql`, `.tmp`) en commits. Antes de cada commit, verifica que solo se incluyan archivos de código de la aplicación. Si necesitas crear scripts temporales de diagnóstico, créalos en una carpeta `/tmp/` que ya esté en `.gitignore`.
 
+## 10. Regla Global de Idioma (English-Only UI)
+- **CRÍTICO:** Toda la interfaz de usuario, botones, modales, formularios, placeholders, notificaciones (toasts), etiquetas y navegación en el ecosistema HOPS / SIMO Intellisense **DEBE estar exclusivamente en Inglés**, independientemente de si el prompt o solicitud original viene en español.
+- **Protocolo de Traducción:** El agente/desarrollador debe traducir conceptualmente la solicitud y escribir el código (`<Button>`, `<p>`, `toast`) en inglés antes de guardarlo. Está prohibido el texto visible en español.
+- **Excepciones:** Las únicas excepciones permitidas son nombres propios (ej. BPO, HOMESI, Bancolombia) o cuando un prompt solicite de forma literal y explícita un "hardcode" temporal de una frase en español (ej. "el botón debe decir literalmente 'Confirmar'").

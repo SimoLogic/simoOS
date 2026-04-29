@@ -396,12 +396,14 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
             if (result.success && result.data) {
                 setEmployees(result.data);
                 showToast(`✓ ${emp.maestro.firstName} saved successfully`);
+                setEditingRows(prev => { const n = { ...prev }; delete n[eid]; return n; });
+                setSavedRows(prev => new Set(prev).add(eid));
+                setTimeout(() => setSavedRows(prev => { const n = new Set(prev); n.delete(eid); return n; }), 3000);
+            } else {
+                showToast(`Error saving: ${result.error || "Validation/DB error"}`, "error");
             }
-            setEditingRows(prev => { const n = { ...prev }; delete n[eid]; return n; });
-            setSavedRows(prev => new Set(prev).add(eid));
-            setTimeout(() => setSavedRows(prev => { const n = new Set(prev); n.delete(eid); return n; }), 3000);
         } catch (err: unknown) {
-            showToast(`Error saving: ${err instanceof Error ? err.message : "Unknown error"}`);
+            showToast(`Error saving: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
         } finally {
             setSavingRows(prev => { const n = new Set(prev); n.delete(eid); return n; });
         }
@@ -861,7 +863,24 @@ export const BatchChangesApp: React.FC<BatchChangesAppProps> = ({ onClose }) => 
                                                                 col={dynamicCol}
                                                                 value={getVal(display, col.key)}
                                                                 editing={editing}
-                                                                onChange={(path, val) => updateDraft(emp.eid, path, val)}
+                                                                onChange={(path, val) => {
+                                                                    if (path === "historialLaboral.jobTitleName") {
+                                                                        const jt = jobTitles.find(j => j.title === val);
+                                                                        updateDraft(emp.eid, "historialLaboral.jobTitleName", val);
+                                                                        updateDraft(emp.eid, "historialLaboral.jobTitleId", jt?.id || null);
+                                                                        // Clear role title on job title change
+                                                                        updateDraft(emp.eid, "historialLaboral.roleTitleName", "");
+                                                                        updateDraft(emp.eid, "historialLaboral.roleTitleId", null);
+                                                                    } else if (path === "historialLaboral.roleTitleName") {
+                                                                        const currentJtName = (draft["historialLaboral.jobTitleName"] as string) ?? emp.historialLaboral?.jobTitleName ?? "";
+                                                                        const jt = jobTitles.find(j => j.title === currentJtName);
+                                                                        const roleTitle = jt?.role_titles?.find(r => r.role_title === val);
+                                                                        updateDraft(emp.eid, "historialLaboral.roleTitleName", val);
+                                                                        updateDraft(emp.eid, "historialLaboral.roleTitleId", roleTitle?.id || null);
+                                                                    } else {
+                                                                        updateDraft(emp.eid, path, val);
+                                                                    }
+                                                                }}
                                                             />
                                                         </td>
                                                     );

@@ -26,7 +26,7 @@ import {
   Plus, GripVertical, Edit2, Save, CheckCircle2, FileText,
   Users, ArrowRight, Clock, Target, ChevronUp, ChevronDown, Eye, CalendarDays,
 } from 'lucide-react';
-import { PlaybookState, PlaybookStep, ActivityLibraryItem, EmployeeRef } from './types';
+import { PlaybookState, PlaybookStep, ActivityLibraryItem, EmployeeRef, PlaybookOwner } from './types';
 import { DropArea } from './SubComponents';
 import type { StepSchedule } from './usePlaybookSchedule';
 
@@ -50,18 +50,19 @@ export const injectedStyles = `
 
 interface EditorAreaProps {
   playbook: PlaybookState;
-  onUpdate: (stepId: number, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => void;
-  onLock: (stepId: number) => void;
+  onUpdate: (stepId: number | string, field: keyof PlaybookStep, value: PlaybookStep[keyof PlaybookStep]) => void;
+  onLock: (stepId: number | string) => void;
   onRepeat: (step: PlaybookStep) => void;
-  onReplace: (targetId: number, sourceData: PlaybookStep) => void;
-  onAddOwner: (role: string) => void;
-  onRemoveOwner: (role: string) => void;
+  onReplace: (targetId: number | string, sourceData: PlaybookStep) => void;
+  onAddOwner: (role: PlaybookOwner) => void;
+  onRemoveOwner: (roleId: string) => void;
   onOpenDesc: (step: PlaybookStep, field: string, title: string) => void;
   onOpenFlow: (step: PlaybookStep) => void;
   dragItemIdx: RefObject<number | null>;
   dragOverItemIdx: RefObject<number | null>;
   handleReorderSteps: () => void;
   freqOptions: string[];
+  roles: PlaybookOwner[]; // Combined internal+external roles for dropdowns
   empList: EmployeeRef[];
   lib: ActivityLibraryItem[];
   onAdd: () => void;
@@ -85,6 +86,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
   dragOverItemIdx,
   handleReorderSteps,
   freqOptions,
+  roles,
   empList,
   lib,
   onAdd,
@@ -280,10 +282,13 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
                   </label>
                   <div className="mt-2 flex-1">
                     <DropArea
-                      value={step.stakeholder}
+                      value={step.stakeholderId ? { id: step.stakeholderId, name: step.stakeholderName || 'UNKNOWN' } as PlaybookOwner : null}
                       isMultiple={false}
                       disabled={step.isLocked}
-                      onDrop={val => onUpdate(step.id, 'stakeholder', val)}
+                      onDrop={val => {
+                        onUpdate(step.id, 'stakeholderId', val.id);
+                        onUpdate(step.id, 'stakeholderName', val.name);
+                      }}
                       hideLabel={true}
                     />
                   </div>
@@ -374,14 +379,23 @@ export const EditorArea: React.FC<EditorAreaProps> = ({
               <div>
                 <label className="pb-text-6 font-black text-slate-400 uppercase mb-1 tracking-widest block">ASSIGN TO:</label>
                 <select
-                  value={step.requestedTo}
+                  value={step.requestedToId || ""}
                   disabled={step.isLocked}
-                  onChange={e => onUpdate(step.id, 'requestedTo', e.target.value)}
+                  onChange={e => {
+                    const selRole = roles.find(r => r.id === e.target.value);
+                    if (selRole) {
+                       onUpdate(step.id, 'requestedToId', selRole.id);
+                       onUpdate(step.id, 'requestedToName', selRole.name);
+                    } else {
+                       onUpdate(step.id, 'requestedToId', null);
+                       onUpdate(step.id, 'requestedToName', null);
+                    }
+                  }}
                   className="pb-text-9 font-bold bg-white border border-slate-100 rounded-lg outline-none h-9 w-full shadow-sm px-2 cursor-pointer focus:border-indigo-300 transition-all text-slate-900"
                 >
-                  <option value="">Select Employee</option>
-                  {empList.map((e, index) => (
-                    <option key={e.id || index} value={e.role}>{e.name} — {e.role}</option>
+                  <option value="">Select Role</option>
+                  {roles.map((r, index) => (
+                    <option key={r.id || index} value={r.id}>{r.name}</option>
                   ))}
                 </select>
               </div>

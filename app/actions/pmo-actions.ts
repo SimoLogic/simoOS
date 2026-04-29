@@ -131,6 +131,39 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
       boardId = newBoard.id;
     }
 
+    // 2b. Create or find a group for this playbook assignment
+    const groupTitle = `${playbook.name} — Assigned ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    let groupId = "";
+    
+    const { data: existingGroup } = await supabase
+      .from("pmo_groups")
+      .select("id")
+      .eq("board_id", boardId)
+      .eq("org_id", orgId)
+      .ilike("title", `${playbook.name}%`)
+      .limit(1)
+      .single();
+
+    if (existingGroup) {
+      groupId = existingGroup.id;
+    } else {
+      const { data: newGroup, error: grpErr } = await supabase
+        .from("pmo_groups")
+        .insert({
+          board_id: boardId,
+          org_id: orgId,
+          title: groupTitle,
+          color: "#6161FF",
+          position: 0,
+          is_collapsed: false,
+        })
+        .select("id")
+        .single();
+
+      if (grpErr) throw new Error("Could not create PMO Group: " + grpErr.message);
+      groupId = newGroup.id;
+    }
+
     // 3. Iterar los steps escalonados en el tiempo
     let lastStepMaxDate = baseStart;
 
@@ -172,6 +205,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
           id: playbookTaskId,
           org_id: orgId,
           board_id: boardId,
+          group_id: groupId,
           task_type: "PLAYBOOK_TASK",
           title: `${step.name} (${occ.occurrenceIndex + 1}/${occurrences.length})`,
           assignee_id: targetAssigneeId,
@@ -213,10 +247,10 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
             tasksToInsert.push({
               id: supportTaskId,
               org_id: orgId,
-              // Dejamos board_id en null o calculamos su propio board? 
-              // Por ahora insert en global pmo_tasks
+              board_id: boardId,
+              group_id: groupId,
               task_type: "SUPPORT_REQUEST",
-              title: `Soporte para: ${step.name} — ${supportTaskDesc}`,
+              title: `Support: ${step.name} — ${supportTaskDesc}`,
               assignee_id: supportAssigneeEid,
               requested_by_eid: targetAssigneeId,
               due_date: toISODate(supportDueDate, orgConfig.timezone),
@@ -236,13 +270,13 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
                }
             }
 
-            // Notificación al Support Team
+            // Notification to Support Team
             notificationsToInsert.push({
               org_id: orgId,
               user_id: supportAssigneeEid, // EID
               type: "APPROVAL",
-              title: "Tienes una requisición de soporte pendiente",
-              message: `Requisición para el playbook ${playbook.name}`,
+              title: "You have a pending support requisition",
+              message: `Support requested for playbook "${playbook.name}"`,
               action_url: "/pmo/my-queue",
               is_read: false
             });
@@ -251,13 +285,13 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
       }
     }
 
-    // Notificación al assignee
+    // Notification to assignee
     notificationsToInsert.push({
       org_id: orgId,
       user_id: eid, // EID
       type: "TASK",
-      title: `Se te ha asignado el playbook ${playbook.name}`,
-      message: `El playbook está ahora activo en tu plan de ejecución.`,
+      title: `Playbook "${playbook.name}" has been assigned to you`,
+      message: `The playbook is now active in your execution plan. Check your My Plan view.`,
       action_url: "/pmo/my-plan",
       is_read: false
     });

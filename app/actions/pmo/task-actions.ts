@@ -22,13 +22,14 @@ import { validateFieldValue } from "@/lib/pmo/field-engine";
 import { getRequiredSession } from "@/lib/pmo/auth-utils";
 import { sanitizeText } from "@/lib/pmo/sanitize";
 import { enqueueSfSync } from "@/lib/pmo/queue";
+import { AutomationService } from "@/lib/services/pmo/automation.service";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
 const OrgIdSchema = z.string().min(1, "orgId is required");
 
 const TaskStatusEnum = z.enum([
-  "not_started", "in_progress", "done", "stuck", "pending_review"
+  "not_started", "in_progress", "done", "stuck", "pending_review", "blocked"
 ]);
 
 const TaskPriorityEnum = z.enum(["low", "medium", "high", "critical"]);
@@ -156,7 +157,8 @@ export async function createTaskAction(
 }
 
 export async function updateTaskAction(
-  input: z.infer<typeof UpdateTaskSchema>
+  input: z.infer<typeof UpdateTaskSchema>,
+  forceDepth: number = 0
 ): Promise<ActionResult<PmoTask>> {
   try {
     const session = await getRequiredSession();
@@ -198,6 +200,11 @@ export async function updateTaskAction(
       }
     }
 
+    // ── PMO-S14: Trigger Automations ──
+    if (task.boardId) {
+      AutomationService.processAutomations(task.id, session.orgId, task.boardId, fields as any, forceDepth);
+    }
+
     return { success: true, data: task };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)
@@ -211,7 +218,8 @@ export async function updateTaskAction(
  * Usa el Field Engine para validar antes de guardar (Shield 2 para campos custom).
  */
 export async function updateTaskFieldAction(
-  input: z.infer<typeof UpdateFieldSchema>
+  input: z.infer<typeof UpdateFieldSchema>,
+  forceDepth: number = 0
 ): Promise<ActionResult<PmoTask>> {
   try {
     const session = await getRequiredSession();
@@ -246,12 +254,21 @@ export async function updateTaskFieldAction(
           [validated.fieldType]: validated.value,
         },
       }, session.userId);
+      // ── PMO-S14: Trigger Automations ──
+      if (updatedTask.boardId) {
+        AutomationService.processAutomations(updatedTask.id, session.orgId, updatedTask.boardId, { [validated.fieldType]: validated.value } as any, forceDepth);
+      }
       return { success: true, data: updatedTask };
     }
 
     const updatedTask = await updateTaskService(validated.taskId, session.orgId, {
       [fieldKey]: validated.value,
     } as Parameters<typeof updateTaskService>[2], session.userId);
+
+    // ── PMO-S14: Trigger Automations ──
+    if (updatedTask.boardId) {
+      AutomationService.processAutomations(updatedTask.id, session.orgId, updatedTask.boardId, { [fieldKey]: validated.value } as any, forceDepth);
+    }
 
     return { success: true, data: updatedTask };
   } catch (err: unknown) {

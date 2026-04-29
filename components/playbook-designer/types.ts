@@ -18,7 +18,7 @@
 // ─── Core Step Entity ─────────────────────────────────────────────────────────
 
 export interface PlaybookStep {
-  id: number;
+  id: number | string;
   uid: string;                   // Hard-generated unique ID (e.g. "HBT032")
   stepNum: string;               // Zero-padded sequence (e.g. "01", "02")
   name: string;                  // Activity name (UPPERCASE)
@@ -27,14 +27,16 @@ export interface PlaybookStep {
   activityDescription: string;  // Description of what to do
   deliverable: string;           // Expected output (UPPERCASE)
   deliverableDescription: string;
-  stakeholder: string;           // Receiver of deliverable (role name, UPPERCASE)
+  stakeholderId: string | null;  // DB UUID reference to dim_role_title | dim_external_role
+  stakeholderName: string | null;// UI Display name
   frequency: FrequencyOption;    // Cadence
   repetitions: number;           // How many times per period
   freqNotes: string;             // Execution window notes
   schedulerValue: number;        // Days offset from previous step (WorkdayHelper key)
   supportingTask: string;        // Counteraction task name (UPPERCASE)
   counteractionDescription: string;
-  requestedTo: string;           // Employee ID for counteraction assignment
+  requestedToId: string | null;  // DB UUID reference to dim_role_title | dim_external_role
+  requestedToName: string | null;// UI Display name
   sla: string;                   // Success SLA (UPPERCASE)
   slaDescription: string;
   isLocked: boolean;             // TRUE = saved/protected (Shield Protocol Llave #3)
@@ -43,8 +45,13 @@ export interface PlaybookStep {
 
 // ─── Playbook Container ────────────────────────────────────────────────────────
 
+export interface PlaybookOwner {
+  id: string;   // UUID
+  name: string; // Role name
+}
+
 export interface PlaybookState {
-  globalOwners: string[];
+  globalOwners: PlaybookOwner[];
   steps: PlaybookStep[];
 }
 
@@ -54,12 +61,20 @@ export type FrequencyOption = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type PlaybookType = 'CORE' | 'GROWTH' | 'ELITE';
 export type PlaybookFamily = 'COMMERCIAL' | 'OPERATIONAL';
 export type PlaybookStrategy = 'B2B' | 'B2C' | 'NPPM';
-export type PlaybookStatus = 'DRAFT' | 'SUBMITTED';
+export type PlaybookStatus = 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 export type ActiveTab = 'editor' | 'visual';
 
 // ─── UI Modal States ──────────────────────────────────────────────────────────
 
 export type WarningModalType = 'alert' | 'uncheck' | 'edit_warning' | 'confirm';
+
+// Name collision modal when saving with a duplicate playbook name
+export interface OverwriteWarningState {
+  open: boolean;
+  conflictingName: string;
+  nextVersion: number;
+  onConfirm: () => void;
+}
 
 export interface WarningModalState {
   open: boolean;
@@ -71,13 +86,13 @@ export interface WarningModalState {
 
 export interface ReplaceModalState {
   open: boolean;
-  targetId: number | null;
+  targetId: number | string | null;
   sourceData: PlaybookStep | null;
 }
 
 export interface DescModalState {
   open: boolean;
-  stepId: number | null;
+  stepId: number | string | null;
   field: string;
   title: string;
   value: string;

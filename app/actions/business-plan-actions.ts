@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 /**
  * ============================================================================
@@ -26,6 +26,8 @@ export interface PlaybookUpsertInput {
   purpose?: string;
   status: string;
   globalOwners: string[];
+  version?: number;
+  parentId?: string | null;
 }
 
 export interface PlaybookStepUpsertInput {
@@ -38,14 +40,14 @@ export interface PlaybookStepUpsertInput {
   activityDescription?: string;
   deliverable?: string;
   deliverableDescription?: string;
-  stakeholder?: string;
+  stakeholderId?: string | null;
   frequency: string;
   repetitions: number;
   freqNotes?: string;
   schedulerValue: number;
   supportingTask?: string;
   counteractionDescription?: string;
-  requestedTo?: string;
+  requestedToId?: string | null;
   sla?: string;
   slaDescription?: string;
   isLocked: boolean;
@@ -63,7 +65,7 @@ export async function getPlaybooksAction(orgId: string) {
 
   const { data, error } = await supabase
     .from("bp_playbooks")
-    .select("id, name, type, family, strategy, status, purpose, global_owners, created_at, updated_at")
+    .select("id, name, type, family, strategy, status, purpose, version, global_owner_ids, created_at, updated_at")
     .eq("org_id", orgId)
     .order("updated_at", { ascending: false });
 
@@ -76,8 +78,9 @@ export async function getPlaybooksAction(orgId: string) {
     family: row.family,
     strategy: row.strategy,
     status: row.status,
+    version: row.version ?? 1,
     purpose: row.purpose,
-    globalOwners: row.global_owners ?? [],
+    globalOwners: row.global_owner_ids ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -105,18 +108,17 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
     .eq("org_id", orgId)
     .order("position", { ascending: true });
 
-  return { ...pb, globalOwners: pb.global_owners ?? [], steps: steps ?? [] };
+  return { ...pb, globalOwners: pb.global_owner_ids ?? [], steps: steps ?? [] };
 }
-
-// ─── UPSERT ───────────────────────────────────────────────────────────────────
 
 /**
  * Saves (create or update) the playbook header metadata.
+ * Supports version tracking and duplicate lineage (parent_id).
  */
-export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput) {
-  if (!orgId) throw new Error("orgId is required");
+export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput): Promise<{ id: string; error?: string } | { id?: undefined; error: string }> {
+  if (!orgId) return { error: "orgId is required" };
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     org_id: orgId,
     name: data.name,
     type: data.type,
@@ -124,11 +126,12 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
     strategy: data.strategy,
     purpose: data.purpose ?? null,
     status: data.status,
-    global_owners: data.globalOwners,
+    global_owner_ids: data.globalOwners,
+    version: data.version ?? 1,
     updated_at: new Date().toISOString(),
   };
 
-  let row: { id: string };
+  if (data.parentId !== undefined) payload.parent_id = data.parentId;
 
   if (data.id) {
     const { data: updated, error } = await supabase
@@ -138,20 +141,229 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
       .eq("org_id", orgId)
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    row = updated;
+    if (error) return { error: `[header update] ${error.message}` };
+    revalidatePath("/business-plan");
+    return updated;
   } else {
     const { data: created, error } = await supabase
       .from("bp_playbooks")
-      .insert({ ...payload, created_at: new Date().toISOString() })
+      .insert({
+        ...payload,
+        id: crypto.randomUUID(),   // bp_playbooks has no DEFAULT uuid — must supply
+        created_at: new Date().toISOString(),
+      })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    row = created;
+    if (error) return { error: `[header insert] ${error.message}` };
+    revalidatePath("/business-plan");
+    return created;
+  }
+}
+
+// ─── LIFECYCLE ACTIONS ────────────────────────────────────────────────────────
+
+/**
+ * Check if a playbook name already exists for this org.
+ * Returns { exists, conflictId, currentVersion } for collision handling.
+ */
+export async function checkPlaybookNameAction(
+  name: string,
+  orgId: string,
+  excludeId?: string
+): Promise<{ exists: boolean; conflictId?: string; currentVersion?: number }> {
+  if (!name || !orgId) return { exists: false };
+
+  let query = supabase
+    .from("bp_playbooks")
+    .select("id, version")
+    .eq("org_id", orgId)
+    .ilike("name", name.trim())
+    .neq("status", "INACTIVE");
+
+  if (excludeId) query = query.neq("id", excludeId);
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return { exists: false };
+  return { exists: true, conflictId: data.id, currentVersion: data.version };
+}
+
+/**
+ * Deactivate a playbook (soft delete — sets status to INACTIVE).
+ */
+export async function deactivatePlaybookAction(orgId: string, playbookId: string) {
+  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+  const { error } = await supabase
+    .from("bp_playbooks")
+    .update({ status: "INACTIVE", updated_at: new Date().toISOString() })
+    .eq("id", playbookId)
+    .eq("org_id", orgId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/business-plan");
+}
+
+/**
+ * Duplicate an existing playbook: copies header + all steps.
+ * New playbook gets " COPY" suffix, DRAFT status, version 1, parent_id = original.
+ */
+export async function duplicatePlaybookAction(
+  orgId: string,
+  sourcePlaybookId: string
+): Promise<{ id?: string; error?: string }> {
+  if (!orgId || !sourcePlaybookId) return { error: "orgId and sourcePlaybookId are required" };
+
+  // 1. Fetch source playbook header
+  const { data: source, error: srcErr } = await supabase
+    .from("bp_playbooks")
+    .select("*")
+    .eq("id", sourcePlaybookId)
+    .eq("org_id", orgId)
+    .single();
+
+  if (srcErr || !source) return { error: `Source not found: ${srcErr?.message ?? 'no data'}` };
+
+  // 2. Generate unique COPY name
+  const baseCopyName = `${source.name} COPY`;
+  const { data: existing } = await supabase
+    .from("bp_playbooks")
+    .select("name")
+    .eq("org_id", orgId)
+    .ilike("name", `${source.name} COPY%`);
+
+  const existingNames = new Set((existing ?? []).map((p: { name: string }) => p.name));
+  let copyName = baseCopyName;
+  let counter = 2;
+  while (existingNames.has(copyName)) {
+    copyName = `${baseCopyName} ${counter}`;
+    counter++;
   }
 
-  revalidatePath("/business-plan/playbook-designer");
-  return row;
+  // 3. Create new playbook header
+  const newId = crypto.randomUUID();
+  const { error: insertErr } = await supabase
+    .from("bp_playbooks")
+    .insert({
+      id: newId,
+      org_id: orgId,
+      name: copyName,
+      type: source.type,
+      family: source.family,
+      strategy: source.strategy,
+      purpose: source.purpose,
+      status: "DRAFT",
+      global_owner_ids: source.global_owner_ids ?? [],
+      version: 1,
+      parent_id: sourcePlaybookId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+  if (insertErr) return { error: `[duplicate header] ${insertErr.message}` };
+
+  // 3. Fetch source steps
+  const { data: srcSteps } = await supabase
+    .from("bp_playbook_steps")
+    .select("*")
+    .eq("playbook_id", sourcePlaybookId)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true });
+
+  // 4. Clone steps into the new playbook (new IDs, same content)
+  if (srcSteps && srcSteps.length > 0) {
+    const clonedSteps = srcSteps.map((s: Record<string, unknown>) => ({
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      playbook_id: newId,
+      uid: s.uid,
+      step_num: s.step_num,
+      name: s.name,
+      type_of_activity: s.type_of_activity,
+      purpose: s.purpose,
+      activity_description: s.activity_description,
+      deliverable: s.deliverable,
+      deliverable_description: s.deliverable_description,
+      stakeholder_id: s.stakeholder_id,
+      frequency: s.frequency,
+      repetitions: s.repetitions,
+      freq_notes: s.freq_notes,
+      scheduler_value: s.scheduler_value,
+      supporting_task: s.supporting_task,
+      counteraction_description: s.counteraction_description,
+      requested_to_id: s.requested_to_id,
+      sla: s.sla,
+      sla_description: s.sla_description,
+      is_locked: false, // unlocked so user can edit
+      is_repeatable: s.is_repeatable,
+      position: s.position,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error: stepsErr } = await supabase
+      .from("bp_playbook_steps")
+      .insert(clonedSteps);
+
+    if (stepsErr) return { error: `[duplicate steps] ${stepsErr.message}` };
+  }
+
+  revalidatePath("/business-plan");
+  return { id: newId };
+}
+
+/**
+ * Fetch playbooks for the Marketplace with optional status filter.
+ * statusFilter: ['DRAFT', 'PUBLISHED', 'INACTIVE'] — pass empty array for ALL
+ */
+export async function getPlaybooksForMarketplaceAction(
+  orgId: string,
+  statusFilter: string[] = ['DRAFT', 'PUBLISHED']
+) {
+  if (!orgId) return [];
+
+  // Step 1: Fetch playbook headers
+  let headerQuery = supabase
+    .from("bp_playbooks")
+    .select("id, name, type, family, strategy, purpose, status, version, parent_id, created_at, updated_at, global_owner_ids")
+    .eq("org_id", orgId)
+    .order("updated_at", { ascending: false });
+
+  if (statusFilter.length > 0) {
+    headerQuery = headerQuery.in("status", statusFilter);
+  }
+
+  const { data: headers, error: headerError } = await headerQuery;
+  if (headerError) {
+    console.error("[BP Action] getPlaybooksForMarketplace headers:", headerError.message);
+    return [];
+  }
+  if (!headers || headers.length === 0) return [];
+
+  // Step 2: Fetch steps for all returned playbooks (use * to avoid column mismatch)
+  const playbookIds = headers.map(h => h.id);
+  const { data: steps, error: stepsError } = await supabase
+    .from("bp_playbook_steps")
+    .select("*")
+    .in("playbook_id", playbookIds)
+    .eq("org_id", orgId)
+    .order("position", { ascending: true });
+
+  if (stepsError) {
+    console.error("[BP Action] getPlaybooksForMarketplace steps:", stepsError.message);
+    // Return headers without steps rather than crashing
+    return headers.map(h => ({ ...h, bp_playbook_steps: [] }));
+  }
+
+  // Step 3: Attach steps to their playbook
+  const stepsByPlaybook = (steps ?? []).reduce((acc: Record<string, unknown[]>, step: Record<string, unknown>) => {
+    const pid = step.playbook_id as string;
+    if (!acc[pid]) acc[pid] = [];
+    acc[pid].push(step);
+    return acc;
+  }, {});
+
+  return headers.map(h => ({
+    ...h,
+    bp_playbook_steps: stepsByPlaybook[h.id] ?? [],
+  }));
 }
 
 /**
@@ -161,21 +373,25 @@ export async function upsertPlaybookStepsAction(
   orgId: string,
   playbookId: string,
   steps: PlaybookStepUpsertInput[]
-) {
-  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+): Promise<{ success: boolean; error?: string }> {
+  if (!orgId || !playbookId) return { success: false, error: "orgId and playbookId are required" };
 
-  // Remove deleted steps
-  const incomingUids = steps.map(s => s.uid);
-  await supabase
+  // Strategy: DELETE ALL existing steps, then INSERT fresh.
+  // This avoids the duplication bug where upsert with new UUIDs always inserts.
+  const { error: delError } = await supabase
     .from("bp_playbook_steps")
     .delete()
     .eq("playbook_id", playbookId)
-    .eq("org_id", orgId)
-    .not("uid", "in", `(${incomingUids.map(u => `"${u}"`).join(",")})`);
+    .eq("org_id", orgId);
 
-  // Upsert each step
+  if (delError) {
+    console.error("[BP] Step delete error:", delError.message);
+    return { success: false, error: `[steps delete] ${delError.message}` };
+  }
+
+  // Insert fresh steps with new UUIDs
   const rows = steps.map((s) => ({
-    ...(s.id ? { id: s.id } : {}),
+    id: crypto.randomUUID(),
     org_id: orgId,
     playbook_id: playbookId,
     uid: s.uid,
@@ -186,14 +402,14 @@ export async function upsertPlaybookStepsAction(
     activity_description: s.activityDescription ?? null,
     deliverable: s.deliverable ?? null,
     deliverable_description: s.deliverableDescription ?? null,
-    stakeholder: s.stakeholder ?? null,
+    stakeholder_id: s.stakeholderId ?? null,
     frequency: s.frequency,
     repetitions: s.repetitions,
     freq_notes: s.freqNotes ?? null,
     scheduler_value: s.schedulerValue,
     supporting_task: s.supportingTask ?? null,
     counteraction_description: s.counteractionDescription ?? null,
-    requested_to: s.requestedTo ?? null,
+    requested_to_id: s.requestedToId ?? null,
     sla: s.sla ?? null,
     sla_description: s.slaDescription ?? null,
     is_locked: s.isLocked,
@@ -202,13 +418,16 @@ export async function upsertPlaybookStepsAction(
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
-    .from("bp_playbook_steps")
-    .upsert(rows, { onConflict: "id" });
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from("bp_playbook_steps")
+      .insert(rows);
 
-  if (error) throw new Error(error.message);
+    if (error) return { success: false, error: `[steps insert] ${error.message}` };
+  }
 
-  revalidatePath("/business-plan/playbook-designer");
+  revalidatePath("/business-plan");
+  return { success: true };
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

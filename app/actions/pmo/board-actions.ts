@@ -17,7 +17,8 @@ import {
 } from "@/lib/services/pmo/board.service";
 import { getGroupsService } from "@/lib/services/pmo/group.service";
 import { getTasksService } from "@/lib/services/pmo/task.service";
-import { seedDefaultColumnsService } from "@/lib/services/pmo/column.service";
+import { getSubitemsByTaskIdsService } from "@/lib/services/pmo/subitem.service";
+import { seedDefaultColumnsService, getColumnsService } from "@/lib/services/pmo/column.service";
 import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
 
 
@@ -107,23 +108,34 @@ export async function getBoardAction(
     const board = await getBoardByIdService(boardId, orgId);
     if (!board) return { success: false, error: "Board not found" };
 
-    // ── HYDRATE: Fetch groups + tasks (services return them separately) ──
-    const [groups, tasks] = await Promise.all([
+    // ── HYDRATE: Fetch groups, tasks AND columns in parallel ──
+    const [groups, tasks, columns] = await Promise.all([
       getGroupsService(boardId, orgId),
       getTasksService(boardId, orgId),
+      getColumnsService(boardId, orgId),
     ]);
+    
+    // Fetch subitems for all tasks
+    const taskIds = tasks.map(t => t.id);
+    const subitems = taskIds.length > 0 ? await getSubitemsByTaskIdsService(taskIds, orgId) : [];
 
     // Nest tasks under their parent group
     const hydratedGroups = groups.map((g) => ({
       ...g,
-      tasks: tasks.filter((t) => t.groupId === g.id),
+      tasks: tasks.filter((t) => t.groupId === g.id).map(t => ({
+        ...t,
+        subtasks: subitems
+          .filter(s => s.taskId === t.id)
+          .map(s => ({ ...s, isProtected: false as const }))
+      })),
     }));
 
-    return { success: true, data: { ...board, groups: hydratedGroups } };
+    return { success: true, data: { ...board, groups: hydratedGroups, columns } };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
   }
 }
+
 
 export async function createBoardAction(
   input: z.infer<typeof CreateBoardSchema>
