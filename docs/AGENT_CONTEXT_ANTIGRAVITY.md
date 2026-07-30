@@ -72,7 +72,25 @@ Mi tarea de hoy es: [DESCRIBE AQUÍ LA TAREA ESPECÍFICA]
 
 ---
 
-## 4. Flujo de trabajo por rama (recordatorio operativo)
+## 5. ⚠️ Hallazgo abierto: `staging` abandonada (2026-07-30)
+
+Al preparar el PR del módulo Commercial Activity/Forecast se encontró que `origin/staging`:
+- Está ~140 commits detrás de `main`.
+- Le falta el **módulo PMO completo** (no es solo código viejo — faltan features enteras que sí están en `main`).
+
+**Decisión temporal:** mientras esto no se resuelva, las ramas `feat/` se abren y mergean directo contra `main` (documentando la excepción en cada PR), en vez de pasar por `staging` como indica `BRANCH_STRATEGY.md`.
+
+**Pendiente (backlog, no bloqueante):** sincronizar `staging` con `main` — probablemente lo más simple sea recrearla desde `main` (`git checkout -b staging-new main`, revisar con el equipo, y reemplazar la rama vieja) en vez de intentar mergear 140 commits de diferencia. Asignar a Tech Lead.
+
+---
+
+## 6. Excepción aplicada al módulo Commercial Activity/Forecast
+
+- Rama: `feat/commercial-activity-forecast-module`, creada desde `main` (no desde `staging`, ver punto 5).
+- PR objetivo: `feat/commercial-activity-forecast-module → main` directo.
+- Motivo: `staging` no es un target viable hoy (ver hallazgo arriba).
+
+## 4. Flujo de trabajo por rama (recordatorio operativo — ver excepción vigente en §5)
 
 ```bash
 git checkout staging
