@@ -15,6 +15,7 @@ import {
     CalendarDays,
     Zap,
     BellRing,
+    TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/lib/session-store";
@@ -32,6 +33,7 @@ export type ModuleId =
     | "business-plan"
     | "growthify"
     | "pmo"
+    | "commercial-activity"
     | "ceo-playground";
 
 // PMO sub-modules
@@ -86,6 +88,7 @@ const modules: ModuleItem[] = [
     { id: "business-plan", label: "Business Plan", icon: LayoutDashboard, colorVar: "var(--cobalt-blue)" },
     { id: "growthify", label: "Growthify", icon: RocketIcon, colorVar: "#9333ea" }, // tailwind purple-600 logic
     { id: "pmo", label: "PMO", icon: LayoutGrid, colorVar: "var(--vibe-purple)" },
+    { id: "commercial-activity", label: "Commercial Activity", icon: TrendingUp, colorVar: "var(--vibe-green)" },
     { id: "hr", label: "HR", icon: Users, colorVar: "#10b981" }, // emerald-500
     { id: "finance", label: "Finance", icon: LineChart, colorVar: "#f59e0b" }, // amber-500
     { id: "operations", label: "Operations", icon: Briefcase, colorVar: "#8b5cf6" }, // violet-500
