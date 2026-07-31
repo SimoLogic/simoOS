@@ -106,3 +106,35 @@ git push origin feat/nombre-de-la-tarea
 ```
 
 Vercel generará automáticamente un **Preview Deployment** para esta rama (o para el PR) sin tocar producción. Solo al mergear a `main` (vía PR aprobado) se promueve a producción real.
+
+---
+
+## 7. Commercial Activity mergeado sin Forecast (2026-07-31)
+
+Se confirmó con el usuario: el módulo "Forecast" (código de `homesi-reporte-actividad`,
+incluso en su versión más reciente) sigue calculando todo en memoria del
+navegador — no persiste snapshots reales. El schema `pipeline_forecast` en
+producción ya existe con una estructura real distinta (`branches`,
+`branch_managers`, `pipeline_snapshots`, `pipeline_loans`), pero
+**`pipeline_snapshots` y `pipeline_loans` están vacías (0 filas)** — ninguna
+app depende de ellas hoy, así que no hay riesgo de dato real en juego, pero
+tampoco urgencia de resolverlo ya.
+
+**Decisión:** mergear solo "Commercial Activity" (tab funcional, datos reales
+en `activity_report`). El tab "Forecast" se deshabilitó explícitamente:
+- `components/commercial-activity/CommercialActivityModule.tsx` ya no
+  importa `ForecastPipelineView` — solo renderiza `ActivityReportView`.
+- `components/dashboard/ModuleNavigation.tsx` solo expone el sub-módulo
+  "activity" en la navegación.
+- El código ya portado de Forecast sigue en
+  `components/commercial-activity/forecast/` y
+  `lib/commercial-activity/pipeline/` para cuando se retome — no se borró,
+  solo no está conectado a la UI.
+- La migración `00016_commercial_activity_module.sql` ya NO crea nada en
+  `pipeline_forecast` (se quitó esa sección — chocaba con la estructura real).
+
+**Al retomar Forecast:** decidir entre (a) usar el código actual de Heather
+tal cual (cálculo en cliente + lectura de `branches`/`branch_managers`
+reales — rápido, ya funciona) o (b) construir persistencia real sobre
+`pipeline_snapshots`/`pipeline_loans` (más trabajo, pero es lo que esas
+tablas ya vacías sugieren que alguien planeó).

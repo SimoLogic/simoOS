@@ -65,7 +65,6 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
     ],
     "commercial-activity": [
         { id: "activity", label: "Commercial Activity" },
-        { id: "forecast", label: "Forecast" },
     ],
 };
 

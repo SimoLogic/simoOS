@@ -97,29 +97,11 @@ ALTER TABLE activity_report.loan_records   DISABLE ROW LEVEL SECURITY;
 --     FOR ALL USING (tenant_id = auth.jwt()->>'tenant_id');
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- pipeline_forecast schema — discovered while porting ForecastPipelineView.tsx
--- (original repo built its own client on-the-fly pointing to this schema,
--- separate from 'activity_report'). Only one table found in use: branch ->
--- manager name lookup, read-only from the UI's perspective.
+-- NOTA (2026-07-31): la sección de pipeline_forecast que iba aquí se retiró.
+-- El schema pipeline_forecast YA EXISTE en producción con una estructura real
+-- distinta (branches, branch_managers, pipeline_snapshots, pipeline_loans —
+-- confirmado por consulta directa) a la que se había asumido al portar el
+-- código de Heather (branch_managers con columnas branch/manager_name). El
+-- módulo "Forecast" se integra por separado más adelante contra el schema
+-- real — ver docs/AGENT_CONTEXT_ANTIGRAVITY.md.
 -- ─────────────────────────────────────────────────────────────────────────────
-
-CREATE SCHEMA IF NOT EXISTS pipeline_forecast;
-
--- ⚠️ MANUAL STEP after running this migration: also add `pipeline_forecast`
---    to Supabase Dashboard -> Settings -> API -> "Exposed schemas".
-
-CREATE TABLE IF NOT EXISTS pipeline_forecast.branch_managers (
-    id              BIGSERIAL PRIMARY KEY,
-    tenant_id       VARCHAR(15) NOT NULL DEFAULT 'TNT-001'
-                        REFERENCES public.dim_tenant(tcode),
-    branch          TEXT NOT NULL,
-    manager_name    TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, branch)
-);
-
-ALTER TABLE pipeline_forecast.branch_managers DISABLE ROW LEVEL SECURITY;
-
--- Future policy (same hardening phase as above):
--- CREATE POLICY tenant_isolation_policy ON pipeline_forecast.branch_managers
---     FOR ALL USING (tenant_id = auth.jwt()->>'tenant_id');
