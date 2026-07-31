@@ -1,0 +1,356 @@
+'use client';
+
+import { useEffect, useState, type ChangeEvent } from 'react';
+import { read } from 'xlsx';
+import { readWorkbook } from '@/lib/commercial-activity/parsing/workbookReader';
+import type { RawLoanRow, YearMonth } from '@/lib/commercial-activity/parsing/types';
+import { classifyLoan } from '@/lib/commercial-activity/domain/classifyLoan';
+import type { LoanRecord } from '@/lib/commercial-activity/domain/types';
+import { buildReportTree } from '@/lib/commercial-activity/aggregation/buildReportTree';
+import { deriveMonthRange, ymLabel } from '@/lib/commercial-activity/aggregation/months';
+import type { Measure } from '@/lib/commercial-activity/aggregation/types';
+import { exportToExcel } from '@/lib/commercial-activity/export/exportToExcel';
+import { saveUpload } from '@/lib/commercial-activity/supabase/saveUpload';
+import { loadCurrentReport } from '@/lib/commercial-activity/supabase/loadCurrent';
+import { BRANCH_ORDER, type Branch } from '@/lib/commercial-activity/config/roster';
+import { METRICS } from '@/lib/commercial-activity/config/metrics';
+import SummaryCards from '@/components/commercial-activity/activity/SummaryCards';
+import PivotTable from '@/components/commercial-activity/activity/PivotTable';
+import Toolbar from '@/components/commercial-activity/activity/Toolbar';
+
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+/**
+ * Extrae un mensaje legible tanto de un Error nativo como de un error de
+ * Supabase/PostgREST (un objeto plano {code,message,details,hint}, no una
+ * instancia de Error) -- String(err) sobre ese objeto da '[object Object]'.
+ */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
+    return err.message;
+  }
+  return String(err);
+}
+
+/**
+ * Port de defaultCollapsed() del legacy: al cargar un archivo, los headers
+ * de Total/Branch quedan expandidos, pero el desglose de Loan Officer/BD de
+ * cada métrica de cada branch empieza colapsado -- mismo esquema de ids
+ * ('br::'+branch+'::m::'+metric) que usa PivotTable para togglearlos.
+ */
+function defaultCollapsed(): Set<string> {
+  const s = new Set<string>();
+  for (const b of BRANCH_ORDER) {
+    for (const { key } of METRICS) {
+      s.add('br::' + b + '::m::' + key);
+    }
+  }
+  return s;
+}
+
+export function ActivityReportView() {
+  // Estado equivalente al bloque STATE del legacy.
+  const [records, setRecords] = useState<LoanRecord[] | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [view, setView] = useState<'main' | 'b2b'>('main');
+  const [measure, setMeasure] = useState<Measure>('count');
+  const [year, setYear] = useState<'all' | string>('all');
+  const [start, setStart] = useState<YearMonth | null>(null);
+  const [branchFilter, setBranchFilter] = useState<Branch | 'all'>('all');
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => defaultCollapsed());
+  // No estaba en la lista de estado del brief; se agrega porque el criterio
+  // de éxito 6 exige mostrar el error de readWorkbook sin crashear la página.
+  const [error, setError] = useState<string | null>(null);
+  // Indicador simple de "generando..." para el botón Descargar Excel (Etapa 9b).
+  const [isExporting, setIsExporting] = useState(false);
+  // Indicador de saveUpload() en curso (Etapa 11) -- no bloquea el render.
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  // true mientras se consulta loadCurrentReport() al montar -- evita mostrar
+  // el emptyState de "sube tu archivo" antes de saber si hay algo guardado.
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+
+  // Deja el estado de filtros/colapso en su valor por defecto, tanto para un
+  // archivo recién cargado como para el reporte restaurado desde Supabase.
+  function applyLoadedReport(loanRecords: LoanRecord[], name: string) {
+    setRecords(loanRecords);
+    setFileName(name);
+    setView('main');
+    setMeasure('count');
+    setYear('all');
+    setStart(null);
+    setBranchFilter('all');
+    setCollapsed(defaultCollapsed());
+    setError(null);
+  }
+
+  // Al montar: si nadie cargó un archivo en esta sesión, restaurar el último
+  // reporte guardado en Supabase (is_current=true), si existe. No dispara
+  // saveUpload() de nuevo -- esos datos ya están guardados.
+  useEffect(() => {
+    if (records !== null) return;
+    let cancelled = false;
+    loadCurrentReport()
+      .then((current) => {
+        if (cancelled || !current) return;
+        applyLoadedReport(current.records, current.fileName);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(errorMessage(err));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoadingInitial(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const result = ev.target?.result;
+        if (!(result instanceof ArrayBuffer)) throw new Error('No se pudo leer el archivo.');
+        const workbook = read(new Uint8Array(result), { type: 'array' });
+        const rawRows: RawLoanRow[] = readWorkbook(workbook);
+        if (!rawRows.length) throw new Error('El archivo no tiene filas de datos');
+        const loanRecords = rawRows.map(classifyLoan);
+
+        applyLoadedReport(loanRecords, file.name);
+
+        // Guardar en Supabase sin bloquear el render -- el reporte ya se ve
+        // en pantalla independientemente de cómo salga esto.
+        setSaveStatus('saving');
+        saveUpload(loanRecords, rawRows, file.name)
+          .then(() => setSaveStatus('saved'))
+          .catch((err) => {
+            console.error('saveUpload failed', err);
+            setSaveStatus('error');
+          });
+      } catch (err) {
+        setError(errorMessage(err));
+        setRecords(null);
+        setFileName(null);
+      }
+    };
+    reader.onerror = () => setError('No se pudo leer el archivo.');
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  }
+
+  function handleToggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleExpandAll() {
+    setCollapsed(new Set());
+  }
+
+  // Port de collapseAll del legacy: colapsa 'total' y cada header de branch
+  // (lo que también oculta sus metric-groups, sin necesidad de listarlos).
+  function handleCollapseAll() {
+    const s = new Set<string>();
+    s.add('total');
+    for (const b of BRANCH_ORDER) s.add('br::' + b);
+    setCollapsed(s);
+  }
+
+  async function handleExportExcel() {
+    if (!records) return;
+    setIsExporting(true);
+    try {
+      await exportToExcel({
+        records,
+        months: monthsShown,
+        measure,
+        fileName: fileName ?? 'archivo',
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  // Cálculos derivados del estado -- se recalculan en cada render, no son estado.
+  const monthRange = records ? deriveMonthRange(records) : null;
+  const allMonths = monthRange?.allMonths ?? [];
+  const effectiveMonths = start ? allMonths.filter((ym) => ym >= start) : allMonths;
+  const monthsShown = year === 'all' ? effectiveMonths : effectiveMonths.filter((ym) => ym.startsWith(year));
+
+  const availableYears = [...new Set(allMonths.map((ym) => ym.split('-')[0]))];
+  const availableBranches = records
+    ? BRANCH_ORDER.filter((b) => records.some((r) => r.branch === b))
+    : [];
+
+  const tree = records
+    ? buildReportTree({
+        records,
+        months: monthsShown,
+        measure,
+        view,
+        branchFilter,
+        drillBy: view === 'b2b' ? 'bd' : 'loanOfficer',
+      })
+    : null;
+  // Port de showTotal (BRANCHF==='all') del legacy: el nodo Total de
+  // ReportTree existe siempre (no está filtrado por branch), así que hay
+  // que ocultarlo explícitamente cuando hay un branch específico elegido.
+  const showTotal = branchFilter === 'all';
+
+  return (
+    <div className="ca-module main">
+      <div className="topbar">
+        <div className="toolbar-row">
+          <span className="label-chip">Datos</span>
+          <label className="btn primary" htmlFor="fileInput">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M12 3v12M7 8l5-5 5 5M5 21h14" />
+            </svg>
+            Cargar archivo
+          </label>
+          <input type="file" id="fileInput" accept=".xlsx,.xls" onChange={handleFileChange} />
+
+          <span style={{ width: "1px", height: "26px", background: "var(--border)", margin: "0 4px" }}></span>
+
+          <span style={{ flex: "1" }}></span>
+
+          <button className="btn" id="btnSave" disabled title="Guarda el archivo cargado en este navegador (solo al abrir el HTML localmente)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M5 3h11l4 4v14H5z" />
+              <path d="M8 3v6h7M8 21v-6h8v6" />
+            </svg>
+            Guardar
+          </button>
+          <button className="btn ghost" id="btnExportJson" disabled>Exportar JSON</button>
+          <label className="btn ghost" htmlFor="jsonInput">Importar JSON</label>
+          <input type="file" id="jsonInput" accept=".json" />
+          <button
+            className="btn primary"
+            id="btnExcel"
+            disabled={!records || isExporting}
+            onClick={handleExportExcel}
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M14 3v5h5" />
+              <path d="M14 3H6v18h12V8z" />
+              <path d="M9 13l3 4m0-4l-3 4" />
+            </svg>
+            {isExporting ? 'Generando…' : 'Descargar Excel'}
+          </button>
+        </div>
+        <div className="loaded-row" id="loadedRow">
+          {records && fileName && (
+            <>
+              <span className="pill">Archivo: {fileName}</span>
+              <span className="pill">Filas: {records.length.toLocaleString('en-US')}</span>
+              {monthRange?.minYM && monthRange?.maxYM && (
+                <span className="pill">
+                  Rango: {ymLabel(monthRange.minYM)} → {ymLabel(monthRange.maxYM)}
+                </span>
+              )}
+            </>
+          )}
+          {saveStatus === 'saving' && <span className="pill">Guardando en la nube…</span>}
+          {saveStatus === 'saved' && <span className="pill">Guardado</span>}
+          {saveStatus === 'error' && <span className="pill warn">No se pudo guardar en la nube</span>}
+          {error && <span className="pill warn">{error}</span>}
+        </div>
+      </div>
+
+      <div className="content">
+        <h1 className="title">Reporte de Actividad</h1>
+        <div className="subtitle">File Creations · Credit Reports · Applications · Closings — por branch, loan officer y estrategia B2B</div>
+
+        {records === null && isLoadingInitial && (
+          <div className="empty">
+            <div className="drop-ic">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M14 3v5h5" />
+                <path d="M14 3H6v18h12V8z" />
+                <path d="M9 15h6M9 11h6" />
+              </svg>
+            </div>
+            <h2>Cargando reporte…</h2>
+            <p>Buscando el último reporte guardado.</p>
+          </div>
+        )}
+
+        {records === null && !isLoadingInitial && (
+          <div id="emptyState" className="empty">
+            <div className="drop-ic">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M14 3v5h5" />
+                <path d="M14 3H6v18h12V8z" />
+                <path d="M9 15h6M9 11h6" />
+              </svg>
+            </div>
+            <h2>Carga tu archivo de query</h2>
+            <p>Sube el <b>.xlsx</b> con las columnas del reporte (True OrgID, fileCreation, CreditReport, App_Date, loan_info_channel, milestones, loan_officer, B2B Loans, BD). La app calcula todo en tu navegador — nada sale de tu equipo.</p>
+            <label className="btn primary" htmlFor="fileInput" style={{ display: "inline-flex" }}>Seleccionar archivo</label>
+          </div>
+        )}
+
+        {records !== null && tree && (
+          <div id="report">
+            <div className="cards-wrap">
+              <div className="cards-head">
+                {(view === 'b2b' ? 'Totales B2B por mes' : 'Totales por mes') +
+                  (measure === 'amount' ? ' — Monto ($)' : '')}
+              </div>
+              <SummaryCards tree={tree} months={monthsShown} measure={measure} />
+            </div>
+
+            <Toolbar
+              view={view}
+              onViewChange={setView}
+              measure={measure}
+              onMeasureChange={setMeasure}
+              branchFilter={branchFilter}
+              onBranchFilterChange={setBranchFilter}
+              year={year}
+              onYearChange={setYear}
+              start={start}
+              onStartChange={setStart}
+              availableBranches={availableBranches}
+              availableYears={availableYears}
+              months={allMonths}
+              onExpandAll={handleExpandAll}
+              onCollapseAll={handleCollapseAll}
+            />
+
+            <div className="tbl-card">
+              <PivotTable
+                tree={tree}
+                months={monthsShown}
+                measure={measure}
+                showTotal={showTotal}
+                collapsed={collapsed}
+                onToggleCollapse={handleToggleCollapse}
+                view={view}
+              />
+            </div>
+
+            <div className="foot-note">
+              <b>Closings:</b> se cuenta la fecha de Funding si el canal es Banked-Retail, o de Completion si es Brokered.{' '}
+              <b>Branch:</b> se usa <i>True OrgID</i>; OrgIDs fuera del roster oficial se agrupan en “Branch Out of Division”.
+              Las fechas se leen en UTC para evitar corrimiento de mes.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

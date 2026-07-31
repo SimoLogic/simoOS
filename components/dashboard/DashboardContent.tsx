@@ -13,6 +13,7 @@ import { HCMaestro } from "../hr/HCMaestro";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
 import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
 import { GrowthifyModule } from "../business-plan/GrowthifyModule";
+import { CommercialActivityModule } from "../commercial-activity/CommercialActivityModule";
 
 import { BranchMasterApp } from "../operations/branches/BranchMasterApp";
 import { HierarchyMapApp } from "../operations/branches/HierarchyMapApp";
@@ -24,13 +25,14 @@ import { PlaybookDesignerApp } from "../playbook-designer/PlaybookDesignerApp";
 import { PlaybookMarketplaceApp } from "../business-plan/playbooks/PlaybookMarketplaceApp";
 import { JourneyMapApp } from "../ceo-playground/JourneyMapApp";
 import {
-    LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid
+    LayoutDashboard, Users, LineChart, Briefcase, ShieldCheck, BrainCircuit, Rocket, LayoutGrid, TrendingUp
 } from "lucide-react";
 
 const moduleConfig: Record<ModuleId, { label: string; icon: React.ElementType; color: string }> = {
     "business-plan": { label: "Business Plan", icon: LayoutDashboard, color: "text-cobalt-blue" },
     growthify: { label: "Growthify", icon: Rocket, color: "text-purple-500" },
     pmo: { label: "PMO", icon: LayoutGrid, color: "text-[#6161FF]" },
+    "commercial-activity": { label: "Commercial Activity", icon: TrendingUp, color: "text-emerald-500" },
     hr: { label: "Human Resources", icon: Users, color: "text-emerald-500" },
     finance: { label: "Finance", icon: LineChart, color: "text-amber-500" },
     operations: { label: "Operations", icon: Briefcase, color: "text-violet-500" },
@@ -104,6 +106,8 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                         <PmoDashboardHome onNavigate={setActiveSubModule} />
                     ) : activeModule === "growthify" ? (
                         <GrowthifyModule activeSubModule={activeSubModule} />
+                    ) : activeModule === "commercial-activity" ? (
+                        <CommercialActivityModule activeSubModule={activeSubModule} />
                     ) : activeSubModule === "hc-master" ? (
                         <HCMaestro />
                     ) : activeSubModule === "payroll-changes" ? (

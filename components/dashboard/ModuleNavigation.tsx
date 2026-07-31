@@ -63,6 +63,9 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "my-queue", label: "My Queue" },
         { id: "my-projects", label: "My Projects" },
     ],
+    "commercial-activity": [
+        { id: "activity", label: "Commercial Activity" },
+    ],
 };
 
 interface ModuleNavigationProps {
