@@ -9,7 +9,7 @@ datasource db {
 
 model PmoTask {
   id                   String    @id @default(uuid())
-  orgId                String    @map("org_id")
+  tenantId                String    @map("tenant_id")
   boardId              String    @map("board_id")
   groupId              String    @map("group_id")
   title                String
@@ -37,14 +37,14 @@ model PmoTask {
   activityLogs         PmoActivityLog[]
   securityEvents       PmoSecurityEvent[]
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([boardId])
   @@map("pmo_tasks")
 }
 
 model PmoActivityLog {
   id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
+  tenantId       String   @map("tenant_id")
   taskId      String   @map("task_id")
   userId      String   @map("user_id")
   actionType  String   @map("action_type")
@@ -54,14 +54,14 @@ model PmoActivityLog {
 
   task        PmoTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([taskId])
   @@map("pmo_activity_logs")
 }
 
 model PmoSecurityEvent {
   id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
+  tenantId       String   @map("tenant_id")
   userId      String   @map("user_id")
   taskId      String   @map("task_id")
   attemptedAt DateTime @default(now()) @map("attempted_at")
@@ -72,14 +72,14 @@ model PmoSecurityEvent {
 
   task        PmoTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([taskId])
   @@map("pmo_security_events")
 }
 
 model PmoEvent {
   id                   String    @id @default(uuid())
-  orgId                String    @map("org_id")
+  tenantId                String    @map("tenant_id")
   title                String
   description          String?
   startDateTime        DateTime  @map("start_date_time")
@@ -93,26 +93,26 @@ model PmoEvent {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  @@index([orgId])
+  @@index([tenantId])
   @@map("pmo_events")
 }
 
 model UserIntegration {
   id                   String    @id @default(uuid())
-  orgId                String    @map("org_id")
+  tenantId                String    @map("tenant_id")
   userId               String    @map("user_id")
   provider             String    // 'salesforce', 'outlook', 'zoom'
   providerUserId       String    @map("provider_user_id")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  @@unique([orgId, userId, provider])
+  @@unique([tenantId, userId, provider])
   @@map("pmo_user_integrations")
 }
 
 model IntegrationToken {
   id                   String    @id @default(uuid())
-  orgId                String    @map("org_id")
+  tenantId                String    @map("tenant_id")
   userId               String    @map("user_id")
   provider             String    // 'salesforce', 'outlook', 'zoom'
   accessToken          String    @map("access_token")
@@ -124,7 +124,7 @@ model IntegrationToken {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  @@unique([orgId, userId, provider])
+  @@unique([tenantId, userId, provider])
   @@map("pmo_integration_tokens")
 }
 
@@ -134,7 +134,7 @@ model IntegrationToken {
 
 model PmoSyncMapping {
   id                String   @id @default(uuid())
-  orgId             String   @map("org_id")
+  tenantId             String   @map("tenant_id")
   pmoEntityType     String   @map("pmo_entity_type")   // "TASK" | "EVENT" | "NOTE"
   pmoEntityId       String   @map("pmo_entity_id")     // ID of the PMO task/event
   provider          String                              // "SALESFORCE" | "OUTLOOK" | "ZOOM"
@@ -150,27 +150,18 @@ model PmoSyncMapping {
 
   @@unique([pmoEntityId, provider])
   @@index([provider, externalId])
-  @@index([orgId])
+  @@index([tenantId])
   @@map("pmo_sync_mappings")
 }
 
-model Organization {
-  id                   String      @id @default(uuid())
-  name                 String
-  countryCode          String      @default("US") @map("country_code")
-  createdAt            DateTime    @default(now()) @map("created_at")
-  updatedAt            DateTime    @updatedAt @map("updated_at")
-
-  playbooks            BpPlaybook[]
-
-  @@map("organizations")
-}
+// Organization fue removido — unificado bajo DimTenant/tcode (decisión 2026-07-30,
+// ver docs/AGENT_CONTEXT_ANTIGRAVITY.md). Todo módulo usa tenantId -> dim_tenant.tcode.
 
 // ─── Business Plan: Playbook Designer ────────────────────────────────────────
 
 model BpPlaybook {
   id               String          @id @default(uuid())
-  orgId            String          @map("org_id")
+  tenantId            String          @map("tenant_id")
   name             String
   type             String          @default("GROWTH")      // CORE | GROWTH | ELITE
   family           String          @default("COMMERCIAL")  // COMMERCIAL | OPERATIONAL
@@ -181,16 +172,15 @@ model BpPlaybook {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
-  organization     Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   steps            BpPlaybookStep[]
 
-  @@index([orgId])
+  @@index([tenantId])
   @@map("bp_playbooks")
 }
 
 model BpPlaybookStep {
   id                       String     @id @default(uuid())
-  orgId                    String     @map("org_id")           // Multi-tenant filter
+  tenantId                    String     @map("tenant_id")           // Multi-tenant filter
   playbookId               String     @map("playbook_id")
   uid                      String                              // Business UID e.g. "HBT032"
   stepNum                  String     @map("step_num")         // "01", "02", ...
@@ -218,32 +208,35 @@ model BpPlaybookStep {
 
   playbook                 BpPlaybook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([playbookId])
   @@map("bp_playbook_steps")
 }
 
+// id coincide 1:1 con auth.users.id de Supabase Auth (no gestionado por Prisma).
+// Este vínculo es lo que permite que RLS use auth.uid() para saber el tenant
+// del usuario autenticado — ver función pública current_tenant_id() en la migración.
 model User {
   id                   String    @id @default(uuid())
-  orgId                String    @map("org_id")
+  tenantId                String    @map("tenant_id")
   email                String    @unique
   name                 String?
   countryCode          String    @default("CO") @map("country_code")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  @@index([orgId])
+  @@index([tenantId])
   @@map("users")
 }
 
 // ─── HR Module ────────────────────────────────────────────────────────────────
 // Llave #3: isLocked = true means the record is IMMUTABLE (Shield Protocol)
 // Llave #4: All salary / ID fields are AES-256-GCM encrypted (HR Vault)
-// Llave #1: Every query MUST filter by orgId (multi-tenant isolation)
+// Llave #1: Every query MUST filter by tenantId (multi-tenant isolation)
 
 model HrEmployee {
   id                    String                @id @default(uuid())
-  orgId                 String                @map("org_id")
+  tenantId                 String                @map("tenant_id")
   eid                   String                @unique            // EID-0042
   status                String                @default("Active") // Active | Inactive | On Leave | Terminated
   emailCorporate        String?               @map("email_corporate")
@@ -276,14 +269,14 @@ model HrEmployee {
   vacationRequests      HrVacationRequest[]
   performanceReviews    HrPerformanceReview[]
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([eid])
   @@map("hr_employees")
 }
 
 model HrContract {
   id                    String      @id @default(uuid())
-  orgId                 String      @map("org_id")
+  tenantId                 String      @map("tenant_id")
   employeeId            String      @map("employee_id")
   fechaInicio           String      @map("fecha_inicio")  // ISO date
   fechaFin              String?     @map("fecha_fin")     // null = current
@@ -316,14 +309,14 @@ model HrContract {
   employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   payrollPeriods        HrPayroll[]
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([employeeId])
   @@map("hr_contracts")
 }
 
 model HrPayroll {
   id                    String      @id @default(uuid())
-  orgId                 String      @map("org_id")
+  tenantId                 String      @map("tenant_id")
   employeeId            String      @map("employee_id")
   contractId            String      @map("contract_id")
   periodLabel           String      @map("period_label")  // "2026-03"
@@ -352,15 +345,15 @@ model HrPayroll {
   employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   contract              HrContract  @relation(fields: [contractId], references: [id])
 
-  @@unique([orgId, employeeId, periodLabel])
-  @@index([orgId])
+  @@unique([tenantId, employeeId, periodLabel])
+  @@index([tenantId])
   @@index([employeeId])
   @@map("hr_payroll_periods")
 }
 
 model HrVacationRequest {
   id                    String      @id @default(uuid())
-  orgId                 String      @map("org_id")
+  tenantId                 String      @map("tenant_id")
   employeeId            String      @map("employee_id")
   requestDate           DateTime    @default(now()) @map("request_date")
   startDate             DateTime    @map("start_date")
@@ -381,14 +374,14 @@ model HrVacationRequest {
 
   employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([employeeId])
   @@map("hr_vacation_requests")
 }
 
 model HrPerformanceReview {
   id                    String      @id @default(uuid())
-  orgId                 String      @map("org_id")
+  tenantId                 String      @map("tenant_id")
   employeeId            String      @map("employee_id")
   reviewerId            String      @map("reviewer_id")
   reviewPeriod          String      @map("review_period")  // "Q1-2026"
@@ -415,7 +408,7 @@ model HrPerformanceReview {
 
   employee              HrEmployee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  @@index([tenantId])
   @@index([employeeId])
   @@map("hr_performance_reviews")
 }
@@ -423,7 +416,7 @@ model HrPerformanceReview {
 model PmoIcalFeedToken {
   id           String    @id @default(uuid())
   userId       String    @unique @map("user_id")
-  orgId        String    @map("org_id")
+  tenantId        String    @map("tenant_id")
   token        String    @unique @default(uuid())
   isActive     Boolean   @default(true) @map("is_active")
   lastAccessAt DateTime? @map("last_access_at")
@@ -438,7 +431,7 @@ model PmoIcalFeedToken {
 
 model SimoNotification {
   id              String    @id @default(uuid())
-  orgId           String    @map("org_id")
+  tenantId           String    @map("tenant_id")
   userId          String    @map("user_id")
   type            String
   module          String
@@ -452,7 +445,7 @@ model SimoNotification {
   createdAt       DateTime  @default(now()) @map("created_at")
   resolvedAt      DateTime? @map("resolved_at")
 
-  @@index([orgId, userId, status])
+  @@index([tenantId, userId, status])
   @@map("simo_notifications")
 }
 
@@ -570,7 +563,7 @@ model DimRoleTitle {
 
 model DimExternalRole {
   id            String   @id @default(uuid()) @db.Uuid
-  orgId         String   @map("org_id")
+  tenantId         String   @map("tenant_id")
   name          String   @db.VarChar(50)
   businessType  String?  @map("business_type")
   size          String?
@@ -581,8 +574,8 @@ model DimExternalRole {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  @@unique([orgId, name])
-  @@index([orgId, status])
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
   @@map("dim_external_role")
 }
 
@@ -721,7 +714,7 @@ model EmployeeApprover {
 
 model PmoBoard {
   id               String   @id @default(uuid())
-  orgId            String   @map("org_id")
+  tenantId            String   @map("tenant_id")
   workspaceId      String   @map("workspace_id")
   name             String?
   title            String?
@@ -736,25 +729,25 @@ model PmoBoard {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  @@index([orgId])
+  @@index([tenantId])
   @@map("pmo_boards")
 }
 
 model PmoWorkspace {
   id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
+  tenantId       String   @map("tenant_id")
   name        String
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  @@index([orgId])
+  @@index([tenantId])
   @@map("pmo_workspaces")
 }
 
 model PmoGroup {
   id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
+  tenantId       String   @map("tenant_id")
   boardId     String   @map("board_id")
   title       String
   color       String   @default("#6161FF")
@@ -767,7 +760,7 @@ model PmoGroup {
 
 model PmoColumn {
   id        String   @id @default(uuid())
-  orgId     String   @map("org_id")
+  tenantId     String   @map("tenant_id")
   boardId   String   @map("board_id")
   title     String
   type      String   @default("text")
@@ -781,7 +774,7 @@ model PmoColumn {
 
 model PmoSubtask {
   id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
+  tenantId       String   @map("tenant_id")
   taskId      String   @map("task_id")
   title       String
   isCompleted Boolean  @default(false) @map("is_completed")
@@ -793,7 +786,7 @@ model PmoSubtask {
 
 model PmoComment {
   id        String   @id @default(uuid())
-  orgId     String   @map("org_id")
+  tenantId     String   @map("tenant_id")
   taskId    String   @map("task_id")
   authorId  String   @map("author_id")
   content   String
@@ -806,7 +799,7 @@ model PmoComment {
 
 model PmoSyncEvent {
   id              String   @id @default(uuid())
-  orgId           String   @map("org_id")
+  tenantId           String   @map("tenant_id")
   taskId          String   @map("task_id")
   syncedFields    String[] @map("synced_fields")
   conflictsFound  String[] @map("conflicts_found")
@@ -815,13 +808,13 @@ model PmoSyncEvent {
   timestampAt     DateTime @default(now()) @map("timestamp_at")
 
   @@index([taskId])
-  @@index([orgId])
+  @@index([tenantId])
   @@map("pmo_sync_events")
 }
 
 model PmoAutomation {
   id            String   @id @default(uuid())
-  orgId         String   @map("org_id")
+  tenantId         String   @map("tenant_id")
   boardId       String   @map("board_id")
   name          String
   triggerType   String   @map("trigger_type")   // "on_status_change", "on_column_change"
@@ -837,7 +830,7 @@ model PmoAutomation {
 
 model PmoPanel {
   id         String   @id @default(uuid())
-  orgId      String   @map("org_id")
+  tenantId      String   @map("tenant_id")
   ownerId    String   @map("owner_id")
   name       String
   icon       String   @default("📊")
@@ -846,6 +839,6 @@ model PmoPanel {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  @@index([orgId, ownerId])
+  @@index([tenantId, ownerId])
   @@map("pmo_panels")
 }
