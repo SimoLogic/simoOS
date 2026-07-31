@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       return Response.json([]);
     }
 
-    const results = await searchSalesforceLeads(session.orgId, session.userId, q);
+    const results = await searchSalesforceLeads(session.tenantId, session.userId, q);
     return Response.json(results);
   } catch (err: unknown) {
     console.error("[SF Search]", (err as Error).message);

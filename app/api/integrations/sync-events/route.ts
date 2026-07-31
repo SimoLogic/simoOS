@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const { data: events, error } = await db
       .from("pmo_sync_events")
       .select("id, event_type, status, payload, created_at")
-      .eq("org_id", session.orgId)
+      .eq("tenant_id", session.tenantId)
       .order("created_at", { ascending: false })
       .limit(20);
 

@@ -12,7 +12,7 @@ import { PriorityBadge } from "@/components/pmo/shared/PriorityBadge";
 // Definimos la agrupación usando el WorkdayHelper
 type TaskBucket = "OVERDUE" | "DUE_SOON" | "LATER" | "DONE";
 
-export const MyWorkView: React.FC<{ orgId: string; userId: string }> = ({ orgId, userId }) => {
+export const MyWorkView: React.FC<{ tenantId: string; userId: string }> = ({ tenantId, userId }) => {
    const myTasks = usePmoStore(s => s.myTasks);
    const setMyTasks = usePmoStore(s => s.setMyTasks);
    const optimisticTasks = usePmoStore(s => s.optimisticTasks);
@@ -26,7 +26,7 @@ export const MyWorkView: React.FC<{ orgId: string; userId: string }> = ({ orgId,
      if (myTasks.length > 0) setLoading(false);
 
      async function fetchTasks() {
-        const res = await getMyTasksAction(orgId, userId);
+        const res = await getMyTasksAction(tenantId, userId);
         if (isMounted) {
             if (res.success && res.data) {
                 setMyTasks(res.data);
@@ -41,7 +41,7 @@ export const MyWorkView: React.FC<{ orgId: string; userId: string }> = ({ orgId,
      fetchTasks();
 
      return () => { isMounted = false; };
-   }, [orgId, userId, setMyTasks]);
+   }, [tenantId, userId, setMyTasks]);
 
    // Clustering Lógica Ultra-Rápida con Estado Optimista (<100ms)
    const clusteredTasks = useMemo(() => {

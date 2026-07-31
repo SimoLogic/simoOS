@@ -40,7 +40,7 @@ export interface Frequency {
 // REGLA DE ORO #1: isProtected=true → NUNCA DELETE, NUNCA UI de borrado
 export interface PmoTask {
     id: string;
-    orgId: string;            // Multi-tenant — SIEMPRE presente
+    tenantId: string;            // Multi-tenant — SIEMPRE presente
     boardId: string;
     groupId: string;
     title: string;
@@ -127,7 +127,7 @@ export interface PmoGroup {
 // ─── BOARD ─────────────────────────────────────────────────────────
 export interface PmoBoard {
     id: string;
-    orgId: string;
+    tenantId: string;
     workspaceId: string;
     title: string;
     description?: string;
@@ -183,7 +183,7 @@ export type PmoFieldType =
 // ─── EVENTS & CONNECTIVITY ────────────────────────────────────────
 export interface PmoEvent {
     id: string;
-    orgId: string;
+    tenantId: string;
     title: string;
     description?: string;
     startDateTime: string;    // ISO string
@@ -200,7 +200,7 @@ export interface PmoEvent {
 
 export interface UserIntegration {
     id: string;
-    orgId: string;
+    tenantId: string;
     userId: string;
     provider: 'salesforce' | 'outlook' | 'zoom';
     providerUserId: string;
@@ -210,7 +210,7 @@ export interface UserIntegration {
 
 export interface IntegrationToken {
     id: string;
-    orgId: string;
+    tenantId: string;
     userId: string;
     provider: 'salesforce' | 'outlook' | 'zoom';
     accessToken: string;
@@ -224,7 +224,7 @@ export interface IntegrationToken {
 // ─── WORKSPACE ─────────────────────────────────────────────────────
 export interface PmoWorkspace {
     id: string;
-    orgId: string;
+    tenantId: string;
     name: string;
     boards: PmoBoard[];
     createdAt: string;

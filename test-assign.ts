@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 async function runTest() {
   console.log("Setting up test...");
   
-  const orgId = "T-001";
+  const tenantId = "T-001";
   const employeeEid = "E-001";
   const supportRole = "Supervisor";
 
@@ -16,7 +16,7 @@ async function runTest() {
   const pbId = uuidv4();
   await supabase.from("bp_playbooks").insert({
     id: pbId,
-    org_id: orgId,
+    tenant_id: tenantId,
     name: "Autotest Playbook " + pbId.substring(0, 5),
     status: "PUBLISHED",
     type: "CORE",
@@ -29,7 +29,7 @@ async function runTest() {
     {
       id: uuidv4(),
       playbook_id: pbId,
-      org_id: orgId,
+      tenant_id: tenantId,
       position: 1,
       step_num: "1",
       name: "Step 1 (Daily x3, timeline 0)",
@@ -40,7 +40,7 @@ async function runTest() {
     {
       id: uuidv4(),
       playbook_id: pbId,
-      org_id: orgId,
+      tenant_id: tenantId,
       position: 2,
       step_num: "2",
       name: "Step 2 (Weekly x2, timeline 2, with blocking support)",
@@ -61,7 +61,7 @@ async function runTest() {
       playbookId: pbId,
       employeeEids: [employeeEid],
       startDate: new Date().toISOString(),
-      orgId,
+      tenantId,
       assignedByEid: "SYS-TEST-001"
     });
     console.log("Assignment Result:", result);

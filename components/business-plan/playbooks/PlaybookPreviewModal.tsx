@@ -17,14 +17,14 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const { currentTenant } = useTenant();
-  const orgId = currentTenant?.tenant_id ?? '';
+  const tenantId = currentTenant?.tenant_id ?? '';
 
   if (!playbook) return null;
 
   const handleDeactivate = async () => {
     setIsDeactivating(true);
     try {
-      await deactivatePlaybookAction(orgId, playbook.id);
+      await deactivatePlaybookAction(tenantId, playbook.id);
       onRefresh?.();
       onClose();
     } catch {
@@ -56,7 +56,7 @@ export const PlaybookPreviewModal: React.FC<PlaybookPreviewModalProps> = ({ play
           <PlaybookAssignmentPanel
             mode="playbook-first"
             playbook={playbook}
-            orgId={orgId}
+            tenantId={tenantId}
             onClose={() => setShowAssignPanel(false)}
           />
         ) : (

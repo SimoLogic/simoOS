@@ -8,7 +8,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 
 export interface PmoActivityEntry {
   id:        string;
-  orgId:     string;
+  tenantId:     string;
   taskId:    string;
   userId:    string;
   action:    string;  // e.g. "field_change", "status_change", "assignee_change", "created", "deleted"
@@ -19,7 +19,7 @@ export interface PmoActivityEntry {
 }
 
 export interface LogActivityInput {
-  orgId:      string;
+  tenantId:      string;
   taskId:     string;
   userId:     string;
   action:     string;
@@ -33,7 +33,7 @@ export interface LogActivityInput {
 function mapActivityFromDb(row: Record<string, unknown>): PmoActivityEntry {
   return {
     id:        String(row.id),
-    orgId:     String(row.org_id),
+    tenantId:     String(row.tenant_id),
     taskId:    String(row.task_id),
     userId:    String(row.user_id),
     action:    String(row.action),
@@ -48,7 +48,7 @@ function mapActivityFromDb(row: Record<string, unknown>): PmoActivityEntry {
 
 export async function getActivityService(
   taskId: string,
-  orgId:  string,
+  tenantId:  string,
   limit = 50
 ): Promise<PmoActivityEntry[]> {
   const db = getPmoDB();
@@ -56,7 +56,7 @@ export async function getActivityService(
     .from("pmo_item_activity")
     .select("*")
     .eq("task_id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -69,7 +69,7 @@ export async function logActivityService(input: LogActivityInput): Promise<PmoAc
   const { data, error } = await db
     .from("pmo_item_activity")
     .insert({
-      org_id:     input.orgId,
+      tenant_id:     input.tenantId,
       task_id:    input.taskId,
       user_id:    input.userId,
       action:     input.action,
@@ -89,7 +89,7 @@ export async function logActivityService(input: LogActivityInput): Promise<PmoAc
  * Called by update actions to provide audit trail.
  */
 export async function logFieldChangeService(
-  orgId:     string,
+  tenantId:     string,
   taskId:    string,
   userId:    string,
   fieldName: string,
@@ -97,7 +97,7 @@ export async function logFieldChangeService(
   newValue:  unknown
 ): Promise<PmoActivityEntry> {
   return logActivityService({
-    orgId,
+    tenantId,
     taskId,
     userId,
     action:    "field_change",

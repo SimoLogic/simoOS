@@ -12,7 +12,7 @@ import { getPmoDB } from "@/lib/pmo/pmo-db";
 
 export interface CompletedTaskPayload {
   taskId:               string;
-  orgId:                string;
+  tenantId:                string;
   sourcePlaybookId:     string;
   sourcePlaybookTaskId: string;
   occurrenceIndex:      number | null;
@@ -52,7 +52,7 @@ export async function sendTaskCompletedWebhook(
   const event = {
     event:                "task.completed",
     taskId:               task.taskId,
-    orgId:                task.orgId,
+    tenantId:                task.tenantId,
     sourcePlaybookId:     task.sourcePlaybookId,
     sourcePlaybookTaskId: task.sourcePlaybookTaskId,
     occurrenceIndex:      task.occurrenceIndex,
@@ -97,7 +97,7 @@ export async function sendTaskCompletedWebhook(
   try {
     const db = getPmoDB();
     await db.from("pmo_sync_events").insert({
-      org_id:           task.orgId,
+      tenant_id:           task.tenantId,
       idempotency_key:  idempotencyKey,
       event_type:       "webhook_outgoing",
       status:           result.sent ? "completed" : "failed",

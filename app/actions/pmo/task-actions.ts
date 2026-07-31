@@ -26,7 +26,7 @@ import { AutomationService } from "@/lib/services/pmo/automation.service";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
-const OrgIdSchema = z.string().min(1, "orgId is required");
+const OrgIdSchema = z.string().min(1, "tenantId is required");
 
 const TaskStatusEnum = z.enum([
   "not_started", "in_progress", "done", "stuck", "pending_review", "blocked"
@@ -89,7 +89,7 @@ export async function getTasksAction(
   if (!boardId?.trim()) return [];
   try {
     const session = await getRequiredSession();
-    return await getTasksService(boardId, session.orgId, groupId);
+    return await getTasksService(boardId, session.tenantId, groupId);
   } catch (err: unknown) {
     console.error("[PMO Action] getTasks:", err);
     return [];
@@ -101,7 +101,7 @@ export async function getTaskAction(
 ): Promise<ActionResult<PmoTask>> {
   try {
     const session = await getRequiredSession();
-    const task = await getTaskByIdService(taskId, session.orgId);
+    const task = await getTaskByIdService(taskId, session.tenantId);
     if (!task) return { success: false, error: "Task not found" };
     return { success: true, data: task };
   } catch (err: unknown) {
@@ -115,7 +115,7 @@ export async function searchTasksAction(
   if (!query?.trim()) return [];
   try {
     const session = await getRequiredSession();
-    return await searchTasksService(query, session.orgId, 10);
+    return await searchTasksService(query, session.tenantId, 10);
   } catch (err: unknown) {
     console.error("[PMO Action] searchTasks:", err);
     return [];
@@ -133,7 +133,7 @@ export async function createTaskAction(
       ...validated,
       title:       sanitizeText(validated.title),
       description: sanitizeText(validated.description),
-      orgId:       session.orgId,
+      tenantId:       session.tenantId,
       status:      validated.status as TaskStatus,
       priority:    validated.priority as TaskPriority | undefined,
     });
@@ -142,7 +142,7 @@ export async function createTaskAction(
     if (validated.linkedLeadId || validated.linkedOpportunityId) {
       await enqueueSfSync({
         type: "TASK_CREATE",
-        orgId: session.orgId,
+        tenantId: session.tenantId,
         userId: session.userId,
         pmoTaskId: task.id,
       });
@@ -165,7 +165,7 @@ export async function updateTaskAction(
     const validated = UpdateTaskSchema.parse(input);
     const { taskId, ...fields } = validated;
     // ⚡ XSS Gap Closure: sanitize user-supplied text before DB write
-    const task = await updateTaskService(taskId, session.orgId, {
+    const task = await updateTaskService(taskId, session.tenantId, {
       ...fields,
       title:       fields.title       ? sanitizeText(fields.title)       : undefined,
       description: fields.description ? sanitizeText(fields.description) : undefined,
@@ -178,7 +178,7 @@ export async function updateTaskAction(
       if (fields.status === "done" && task.isProtected) {
         await enqueueSfSync({
           type: "TASK_COMPLETE",
-          orgId: session.orgId,
+          tenantId: session.tenantId,
           userId: session.userId,
           pmoTaskId: task.id,
           sfTaskId: task.externalId,
@@ -186,7 +186,7 @@ export async function updateTaskAction(
       } else if (fields.status || fields.title || fields.priority) {
         await enqueueSfSync({
           type: "TASK_UPDATE",
-          orgId: session.orgId,
+          tenantId: session.tenantId,
           userId: session.userId,
           pmoTaskId: task.id,
           sfTaskId: task.externalId,
@@ -202,7 +202,7 @@ export async function updateTaskAction(
 
     // ── PMO-S14: Trigger Automations ──
     if (task.boardId) {
-      AutomationService.processAutomations(task.id, session.orgId, task.boardId, fields as any, forceDepth);
+      AutomationService.processAutomations(task.id, session.tenantId, task.boardId, fields as any, forceDepth);
     }
 
     return { success: true, data: task };
@@ -245,10 +245,10 @@ export async function updateTaskFieldAction(
     const fieldKey = updateMap[validated.fieldType];
     if (!fieldKey) {
       // Campo custom → guardar en customFieldValues
-      const task = await getTaskByIdService(validated.taskId, session.orgId);
+      const task = await getTaskByIdService(validated.taskId, session.tenantId);
       if (!task) return { success: false, error: "Task not found" };
 
-      const updatedTask = await updateTaskService(validated.taskId, session.orgId, {
+      const updatedTask = await updateTaskService(validated.taskId, session.tenantId, {
         customFieldValues: {
           ...task.customFieldValues,
           [validated.fieldType]: validated.value,
@@ -256,18 +256,18 @@ export async function updateTaskFieldAction(
       }, session.userId);
       // ── PMO-S14: Trigger Automations ──
       if (updatedTask.boardId) {
-        AutomationService.processAutomations(updatedTask.id, session.orgId, updatedTask.boardId, { [validated.fieldType]: validated.value } as any, forceDepth);
+        AutomationService.processAutomations(updatedTask.id, session.tenantId, updatedTask.boardId, { [validated.fieldType]: validated.value } as any, forceDepth);
       }
       return { success: true, data: updatedTask };
     }
 
-    const updatedTask = await updateTaskService(validated.taskId, session.orgId, {
+    const updatedTask = await updateTaskService(validated.taskId, session.tenantId, {
       [fieldKey]: validated.value,
     } as Parameters<typeof updateTaskService>[2], session.userId);
 
     // ── PMO-S14: Trigger Automations ──
     if (updatedTask.boardId) {
-      AutomationService.processAutomations(updatedTask.id, session.orgId, updatedTask.boardId, { [fieldKey]: validated.value } as any, forceDepth);
+      AutomationService.processAutomations(updatedTask.id, session.tenantId, updatedTask.boardId, { [fieldKey]: validated.value } as any, forceDepth);
     }
 
     return { success: true, data: updatedTask };
@@ -286,7 +286,7 @@ export async function moveTaskAction(
     const validated = MoveTaskSchema.parse(input);
     const task = await moveTaskService({
       ...validated,
-      orgId: session.orgId
+      tenantId: session.tenantId
     });
     return { success: true, data: task };
   } catch (err: unknown) {
@@ -309,7 +309,7 @@ export async function deleteTaskAction(
     const validated = DeleteTaskSchema.parse(input);
     const result = await deleteTaskService({
       taskId: validated.taskId,
-      orgId:  session.orgId,
+      tenantId:  session.tenantId,
       userId: session.userId,
       vector: "server_action",
     });
@@ -338,7 +338,7 @@ export async function batchDeleteTasksAction(
   }
   try {
     const session = await getRequiredSession();
-    const result = await batchDeleteTasksService(taskIds, session.orgId, session.userId);
+    const result = await batchDeleteTasksService(taskIds, session.tenantId, session.userId);
     return { success: true, data: result };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

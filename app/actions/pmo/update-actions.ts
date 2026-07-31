@@ -1,7 +1,7 @@
 "use server";
 
 // update-actions.ts — Server Actions para pmo_item_updates (Side Peek comments/updates)
-// Multi-tenant: orgId obligatorio. Reactions con emoji JSONB toggle.
+// Multi-tenant: tenantId obligatorio. Reactions con emoji JSONB toggle.
 
 import { z } from "zod";
 import {
@@ -19,7 +19,7 @@ type ActionResult<T> =
 
 const AddUpdateSchema = z.object({
   taskId:   z.string().min(1),
-  orgId:    z.string().min(1),
+  tenantId:    z.string().min(1),
   userId:   z.string().min(1),
   body:     z.string().min(1, "Update body cannot be empty").max(10000).trim(),
   mentions: z.array(z.string()).optional(),
@@ -29,11 +29,11 @@ const AddUpdateSchema = z.object({
 
 export async function getUpdatesAction(
   taskId: string,
-  orgId:  string
+  tenantId:  string
 ): Promise<PmoItemUpdate[]> {
-  if (!taskId?.trim() || !orgId?.trim()) return [];
+  if (!taskId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getUpdatesService(taskId, orgId);
+    return await getUpdatesService(taskId, tenantId);
   } catch (err: unknown) {
     console.error("[PMO] getUpdates:", err);
     return [];
@@ -46,7 +46,7 @@ export async function addUpdateAction(
   try {
     const v = AddUpdateSchema.parse(input);
     const update = await createUpdateService({
-      orgId:    v.orgId,
+      tenantId:    v.tenantId,
       taskId:   v.taskId,
       userId:   v.userId,
       body:     v.body,
@@ -55,7 +55,7 @@ export async function addUpdateAction(
 
     // Log activity
     await logActivityService({
-      orgId:    v.orgId,
+      tenantId:    v.tenantId,
       taskId:   v.taskId,
       userId:   v.userId,
       action:   "update_posted",
@@ -72,14 +72,14 @@ export async function addUpdateAction(
 
 export async function deleteUpdateAction(
   updateId: string,
-  orgId:    string,
+  tenantId:    string,
   userId:   string
 ): Promise<ActionResult<void>> {
-  if (!updateId?.trim() || !orgId?.trim() || !userId?.trim()) {
-    return { success: false, error: "updateId, orgId, and userId are required" };
+  if (!updateId?.trim() || !tenantId?.trim() || !userId?.trim()) {
+    return { success: false, error: "updateId, tenantId, and userId are required" };
   }
   try {
-    await deleteUpdateService(updateId, orgId, userId);
+    await deleteUpdateService(updateId, tenantId, userId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -88,15 +88,15 @@ export async function deleteUpdateAction(
 
 export async function toggleReactionAction(
   updateId: string,
-  orgId:    string,
+  tenantId:    string,
   emoji:    string,
   userId:   string
 ): Promise<ActionResult<PmoItemUpdate>> {
-  if (!updateId || !orgId || !userId || !emoji) {
+  if (!updateId || !tenantId || !userId || !emoji) {
     return { success: false, error: "All parameters are required" };
   }
   try {
-    const updated = await addReactionService(updateId, orgId, emoji, userId);
+    const updated = await addReactionService(updateId, tenantId, emoji, userId);
     return { success: true, data: updated };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

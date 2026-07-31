@@ -14,7 +14,7 @@ export async function signAccessToken(session: PmoSession): Promise<string> {
 }
 
 export async function signRefreshToken(session: PmoSession): Promise<string> {
-  return await new SignJWT({ userId: session.userId, orgId: session.orgId })
+  return await new SignJWT({ userId: session.userId, tenantId: session.tenantId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")

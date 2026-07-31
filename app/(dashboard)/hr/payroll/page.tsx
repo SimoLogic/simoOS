@@ -109,7 +109,7 @@ function PeriodRow({ period }: { period: PeriodSummary }) {
 
     const handleLock = useCallback(() => {
         startTransition(async () => {
-            // In production: call lockPayrollPeriodAction(orgId, period.id, userId)
+            // In production: call lockPayrollPeriodAction(tenantId, period.id, userId)
             await new Promise((r) => setTimeout(r, 800));
             alert(`[Demo] Payroll ${period.id} locked. In production this calls lockPayrollPeriodAction().`);
         });
@@ -234,7 +234,7 @@ export default function PayrollPage() {
                 {/* Info footer */}
                 <div className="flex items-center gap-2 text-xs text-slate-400">
                     <Users className="w-3.5 h-3.5" />
-                    Payroll data persisted via <code className="font-mono text-cobalt-blue">hr_payroll_periods</code> table · Queried via Prisma with <code className="font-mono text-cobalt-blue">orgId</code> filter
+                    Payroll data persisted via <code className="font-mono text-cobalt-blue">hr_payroll_periods</code> table · Queried via Prisma with <code className="font-mono text-cobalt-blue">tenantId</code> filter
                     <ChevronRight className="w-3 h-3" />
                     Locked rows trigger DB <code className="font-mono text-cobalt-blue">prevent_locked_update</code> Supabase trigger
                 </div>

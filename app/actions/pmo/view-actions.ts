@@ -2,7 +2,7 @@
 
 // view-actions.ts — Server Actions para pmo_views (Vistas guardadas por tablero)
 // Permite guardar/recuperar configuraciones de vista personalizadas.
-// Multi-tenant: orgId obligatorio.
+// Multi-tenant: tenantId obligatorio.
 
 import { z } from "zod";
 import {
@@ -24,7 +24,7 @@ const ViewTypeEnum = z.enum([
 
 const CreateViewSchema = z.object({
   boardId:   z.string().min(1),
-  orgId:     z.string().min(1),
+  tenantId:     z.string().min(1),
   name:      z.string().min(1, "View name is required").max(100).trim(),
   viewType:  ViewTypeEnum,
   config:    z.record(z.string(), z.unknown()).optional(),
@@ -34,7 +34,7 @@ const CreateViewSchema = z.object({
 const UpdateViewSchema = z.object({
   viewId:    z.string().min(1),
   boardId:   z.string().min(1),
-  orgId:     z.string().min(1),
+  tenantId:     z.string().min(1),
   name:      z.string().min(1).max(100).trim().optional(),
   config:    z.record(z.string(), z.unknown()).optional(),
   isDefault: z.boolean().optional(),
@@ -44,11 +44,11 @@ const UpdateViewSchema = z.object({
 
 export async function getViewsAction(
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<PmoSavedView[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+  if (!boardId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getViewsService(boardId, orgId);
+    return await getViewsService(boardId, tenantId);
   } catch (err: unknown) {
     console.error("[PMO] getViews:", err);
     return [];
@@ -61,7 +61,7 @@ export async function createViewAction(
   try {
     const v = CreateViewSchema.parse(input);
     const view = await createViewService({
-      orgId:     v.orgId,
+      tenantId:     v.tenantId,
       boardId:   v.boardId,
       name:      v.name,
       viewType:  v.viewType as SavedViewType,
@@ -81,7 +81,7 @@ export async function updateViewAction(
 ): Promise<ActionResult<PmoSavedView>> {
   try {
     const v = UpdateViewSchema.parse(input);
-    const view = await updateViewService(v.viewId, v.boardId, v.orgId, {
+    const view = await updateViewService(v.viewId, v.boardId, v.tenantId, {
       name:      v.name,
       config:    v.config,
       isDefault: v.isDefault,
@@ -97,13 +97,13 @@ export async function updateViewAction(
 export async function deleteViewAction(
   viewId:  string,
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<ActionResult<void>> {
-  if (!viewId?.trim() || !boardId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "viewId, boardId, and orgId are required" };
+  if (!viewId?.trim() || !boardId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "viewId, boardId, and tenantId are required" };
   }
   try {
-    await deleteViewService(viewId, boardId, orgId);
+    await deleteViewService(viewId, boardId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

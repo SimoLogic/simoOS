@@ -9,7 +9,7 @@ export type SavedViewType = "grid" | "kanban" | "gantt" | "calendar" | "dashboar
 
 export interface PmoSavedView {
   id:        string;
-  orgId:     string;
+  tenantId:     string;
   boardId:   string;
   name:      string;
   viewType:  SavedViewType;
@@ -21,7 +21,7 @@ export interface PmoSavedView {
 }
 
 export interface CreateViewInput {
-  orgId:     string;
+  tenantId:     string;
   boardId:   string;
   name:      string;
   viewType:  SavedViewType;
@@ -40,7 +40,7 @@ export interface UpdateViewInput {
 function mapViewFromDb(row: Record<string, unknown>): PmoSavedView {
   return {
     id:        String(row.id),
-    orgId:     String(row.org_id),
+    tenantId:     String(row.tenant_id),
     boardId:   String(row.board_id),
     name:      String(row.name),
     viewType:  String(row.view_type) as SavedViewType,
@@ -54,13 +54,13 @@ function mapViewFromDb(row: Record<string, unknown>): PmoSavedView {
 
 // ─── SERVICES ─────────────────────────────────────────────────────────────────
 
-export async function getViewsService(boardId: string, orgId: string): Promise<PmoSavedView[]> {
+export async function getViewsService(boardId: string, tenantId: string): Promise<PmoSavedView[]> {
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_views")
     .select("*")
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   throwIfDbError(error, "getViews");
@@ -75,7 +75,7 @@ export async function createViewService(input: CreateViewInput): Promise<PmoSave
     .from("pmo_views")
     .select("position")
     .eq("board_id", input.boardId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .order("position", { ascending: false })
     .limit(1);
 
@@ -84,7 +84,7 @@ export async function createViewService(input: CreateViewInput): Promise<PmoSave
   const { data, error } = await db
     .from("pmo_views")
     .insert({
-      org_id:     input.orgId,
+      tenant_id:     input.tenantId,
       board_id:   input.boardId,
       name:       input.name.trim(),
       view_type:  input.viewType,
@@ -103,7 +103,7 @@ export async function createViewService(input: CreateViewInput): Promise<PmoSave
 export async function updateViewService(
   viewId:  string,
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   input:   UpdateViewInput
 ): Promise<PmoSavedView> {
   const db = getPmoDB();
@@ -118,7 +118,7 @@ export async function updateViewService(
         .from("pmo_views")
         .update({ is_default: false })
         .eq("board_id", boardId)
-        .eq("org_id", orgId);
+        .eq("tenant_id", tenantId);
     }
     patch.is_default = input.isDefault;
   }
@@ -128,7 +128,7 @@ export async function updateViewService(
     .update(patch)
     .eq("id", viewId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -139,7 +139,7 @@ export async function updateViewService(
 export async function deleteViewService(
   viewId:  string,
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<void> {
   const db = getPmoDB();
   const { error } = await db
@@ -147,7 +147,7 @@ export async function deleteViewService(
     .delete()
     .eq("id", viewId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteView");
 }

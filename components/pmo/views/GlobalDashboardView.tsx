@@ -11,7 +11,7 @@ export function GlobalDashboardView({ panelId }: { panelId: string }) {
 
   return (
     <div className="w-full h-full flex flex-col bg-[#F7F8FA] overflow-y-auto absolute inset-0">
-      <DashboardEngine panelId={panelId} orgId={tenant_id} />
+      <DashboardEngine panelId={panelId} tenantId={tenant_id} />
     </div>
   );
 }

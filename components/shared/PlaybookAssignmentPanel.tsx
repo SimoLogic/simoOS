@@ -48,7 +48,7 @@ export interface PlaybookAssignmentPanelProps {
   mode: "playbook-first" | "employee-first";
   playbook?: Playbook;
   onClose: () => void;
-  orgId: string;
+  tenantId: string;
 }
 
 // ─── Workday Helper ────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
   mode,
   playbook: initialPlaybook,
   onClose,
-  orgId,
+  tenantId,
 }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedPlaybook, setSelectedPlaybook] = useState<Playbook | null>(initialPlaybook ?? null);
@@ -95,20 +95,20 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
 
   // ── Load eligible employees when playbook is selected ──
   useEffect(() => {
-    if (!selectedPlaybook || !orgId) return;
+    if (!selectedPlaybook || !tenantId) return;
     setLoadingEmployees(true);
     setRows([{ id: uid(), selectedEids: [], startDate: "", search: "" }]);
-    getEligibleEmployeesForPlaybookAction(selectedPlaybook.id, orgId)
+    getEligibleEmployeesForPlaybookAction(selectedPlaybook.id, tenantId)
       .then((data) => setEmployees(data as Employee[]))
       .finally(() => setLoadingEmployees(false));
-  }, [selectedPlaybook, orgId]);
+  }, [selectedPlaybook, tenantId]);
 
   // ── Load playbooks for employee-first mode ──
   useEffect(() => {
-    if (mode !== "employee-first" || !orgId) return;
-    getPublishedPlaybooksAction(orgId)
+    if (mode !== "employee-first" || !tenantId) return;
+    getPublishedPlaybooksAction(tenantId)
       .then((data) => setAvailablePlaybooks(data as Playbook[]));
-  }, [mode, orgId]);
+  }, [mode, tenantId]);
 
   // ── Group employees by role title ──
   const employeesByRole = useMemo(() => {
@@ -181,7 +181,7 @@ export const PlaybookAssignmentPanel: React.FC<PlaybookAssignmentPanelProps> = (
           playbookId: selectedPlaybook.id,
           employeeEids: row.selectedEids,
           startDate: startDateObj,
-          orgId,
+          tenantId,
           assignedByEid: "SYS-001",
         });
         if (result.success) total += result.tasksCreated || 0;

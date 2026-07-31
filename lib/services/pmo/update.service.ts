@@ -7,7 +7,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 
 export interface PmoItemUpdate {
   id:        string;
-  orgId:     string;
+  tenantId:     string;
   taskId:    string;
   userId:    string;
   body:      string;
@@ -18,7 +18,7 @@ export interface PmoItemUpdate {
 }
 
 export interface CreateUpdateInput {
-  orgId:    string;
+  tenantId:    string;
   taskId:   string;
   userId:   string;
   body:     string;
@@ -30,7 +30,7 @@ export interface CreateUpdateInput {
 function mapUpdateFromDb(row: Record<string, unknown>): PmoItemUpdate {
   return {
     id:        String(row.id),
-    orgId:     String(row.org_id),
+    tenantId:     String(row.tenant_id),
     taskId:    String(row.task_id),
     userId:    String(row.user_id),
     body:      String(row.body),
@@ -43,13 +43,13 @@ function mapUpdateFromDb(row: Record<string, unknown>): PmoItemUpdate {
 
 // ─── SERVICES ─────────────────────────────────────────────────────────────────
 
-export async function getUpdatesService(taskId: string, orgId: string): Promise<PmoItemUpdate[]> {
+export async function getUpdatesService(taskId: string, tenantId: string): Promise<PmoItemUpdate[]> {
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_item_updates")
     .select("*")
     .eq("task_id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -62,7 +62,7 @@ export async function createUpdateService(input: CreateUpdateInput): Promise<Pmo
   const { data, error } = await db
     .from("pmo_item_updates")
     .insert({
-      org_id:   input.orgId,
+      tenant_id:   input.tenantId,
       task_id:  input.taskId,
       user_id:  input.userId,
       body:     input.body.trim(),
@@ -77,7 +77,7 @@ export async function createUpdateService(input: CreateUpdateInput): Promise<Pmo
 
 export async function deleteUpdateService(
   updateId: string,
-  orgId:    string,
+  tenantId:    string,
   userId:   string
 ): Promise<void> {
   const db = getPmoDB();
@@ -86,7 +86,7 @@ export async function deleteUpdateService(
     .from("pmo_item_updates")
     .delete()
     .eq("id", updateId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("user_id", userId);
 
   throwIfDbError(error, "deleteUpdate");
@@ -94,7 +94,7 @@ export async function deleteUpdateService(
 
 export async function addReactionService(
   updateId: string,
-  orgId:    string,
+  tenantId:    string,
   emoji:    string,
   userId:   string
 ): Promise<PmoItemUpdate> {
@@ -105,7 +105,7 @@ export async function addReactionService(
     .from("pmo_item_updates")
     .select("reactions")
     .eq("id", updateId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   const reactions = (existing as { reactions?: Record<string, string[]> } | null)
@@ -124,7 +124,7 @@ export async function addReactionService(
     .from("pmo_item_updates")
     .update({ reactions })
     .eq("id", updateId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 

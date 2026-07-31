@@ -28,7 +28,7 @@ interface ExternalRoleSettingsModalProps {
 
 export const ExternalRoleSettingsModal: React.FC<ExternalRoleSettingsModalProps> = ({ onClose, onUpdate }) => {
   const { currentTenant } = useTenant();
-  const orgId = currentTenant?.tenant_id ?? '';
+  const tenantId = currentTenant?.tenant_id ?? '';
 
   const [roles, setRoles] = useState<ExternalRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,9 +51,9 @@ export const ExternalRoleSettingsModal: React.FC<ExternalRoleSettingsModalProps>
   ];
 
   const fetchRoles = async () => {
-    if (!orgId) return;
+    if (!tenantId) return;
     setLoading(true);
-    const data = await getActiveExternalRolesAction(orgId);
+    const data = await getActiveExternalRolesAction(tenantId);
     setRoles(data as ExternalRole[]);
     setLoading(false);
   };
@@ -61,11 +61,11 @@ export const ExternalRoleSettingsModal: React.FC<ExternalRoleSettingsModalProps>
   useEffect(() => {
     fetchRoles();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId]);
+  }, [tenantId]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orgId) return;
+    if (!tenantId) return;
     if (!name.trim()) {
       setErrorText('Name is required');
       return;
@@ -83,7 +83,7 @@ export const ExternalRoleSettingsModal: React.FC<ExternalRoleSettingsModalProps>
       notes: notes.trim(),
     };
 
-    const res = await createExternalRoleAction(orgId, payload);
+    const res = await createExternalRoleAction(tenantId, payload);
     setIsSubmitting(false);
 
     if (!res.success) {
@@ -103,8 +103,8 @@ export const ExternalRoleSettingsModal: React.FC<ExternalRoleSettingsModalProps>
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
-    if (!orgId) return;
-    const res = await toggleExternalRoleStatusAction(orgId, id, currentStatus);
+    if (!tenantId) return;
+    const res = await toggleExternalRoleStatusAction(tenantId, id, currentStatus);
     if (!res.success) {
       alert(res.error || 'Failed to toggle status');
     } else {

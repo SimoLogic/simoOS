@@ -274,7 +274,7 @@ export const SidePeek: React.FC<SidePeekProps> = ({
           ID: {task.id}
         </div>
         <div className="text-[10px] text-[var(--vibe-text-muted)] uppercase font-bold">
-          {task.orgId}
+          {task.tenantId}
         </div>
       </div>
     </div>

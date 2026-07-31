@@ -47,7 +47,7 @@ export interface AssignPlaybookInput {
   playbookId: string;
   employeeEids: string[];
   startDate: Date | string;
-  orgId: string;
+  tenantId: string;
   assignedByEid: string;
 }
 
@@ -62,9 +62,9 @@ export interface AssignPlaybookInput {
  * 5. Envía notificaciones a los involucrados en simo_notifications.
  */
 export async function assignPlaybookAction(input: AssignPlaybookInput) {
-  const { playbookId, employeeEids, startDate, orgId, assignedByEid } = input;
+  const { playbookId, employeeEids, startDate, tenantId, assignedByEid } = input;
 
-  if (!playbookId || !employeeEids.length || !startDate || !orgId) {
+  if (!playbookId || !employeeEids.length || !startDate || !tenantId) {
     throw new Error("Missing required fields for Playbook Assignment");
   }
 
@@ -107,7 +107,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
     const { data: existingBoard } = await supabase
       .from("pmo_boards")
       .select("id")
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("name", boardName)
       .eq("type", "PERSONAL")
       .single();
@@ -119,7 +119,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
       const { data: newBoard, error: boardErr } = await supabase
         .from("pmo_boards")
         .insert({
-          org_id: orgId,
+          tenant_id: tenantId,
           name: boardName,
           type: "PERSONAL",
           is_active: true
@@ -139,7 +139,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
       .from("pmo_groups")
       .select("id")
       .eq("board_id", boardId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .ilike("title", `${playbook.name}%`)
       .limit(1)
       .single();
@@ -151,7 +151,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
         .from("pmo_groups")
         .insert({
           board_id: boardId,
-          org_id: orgId,
+          tenant_id: tenantId,
           title: groupTitle,
           color: "#6161FF",
           position: 0,
@@ -203,7 +203,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
         // Tarea Principal
         tasksToInsert.push({
           id: playbookTaskId,
-          org_id: orgId,
+          tenant_id: tenantId,
           board_id: boardId,
           group_id: groupId,
           task_type: "PLAYBOOK_TASK",
@@ -233,7 +233,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
           const { data: supportEmps } = await supabase
             .from("dim_employee")
             .select("eid")
-            .eq("tenant_id", orgId)
+            .eq("tenant_id", tenantId)
             .eq("status", "Active")
             .eq("role_title", step.requested_to)
             .limit(1);
@@ -246,7 +246,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
             // Inyectar en el array la SUPPORT_REQUEST
             tasksToInsert.push({
               id: supportTaskId,
-              org_id: orgId,
+              tenant_id: tenantId,
               board_id: boardId,
               group_id: groupId,
               task_type: "SUPPORT_REQUEST",
@@ -272,7 +272,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
 
             // Notification to Support Team
             notificationsToInsert.push({
-              org_id: orgId,
+              tenant_id: tenantId,
               user_id: supportAssigneeEid, // EID
               type: "APPROVAL",
               title: "You have a pending support requisition",
@@ -287,7 +287,7 @@ export async function assignPlaybookAction(input: AssignPlaybookInput) {
 
     // Notification to assignee
     notificationsToInsert.push({
-      org_id: orgId,
+      tenant_id: tenantId,
       user_id: eid, // EID
       type: "TASK",
       title: `Playbook "${playbook.name}" has been assigned to you`,

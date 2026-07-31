@@ -8,7 +8,7 @@ import { searchTasksAction } from "@/app/actions/pmo/task-actions";
 import { PmoTask } from "@/types/pmo.types";
 import { usePmoStore } from "@/lib/stores/pmo.store";
 
-export function CommandPalette({ orgId }: { orgId: string }) {
+export function CommandPalette({ tenantId }: { tenantId: string }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timer);
-  }, [query, orgId]);
+  }, [query, tenantId]);
 
   return (
     <AnimatePresence>

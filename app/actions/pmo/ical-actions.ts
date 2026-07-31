@@ -35,7 +35,7 @@ export async function getOrCreateIcalToken(): Promise<IcalTokenResult> {
     .from("pmo_ical_feed_tokens")
     .select("*")
     .eq("user_id", session.userId)
-    .eq("org_id", session.orgId)
+    .eq("tenant_id", session.tenantId)
     .eq("is_active", true)
     .single();
 
@@ -48,7 +48,7 @@ export async function getOrCreateIcalToken(): Promise<IcalTokenResult> {
     .from("pmo_ical_feed_tokens")
     .insert({
       user_id: session.userId,
-      org_id: session.orgId,
+      tenant_id: session.tenantId,
     })
     .select("*")
     .single();
@@ -70,14 +70,14 @@ export async function regenerateIcalToken(): Promise<IcalTokenResult> {
     .from("pmo_ical_feed_tokens")
     .update({ is_active: false })
     .eq("user_id", session.userId)
-    .eq("org_id", session.orgId);
+    .eq("tenant_id", session.tenantId);
 
   // Create fresh token
   const { data: newToken, error } = await db
     .from("pmo_ical_feed_tokens")
     .insert({
       user_id: session.userId,
-      org_id: session.orgId,
+      tenant_id: session.tenantId,
     })
     .select("*")
     .single();
@@ -97,7 +97,7 @@ export async function updateIcalFilters(filters: IcalFilters): Promise<void> {
     .from("pmo_ical_feed_tokens")
     .update({ filters })
     .eq("user_id", session.userId)
-    .eq("org_id", session.orgId)
+    .eq("tenant_id", session.tenantId)
     .eq("is_active", true);
 
   throwIfDbError(error, "updateIcalFilters");

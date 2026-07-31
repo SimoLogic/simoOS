@@ -67,7 +67,7 @@ interface AutomationsModalProps {
   isOpen:  boolean;
   onClose: () => void;
   boardId: string;
-  orgId:   string;
+  tenantId:   string;
 }
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ export const AutomationsModal: React.FC<AutomationsModalProps> = ({
   isOpen,
   onClose,
   boardId,
-  orgId,
+  tenantId,
 }) => {
   const [rules, setRules]             = useState<PmoAutomation[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -95,14 +95,14 @@ export const AutomationsModal: React.FC<AutomationsModalProps> = ({
   const loadRules = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAutomationsAction(boardId, orgId);
+      const data = await getAutomationsAction(boardId, tenantId);
       setRules(data);
     } catch (err) {
       console.error("[AutomationsModal] Load error:", err);
     } finally {
       setLoading(false);
     }
-  }, [boardId, orgId]);
+  }, [boardId, tenantId]);
 
   useEffect(() => {
     if (isOpen) loadRules();
@@ -114,7 +114,7 @@ export const AutomationsModal: React.FC<AutomationsModalProps> = ({
     setCreating(true);
     try {
       const res = await createAutomationAction({
-        orgId,
+        tenantId,
         boardId,
         name:          ruleName.trim(),
         triggerType:   triggerField === "status" ? "on_status_change" : "on_column_change",
@@ -147,7 +147,7 @@ export const AutomationsModal: React.FC<AutomationsModalProps> = ({
 
   // ── Toggle ──
   const handleToggle = async (rule: PmoAutomation) => {
-    const res = await toggleAutomationAction(rule.id, orgId, !rule.isActive);
+    const res = await toggleAutomationAction(rule.id, tenantId, !rule.isActive);
     if (res.success) {
       setRules(prev => prev.map(r => r.id === rule.id ? res.data : r));
     }
@@ -155,7 +155,7 @@ export const AutomationsModal: React.FC<AutomationsModalProps> = ({
 
   // ── Delete ──
   const handleDelete = async (ruleId: string) => {
-    const res = await deleteAutomationAction(ruleId, orgId);
+    const res = await deleteAutomationAction(ruleId, tenantId);
     if (res.success) {
       setRules(prev => prev.filter(r => r.id !== ruleId));
     }

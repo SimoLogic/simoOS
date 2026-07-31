@@ -6,7 +6,7 @@ async function runQueueTest() {
   const payload = {
     playbookId: "test-pb-async",
     assignmentId: "test-asn-async",
-    orgId: "test-org-1",
+    tenantId: "test-org-1",
     boardId: "test-brd-1",
     employeeId: "test-emp-1",
     startDate: "2026-03-11", // Miércoles

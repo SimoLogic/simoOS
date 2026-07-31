@@ -9,7 +9,7 @@ import { TaskStatus, TaskPriority } from "@/types/pmo.types";
  */
 export async function bulkUpdateTasksAction(
     taskIds: string[], 
-    orgId: string, 
+    tenantId: string, 
     userId: string, 
     updates: { status?: TaskStatus, priority?: TaskPriority, dueDate?: string }
 ) {
@@ -23,7 +23,7 @@ export async function bulkUpdateTasksAction(
             .from("pmo_tasks")
             .update(patch)
             .in("id", taskIds)
-            .eq("org_id", orgId)
+            .eq("tenant_id", tenantId)
             .select("id, status, title");
 
         throwIfDbError(error, "bulkUpdateTasks");
@@ -31,7 +31,7 @@ export async function bulkUpdateTasksAction(
         // Audit Logs for each task
         if (data && data.length > 0) {
             const logs = data.map(task => ({
-                org_id: orgId,
+                tenant_id: tenantId,
                 task_id: task.id,
                 user_id: userId,
                 action: "bulk_update",

@@ -152,7 +152,7 @@ export function decryptToken(stored: string, key?: string): string {
  * Uses UPSERT to handle both initial save and token refresh scenarios.
  */
 export async function saveIntegrationToken(
-  orgId: string,
+  tenantId: string,
   userId: string,
   provider: string,
   providerUserId: string,
@@ -167,8 +167,8 @@ export async function saveIntegrationToken(
   const { error: uiError } = await db
     .from("pmo_user_integrations")
     .upsert(
-      { org_id: orgId, user_id: userId, provider, provider_user_id: providerUserId },
-      { onConflict: "org_id, user_id, provider" }
+      { tenant_id: tenantId, user_id: userId, provider, provider_user_id: providerUserId },
+      { onConflict: "tenant_id, user_id, provider" }
     );
   if (uiError) throw new Error(`[TokenVault] UserIntegration upsert failed: ${uiError.message}`);
 
@@ -177,7 +177,7 @@ export async function saveIntegrationToken(
     .from("pmo_integration_tokens")
     .upsert(
       {
-        org_id:        orgId,
+        tenant_id:        tenantId,
         user_id:       userId,
         provider,
         access_token:  encryptedAccess,
@@ -187,7 +187,7 @@ export async function saveIntegrationToken(
         expires_at:    tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : null,
         metadata:      tokens.metadata ?? null,
       },
-      { onConflict: "org_id, user_id, provider" }
+      { onConflict: "tenant_id, user_id, provider" }
     );
   if (dtError) throw new Error(`[TokenVault] IntegrationToken upsert failed: ${dtError.message}`);
 }
@@ -198,7 +198,7 @@ export async function saveIntegrationToken(
  * Call this when the user disconnects a provider or a token is invalidated.
  */
 export async function revokeIntegrationToken(
-  orgId:    string,
+  tenantId:    string,
   userId:   string,
   provider: string
 ): Promise<void> {
@@ -207,7 +207,7 @@ export async function revokeIntegrationToken(
   const { error } = await db
     .from("pmo_integration_tokens")
     .update({ is_active: false })
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("user_id", userId)
     .eq("provider", provider);
 
@@ -223,7 +223,7 @@ export async function revokeIntegrationToken(
  * ⚠️ SERVER-SIDE ONLY — decrypted tokens must never be sent to the client.
  */
 export async function getIntegrationToken(
-  orgId: string,
+  tenantId: string,
   userId: string,
   provider: string
 ): Promise<TokenData | null> {
@@ -232,7 +232,7 @@ export async function getIntegrationToken(
   const { data, error } = await db
     .from("pmo_integration_tokens")
     .select("*")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("user_id", userId)
     .eq("provider", provider)
     .single();
@@ -257,10 +257,10 @@ const SF_TOKEN_URL = process.env.SALESFORCE_TOKEN_URL || "https://login.salesfor
  * Call this whenever an SF API responds with 401 INVALID_SESSION_ID.
  */
 export async function refreshSalesforceToken(
-  orgId: string,
+  tenantId: string,
   userId: string
 ): Promise<TokenData> {
-  const current = await getIntegrationToken(orgId, userId, "salesforce");
+  const current = await getIntegrationToken(tenantId, userId, "salesforce");
 
   if (!current?.refreshToken) {
     throw new Error("[TokenVault] No refresh token available — user must re-authenticate Salesforce");
@@ -305,7 +305,7 @@ export async function refreshSalesforceToken(
 
   // Persist the new access token back to the vault
   const providerUserId = ""; // We don't need to update this on refresh
-  await saveIntegrationToken(orgId, userId, "salesforce", providerUserId, refreshed);
+  await saveIntegrationToken(tenantId, userId, "salesforce", providerUserId, refreshed);
 
   return refreshed;
 }

@@ -48,7 +48,7 @@ export async function generateFeed(token: string): Promise<string> {
   let query = db
     .from("pmo_tasks")
     .select("id, title, description, status, priority, due_date, is_protected, source_playbook_id, created_at, updated_at")
-    .eq("org_id", feedToken.org_id);
+    .eq("tenant_id", feedToken.tenant_id);
 
   // Filter by assignee (the user who owns this feed)
   query = query.eq("assignee_id", feedToken.user_id);

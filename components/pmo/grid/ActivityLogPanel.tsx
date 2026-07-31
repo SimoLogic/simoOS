@@ -6,7 +6,7 @@ import { Loader2, Clock, CheckCircle2, Type } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
 
-export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: string }) {
+export function ActivityLogPanel({ tenantId, taskId }: { tenantId: string, taskId: string }) {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -14,7 +14,7 @@ export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: str
         let isMounted = true;
         async function fetchLogs() {
             setLoading(true);
-            const res = await getTaskActivityLogsAction(orgId, taskId);
+            const res = await getTaskActivityLogsAction(tenantId, taskId);
             if (isMounted) {
                 if (res.success && res.data) {
                     setLogs(res.data);
@@ -24,7 +24,7 @@ export function ActivityLogPanel({ orgId, taskId }: { orgId: string, taskId: str
         }
         fetchLogs();
         return () => { isMounted = false; };
-    }, [orgId, taskId]);
+    }, [tenantId, taskId]);
 
     if (loading) {
         return (

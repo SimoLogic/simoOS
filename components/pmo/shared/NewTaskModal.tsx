@@ -49,7 +49,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] 
 interface NewTaskModalProps {
   boardId: string;
   groupId: string;
-  orgId: string;
+  tenantId: string;
   isOpen: boolean;
   onClose: () => void;
   onTaskCreated?: () => void;
@@ -60,7 +60,7 @@ interface NewTaskModalProps {
 export const NewTaskModal: React.FC<NewTaskModalProps> = ({
   boardId,
   groupId,
-  orgId,
+  tenantId,
   isOpen,
   onClose,
   onTaskCreated,

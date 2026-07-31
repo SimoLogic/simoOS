@@ -94,7 +94,7 @@ export const MyPlanShell: React.FC = () => {
     const [planData, setPlanData]              = useState<MyPlanBoardResult | null>(null);
 
     const { tenant_id, user_ide } = useSessionStore();
-    const orgId            = tenant_id || "TNT-001";
+    const tenantId            = tenant_id || "TNT-001";
     const employeeEid      = user_ide || "SYS-001";
     const optimisticTasks  = usePmoStore(s => s.optimisticTasks);
 
@@ -102,7 +102,7 @@ export const MyPlanShell: React.FC = () => {
     const loadMyPlan = useCallback(async () => {
         setBoardLoading(true);
         try {
-            const result = await getMyPlanBoardAction(employeeEid, orgId);
+            const result = await getMyPlanBoardAction(employeeEid, tenantId);
             if (result.success && result.data) {
                 setPlanData(result.data);
                 setFullBoard(result.data.board);
@@ -115,7 +115,7 @@ export const MyPlanShell: React.FC = () => {
         } finally {
             setBoardLoading(false);
         }
-    }, [employeeEid, orgId]);
+    }, [employeeEid, tenantId]);
 
     useEffect(() => { loadMyPlan(); }, [loadMyPlan]);
 
@@ -137,11 +137,11 @@ export const MyPlanShell: React.FC = () => {
         if (fullBoard?.id === boardId) return;
 
         setBoardLoading(true);
-        getBoardAction(boardId, orgId)
+        getBoardAction(boardId, tenantId)
             .then(r => { if (r.success) setFullBoard(r.data); })
             .catch(e => console.error("[MyPlanShell] getBoardAction:", e))
             .finally(() => setBoardLoading(false));
-    }, [activeView, boardId, orgId, fullBoard?.id]);
+    }, [activeView, boardId, tenantId, fullBoard?.id]);
 
     // ── Stats ─────────────────────────────────────────────────────────────────
     const allTasks = board?.groups?.flatMap(g => g.tasks) ?? [];
@@ -170,17 +170,17 @@ export const MyPlanShell: React.FC = () => {
             return (
                 <>
                     <BoardOnboarding boardId={boardId} />
-                    <GridView key={refreshKey} boardId={boardId} orgId={orgId} isReadOnly={isViewLocked} />
+                    <GridView key={refreshKey} boardId={boardId} tenantId={tenantId} isReadOnly={isViewLocked} />
                 </>
             );
         }
 
         if (activeView === "cards") {
-            return <CardsView boardId={boardId} orgId={orgId} isReadOnly={isViewLocked} mode="my-plan" />;
+            return <CardsView boardId={boardId} tenantId={tenantId} isReadOnly={isViewLocked} mode="my-plan" />;
         }
 
         if (activeView === "dashboard") {
-            return <DashboardEngine defaultBoardIds={[boardId]} orgId={orgId} isReadOnly={isViewLocked} />;
+            return <DashboardEngine defaultBoardIds={[boardId]} tenantId={tenantId} isReadOnly={isViewLocked} />;
         }
 
         // Kanban / Gantt / Calendar — need full board object
@@ -208,7 +208,7 @@ export const MyPlanShell: React.FC = () => {
             );
         }
         if (activeView === "calendar") {
-            return <CalendarView boardId={boardId} orgId={orgId} />;
+            return <CalendarView boardId={boardId} tenantId={tenantId} />;
         }
 
         return null;
@@ -319,7 +319,7 @@ export const MyPlanShell: React.FC = () => {
                 <NewTaskModal
                     boardId={boardId}
                     groupId={defaultGroupId}
-                    orgId={orgId}
+                    tenantId={tenantId}
                     isOpen={isNewTaskOpen}
                     onClose={() => setIsNewTaskOpen(false)}
                     onTaskCreated={handleTaskCreated}
@@ -328,7 +328,7 @@ export const MyPlanShell: React.FC = () => {
             {isAssignOpen && (
                 <PlaybookAssignmentPanel
                     mode="employee-first"
-                    orgId={orgId}
+                    tenantId={tenantId}
                     onClose={() => {
                         setIsAssignOpen(false);
                         // Reload after potential assignment

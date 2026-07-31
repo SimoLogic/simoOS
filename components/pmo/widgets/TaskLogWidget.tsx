@@ -16,16 +16,16 @@ interface ActivityLogEntry {
 
 interface TaskLogWidgetProps {
   boardId?: string;
-  orgId?: string;
+  tenantId?: string;
 }
 
-export const TaskLogWidget: React.FC<TaskLogWidgetProps> = ({ boardId, orgId }) => {
+export const TaskLogWidget: React.FC<TaskLogWidgetProps> = ({ boardId, tenantId }) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!boardId || !orgId) {
+    if (!boardId || !tenantId) {
       setLoading(false);
       return;
     }
@@ -36,7 +36,7 @@ export const TaskLogWidget: React.FC<TaskLogWidgetProps> = ({ boardId, orgId }) 
         const { data } = await db
           .from("pmo_item_activity")
           .select("id, user_id, action, field_name, old_value, new_value, created_at")
-          .eq("org_id", orgId)
+          .eq("tenant_id", tenantId)
           .order("created_at", { ascending: false })
           .limit(500);
 
@@ -58,7 +58,7 @@ export const TaskLogWidget: React.FC<TaskLogWidgetProps> = ({ boardId, orgId }) 
       }
     }
     loadActivity();
-  }, [boardId, orgId]);
+  }, [boardId, tenantId]);
 
   const rowVirtualizer = useVirtualizer({
     count: logs.length,

@@ -5,7 +5,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import { PmoTask } from "@/types/pmo.types";
 
 const GetMyTasksSchema = z.object({
-  orgId: z.string().uuid("orgId must be a valid UUID"),
+  tenantId: z.string().uuid("tenantId must be a valid UUID"),
   userId: z.string().uuid("userId must be a valid UUID"),
 });
 
@@ -20,11 +20,11 @@ export interface MyTasksActionResult {
  * Retrieves all tasks assigned to a specific user across all boards in the org.
  */
 export async function getMyTasksAction(
-  orgId: string,
+  tenantId: string,
   userId: string
 ): Promise<MyTasksActionResult> {
   try {
-    const validated = GetMyTasksSchema.parse({ orgId, userId });
+    const validated = GetMyTasksSchema.parse({ tenantId, userId });
 
     const db = getPmoDB();
 
@@ -35,7 +35,7 @@ export async function getMyTasksAction(
          due_date, assignee_id, is_protected, source_playbook_id,
          pmo_groups ( title, color )
       `)
-      .eq("org_id", validated.orgId)
+      .eq("tenant_id", validated.tenantId)
       .eq("assignee_id", validated.userId)
       // Ordenamos primero por prioridad luego por fecha de vencimiento
       .order("priority", { ascending: false, nullsFirst: false })
@@ -46,7 +46,7 @@ export async function getMyTasksAction(
     // Mapeo para ajustar al tipo PmoTask esperado en frontend (convirtiendo relations)
     const formatted: PmoTask[] = (tasks || []).map((t: any) => ({
       id: t.id,
-      orgId: validated.orgId,
+      tenantId: validated.tenantId,
       boardId: t.board_id,
       groupId: t.group_id,
       title: t.title,

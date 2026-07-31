@@ -17,7 +17,7 @@ export interface SimoUpdatePayload {
   taskId?:               string;   // Por PMO task ID (si se tiene)
   sourcePlaybookTaskId?: string;   // Por Simo IS task ID (identificador alternativo)
   occurrenceIndex?:      number;   // Junto con sourcePlaybookTaskId para unicidad
-  orgId:                 string;
+  tenantId:                 string;
 
   // Campos actualizables por Simo IS (REGLA #2 — datos del Playbook)
   title?:       string;
@@ -63,14 +63,14 @@ export async function mirrorSyncTask(
   update: SimoUpdatePayload,
   idempotencyKey: string
 ): Promise<MirrorSyncResult> {
-  const { orgId } = update;
+  const { tenantId } = update;
   const syncedFields: string[]    = [];
   const conflictsFound: ConflictDetail[] = [];
   const skippedFields: string[]   = [];
 
   // ── Buscar la tarea en DB ────────────────────────────────────────────────
   const db = getPmoDB();
-  let taskQuery = db.from("pmo_tasks").select("*").eq("org_id", orgId);
+  let taskQuery = db.from("pmo_tasks").select("*").eq("tenant_id", tenantId);
 
   if (update.taskId) {
     taskQuery = taskQuery.eq("id", update.taskId);
@@ -154,14 +154,14 @@ export async function mirrorSyncTask(
       .from("pmo_tasks")
       .update(patch)
       .eq("id", task.id)
-      .eq("org_id", orgId);
+      .eq("tenant_id", tenantId);
 
     throwIfDbError(updateError, "mirrorSync.updateTask");
   }
 
   // ── Registrar SyncEvent ───────────────────────────────────────────────────
   const { error: logError } = await db.from("pmo_sync_events").insert({
-    org_id:           orgId,
+    tenant_id:           tenantId,
     idempotency_key:  idempotencyKey,
     event_type:       "mirror_sync",
     status:           conflictsFound.length > 0 ? "conflict_detected" : "completed",

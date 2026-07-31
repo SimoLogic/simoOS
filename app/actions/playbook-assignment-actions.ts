@@ -17,16 +17,16 @@ import { supabase } from "@/lib/database";
  */
 export async function getEligibleEmployeesForPlaybookAction(
   playbookId: string,
-  orgId: string
+  tenantId: string
 ) {
-  if (!playbookId || !orgId) return [];
+  if (!playbookId || !tenantId) return [];
 
   // Step 1: Get the global_owner_ids UUID array from the playbook header
   const { data: pb, error: pbErr } = await supabase
     .from("bp_playbooks")
     .select("global_owner_ids")
     .eq("id", playbookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (pbErr || !pb) {
@@ -41,11 +41,11 @@ export async function getEligibleEmployeesForPlaybookAction(
     const { data: allEmps } = await supabase
       .from("dim_employee")
       .select("eid, primer_nombre, primer_apellido, role_title, role_title_id, assigned_branch_code")
-      .eq("tenant_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("status", "Active")
       .order("primer_apellido", { ascending: true });
     // Resolve role names from library for employees with role_title_id
-    return await enrichWithRoleTitleNames(allEmps ?? [], orgId);
+    return await enrichWithRoleTitleNames(allEmps ?? []);
   }
 
   // Step 2: Resolve role title NAMES from the library (dim_role_title)
@@ -63,7 +63,7 @@ export async function getEligibleEmployeesForPlaybookAction(
   const { data: employees, error: empErr } = await supabase
     .from("dim_employee")
     .select("eid, primer_nombre, primer_apellido, role_title, role_title_id, assigned_branch_code")
-    .eq("tenant_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "Active")
     .in("role_title_id", globalOwnerIds)
     .order("primer_apellido", { ascending: true });
@@ -81,7 +81,7 @@ export async function getEligibleEmployeesForPlaybookAction(
 }
 
 /** Helper: enrich employees with role title names from the library */
-async function enrichWithRoleTitleNames(employees: Record<string, unknown>[], orgId: string) {
+async function enrichWithRoleTitleNames(employees: Record<string, unknown>[]) {
   const roleIds = Array.from(new Set(employees.map(e => e.role_title_id as string).filter(Boolean)));
   if (roleIds.length === 0) return employees;
 
@@ -106,13 +106,13 @@ async function enrichWithRoleTitleNames(employees: Record<string, unknown>[], or
  * Fetch all PUBLISHED playbooks for the current tenant.
  * Used by the Playbook Marketplace and employee-first Assignment Panel.
  */
-export async function getPublishedPlaybooksAction(orgId: string) {
-  if (!orgId) return [];
+export async function getPublishedPlaybooksAction(tenantId: string) {
+  if (!tenantId) return [];
 
   const { data, error } = await supabase
     .from("bp_playbooks")
     .select("id, name, type, family, strategy, purpose, status, version, global_owner_ids, created_at, updated_at")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "PUBLISHED")
     .order("updated_at", { ascending: false });
 

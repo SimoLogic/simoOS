@@ -168,7 +168,7 @@ function ReviewRow({ review, onAcknowledge }: { review: ReviewRecord; onAcknowle
 
 export default function PerformancePage() {
     const handleAcknowledge = (id: string) => {
-        alert(`[Demo] Review ${id} acknowledged + locked. In production calls acknowledgePerformanceReviewAction(orgId, "${id}").`);
+        alert(`[Demo] Review ${id} acknowledged + locked. In production calls acknowledgePerformanceReviewAction(tenantId, "${id}").`);
     };
 
     const avgScore = MOCK_REVIEWS

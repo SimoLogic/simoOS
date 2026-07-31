@@ -28,14 +28,14 @@ export async function createPmoEventAction(
 
     // 1. Save to local DB
     const event = await createEventService({
-      orgId: session.orgId,
+      tenantId: session.tenantId,
       ...validated,
     });
 
     // 2. SF-3: Enqueue EVENT_CREATE to sf-sync queue
     await enqueueSfSync({
       type: "EVENT_CREATE",
-      orgId: session.orgId,
+      tenantId: session.tenantId,
       userId: session.userId,
       pmoEventId: event.id,
       isZoom: validated.isZoom,

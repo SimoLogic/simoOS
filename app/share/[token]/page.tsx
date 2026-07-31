@@ -7,14 +7,14 @@ import { Loader2, AlertCircle, ShieldAlert } from "lucide-react";
 
 export default function SharePage({ params }: { params: { token: string } }) {
     const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading');
-    const [data, setData] = useState<{ boardId: string, orgId: string } | null>(null);
+    const [data, setData] = useState<{ boardId: string, tenantId: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function verify() {
             const res = await resolveShareTokenAction(params.token);
-            if (res.success && res.boardId && res.orgId) {
-                setData({ boardId: res.boardId, orgId: res.orgId });
+            if (res.success && res.boardId && res.tenantId) {
+                setData({ boardId: res.boardId, tenantId: res.tenantId });
                 setStatus('valid');
             } else {
                 setError(res.error || "Token no válido o expirado.");
@@ -54,7 +54,7 @@ export default function SharePage({ params }: { params: { token: string } }) {
         <div className="fixed inset-0 bg-white">
             <GridView 
                 boardId={data.boardId} 
-                orgId={data.orgId} 
+                tenantId={data.tenantId} 
                 isReadOnly={true} 
             />
         </div>

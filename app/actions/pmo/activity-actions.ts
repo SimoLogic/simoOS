@@ -18,7 +18,7 @@ type ActionResult<T> =
 
 const LogActivitySchema = z.object({
   taskId:    z.string().min(1),
-  orgId:     z.string().min(1),
+  tenantId:     z.string().min(1),
   userId:    z.string().min(1),
   action:    z.string().min(1).max(100),
   fieldName: z.string().max(100).optional(),
@@ -30,12 +30,12 @@ const LogActivitySchema = z.object({
 
 export async function getTaskActivityAction(
   taskId: string,
-  orgId:  string,
+  tenantId:  string,
   limit?: number
 ): Promise<PmoActivityEntry[]> {
-  if (!taskId?.trim() || !orgId?.trim()) return [];
+  if (!taskId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getActivityService(taskId, orgId, limit);
+    return await getActivityService(taskId, tenantId, limit);
   } catch (err: unknown) {
     console.error("[PMO] getActivity:", err);
     return [];
@@ -52,7 +52,7 @@ export async function logActivityAction(
   try {
     const v = LogActivitySchema.parse(input);
     const entry = await logActivityService({
-      orgId:     v.orgId,
+      tenantId:     v.tenantId,
       taskId:    v.taskId,
       userId:    v.userId,
       action:    v.action,
@@ -74,19 +74,19 @@ export async function logActivityAction(
  * E.g.: Person changed from "null" to "UsuarioX".
  */
 export async function logFieldChangeAction(
-  orgId:     string,
+  tenantId:     string,
   taskId:    string,
   userId:    string,
   fieldName: string,
   oldValue:  unknown,
   newValue:  unknown
 ): Promise<ActionResult<PmoActivityEntry>> {
-  if (!orgId || !taskId || !userId || !fieldName) {
-    return { success: false, error: "orgId, taskId, userId, and fieldName are required" };
+  if (!tenantId || !taskId || !userId || !fieldName) {
+    return { success: false, error: "tenantId, taskId, userId, and fieldName are required" };
   }
   try {
     const entry = await logFieldChangeService(
-      orgId, taskId, userId, fieldName, oldValue, newValue
+      tenantId, taskId, userId, fieldName, oldValue, newValue
     );
     return { success: true, data: entry };
   } catch (err: unknown) {
@@ -111,11 +111,11 @@ export interface ActivityLog {
  * Backward compatible with existing ActivityLogPanel.
  */
 export async function getTaskActivityLogsAction(
-  orgId:  string,
+  tenantId:  string,
   taskId: string
 ): Promise<{ success: boolean; data?: ActivityLog[]; error?: string }> {
   try {
-    const entries = await getActivityService(taskId, orgId, 50);
+    const entries = await getActivityService(taskId, tenantId, 50);
     const formatted: ActivityLog[] = entries.map(e => ({
       id:         e.id,
       actionType: e.action,

@@ -2,7 +2,7 @@
 
 // subitem-actions.ts — Server Actions para pmo_subtasks
 // REGLA: Subtasks NUNCA son protegidas. Son propiedad exclusiva del empleado.
-// Multi-tenant: orgId obligatorio en toda operación.
+// Multi-tenant: tenantId obligatorio en toda operación.
 
 import { z } from "zod";
 import {
@@ -18,11 +18,11 @@ type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-const OrgId = z.string().min(1, "orgId is required");
+const OrgId = z.string().min(1, "tenantId is required");
 
 const CreateSubitemSchema = z.object({
   taskId:            z.string().min(1, "taskId is required"),
-  orgId:             OrgId,
+  tenantId:             OrgId,
   title:             z.string().min(1, "Subitem title is required").max(500).trim(),
   assigneeId:        z.string().optional(),
   dueDate:           z.string().optional(),
@@ -31,7 +31,7 @@ const CreateSubitemSchema = z.object({
 
 const UpdateSubitemSchema = z.object({
   subitemId:         z.string().min(1),
-  orgId:             OrgId,
+  tenantId:             OrgId,
   userId:            z.string().min(1),
   title:             z.string().min(1).max(500).trim().optional(),
   isCompleted:       z.boolean().optional(),
@@ -44,11 +44,11 @@ const UpdateSubitemSchema = z.object({
 
 export async function getSubitemsAction(
   taskId: string,
-  orgId:  string
+  tenantId:  string
 ): Promise<PmoSubitem[]> {
-  if (!taskId?.trim() || !orgId?.trim()) return [];
+  if (!taskId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getSubitemsService(taskId, orgId);
+    return await getSubitemsService(taskId, tenantId);
   } catch (err: unknown) {
     console.error("[PMO] getSubitems:", err);
     return [];
@@ -62,7 +62,7 @@ export async function createSubitemAction(
     const v = CreateSubitemSchema.parse(input);
     const subitem = await createSubitemService({
       taskId:            v.taskId,
-      orgId:             v.orgId,
+      tenantId:             v.tenantId,
       title:             v.title,
       assigneeId:        v.assigneeId,
       dueDate:           v.dueDate,
@@ -71,7 +71,7 @@ export async function createSubitemAction(
 
     // Log activity on parent task
     await logFieldChangeService(
-      v.orgId, v.taskId, "system",
+      v.tenantId, v.taskId, "system",
       "subitem_created", null, v.title
     );
 
@@ -88,17 +88,17 @@ export async function updateSubitemAction(
 ): Promise<ActionResult<PmoSubitem>> {
   try {
     const v = UpdateSubitemSchema.parse(input);
-    const { subitemId, orgId, userId, ...fields } = v;
+    const { subitemId, tenantId, userId, ...fields } = v;
 
     // Fetch existing for activity log diff
-    const existing = (await getSubitemsService(subitemId, orgId))[0];
+    const existing = (await getSubitemsService(subitemId, tenantId))[0];
 
-    const updated = await updateSubitemService(subitemId, orgId, fields);
+    const updated = await updateSubitemService(subitemId, tenantId, fields);
 
     // Log completion changes
     if (fields.isCompleted !== undefined && existing) {
       await logFieldChangeService(
-        orgId,
+        tenantId,
         updated.taskId,
         userId,
         "subitem_completion",
@@ -117,13 +117,13 @@ export async function updateSubitemAction(
 
 export async function deleteSubitemAction(
   subitemId: string,
-  orgId:     string
+  tenantId:     string
 ): Promise<ActionResult<void>> {
-  if (!subitemId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "subitemId and orgId are required" };
+  if (!subitemId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "subitemId and tenantId are required" };
   }
   try {
-    await deleteSubitemService(subitemId, orgId);
+    await deleteSubitemService(subitemId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

@@ -1,6 +1,6 @@
 // ⚠️ LEER ARCHITECTURE.md antes de modificar
 // group.service.ts — CRUD para pmo_groups + reordenamiento
-// Patrón: todas las queries filtran por org_id (multi-tenant)
+// Patrón: todas las queries filtran por tenant_id (multi-tenant)
 
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import type { PmoGroup } from "@/types/pmo.types";
@@ -8,7 +8,7 @@ import type { PmoGroup } from "@/types/pmo.types";
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 export interface CreateGroupInput {
-  orgId:   string;
+  tenantId:   string;
   boardId: string;
   title:   string;
   color?:  string;      // Vibe hex, default #6161FF (vibe-purple)
@@ -21,7 +21,7 @@ export interface UpdateGroupInput {
 }
 
 export interface ReorderGroupsInput {
-  orgId:   string;
+  tenantId:   string;
   boardId: string;
   /** Array de IDs en el orden deseado */
   orderedIds: string[];
@@ -43,15 +43,15 @@ function mapGroupFromDb(row: Record<string, unknown>): PmoGroup {
 
 // ─── SERVICES ─────────────────────────────────────────────────────────────────
 
-export async function getGroupsService(boardId: string, orgId: string): Promise<PmoGroup[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+export async function getGroupsService(boardId: string, tenantId: string): Promise<PmoGroup[]> {
+  if (!boardId?.trim() || !tenantId?.trim()) return [];
   const db = getPmoDB();
 
   const { data, error } = await db
     .from("pmo_groups")
     .select("*")
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   throwIfDbError(error, "getGroups");
@@ -66,7 +66,7 @@ export async function createGroupService(input: CreateGroupInput): Promise<PmoGr
     .from("pmo_groups")
     .select("position")
     .eq("board_id", input.boardId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .order("position", { ascending: false })
     .limit(1);
 
@@ -75,7 +75,7 @@ export async function createGroupService(input: CreateGroupInput): Promise<PmoGr
   const { data, error } = await db
     .from("pmo_groups")
     .insert({
-      org_id:   input.orgId,
+      tenant_id:   input.tenantId,
       board_id: input.boardId,
       title:    input.title.trim(),
       color:    input.color ?? "#6161FF",
@@ -91,7 +91,7 @@ export async function createGroupService(input: CreateGroupInput): Promise<PmoGr
 export async function updateGroupService(
   groupId: string,
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   input:   UpdateGroupInput
 ): Promise<PmoGroup> {
   const db = getPmoDB();
@@ -106,7 +106,7 @@ export async function updateGroupService(
     .update(patch)
     .eq("id", groupId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -117,7 +117,7 @@ export async function updateGroupService(
 export async function deleteGroupService(
   groupId: string,
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<void> {
   const db = getPmoDB();
 
@@ -127,7 +127,7 @@ export async function deleteGroupService(
     .from("pmo_tasks")
     .select("id, title")
     .eq("group_id", groupId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("is_protected", true)
     .limit(1);
 
@@ -142,7 +142,7 @@ export async function deleteGroupService(
     .delete()
     .eq("id", groupId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteGroup");
 }
@@ -167,7 +167,7 @@ export async function reorderGroupsService(input: ReorderGroupsInput): Promise<v
         .update({ position })
         .eq("id", id)
         .eq("board_id", input.boardId)
-        .eq("org_id", input.orgId)
+        .eq("tenant_id", input.tenantId)
     )
   );
 }

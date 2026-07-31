@@ -15,7 +15,7 @@ import {
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
-const OrgIdSchema = z.string().min(1, "orgId is required");
+const OrgIdSchema = z.string().min(1, "tenantId is required");
 
 const TriggerTypeEnum = z.enum(["on_status_change", "on_column_change"]);
 const ActionTypeEnum  = z.enum(["set_column", "notify"]);
@@ -31,7 +31,7 @@ const ActionConfigSchema = z.object({
 });
 
 const CreateAutomationSchema = z.object({
-  orgId:         OrgIdSchema,
+  tenantId:         OrgIdSchema,
   boardId:       z.string().min(1, "boardId is required"),
   name:          z.string().min(1, "Automation name is required").max(255).trim(),
   triggerType:   TriggerTypeEnum,
@@ -42,7 +42,7 @@ const CreateAutomationSchema = z.object({
 
 const UpdateAutomationSchema = z.object({
   automationId:  z.string().min(1),
-  orgId:         OrgIdSchema,
+  tenantId:         OrgIdSchema,
   name:          z.string().min(1).max(255).trim().optional(),
   triggerType:   TriggerTypeEnum.optional(),
   triggerConfig: TriggerConfigSchema.optional(),
@@ -61,11 +61,11 @@ type ActionResult<T> =
 
 export async function getAutomationsAction(
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<PmoAutomation[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+  if (!boardId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getAutomationsService(boardId, orgId);
+    return await getAutomationsService(boardId, tenantId);
   } catch (err: unknown) {
     console.error("[PMO Action] getAutomations:", err);
     return [];
@@ -91,8 +91,8 @@ export async function updateAutomationAction(
 ): Promise<ActionResult<PmoAutomation>> {
   try {
     const validated = UpdateAutomationSchema.parse(input);
-    const { automationId, orgId, ...fields } = validated;
-    const automation = await updateAutomationService(automationId, orgId, fields);
+    const { automationId, tenantId, ...fields } = validated;
+    const automation = await updateAutomationService(automationId, tenantId, fields);
     return { success: true, data: automation };
   } catch (err: unknown) {
     if (err instanceof z.ZodError)
@@ -103,13 +103,13 @@ export async function updateAutomationAction(
 
 export async function deleteAutomationAction(
   automationId: string,
-  orgId: string
+  tenantId: string
 ): Promise<ActionResult<void>> {
-  if (!automationId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "automationId and orgId are required" };
+  if (!automationId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "automationId and tenantId are required" };
   }
   try {
-    await deleteAutomationService(automationId, orgId);
+    await deleteAutomationService(automationId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -118,14 +118,14 @@ export async function deleteAutomationAction(
 
 export async function toggleAutomationAction(
   automationId: string,
-  orgId: string,
+  tenantId: string,
   isActive: boolean
 ): Promise<ActionResult<PmoAutomation>> {
-  if (!automationId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "automationId and orgId are required" };
+  if (!automationId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "automationId and tenantId are required" };
   }
   try {
-    const automation = await updateAutomationService(automationId, orgId, { isActive });
+    const automation = await updateAutomationService(automationId, tenantId, { isActive });
     return { success: true, data: automation };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

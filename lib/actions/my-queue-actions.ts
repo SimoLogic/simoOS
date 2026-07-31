@@ -4,7 +4,7 @@ import { supabase } from "@/lib/database";
 
 export interface SimoNotification {
     id: string;
-    org_id: string;
+    tenant_id: string;
     user_id: string;
     type: 'APPROVAL' | 'TASK' | 'FORM' | 'ALERT';
     module: string;
@@ -19,13 +19,13 @@ export interface SimoNotification {
     resolved_at: string | null;
 }
 
-export async function getNotificationsAction(orgId: string, userId: string): Promise<SimoNotification[]> {
-    if (!orgId || !userId) return [];
+export async function getNotificationsAction(tenantId: string, userId: string): Promise<SimoNotification[]> {
+    if (!tenantId || !userId) return [];
 
     const { data, error } = await supabase
         .from('simo_notifications')
         .select('*')
-        .eq('org_id', orgId)
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -37,13 +37,13 @@ export async function getNotificationsAction(orgId: string, userId: string): Pro
     return data as SimoNotification[];
 }
 
-export async function getPendingCountAction(orgId: string, userId: string): Promise<number> {
-    if (!orgId || !userId) return 0;
+export async function getPendingCountAction(tenantId: string, userId: string): Promise<number> {
+    if (!tenantId || !userId) return 0;
 
     const { count, error } = await supabase
         .from('simo_notifications')
         .select('*', { count: 'exact', head: true })
-        .eq('org_id', orgId)
+        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .eq('status', 'PENDING');
 

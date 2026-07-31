@@ -11,7 +11,7 @@ export const REFRESH_TOKEN_NAME = "pmo_refresh_token";
 
 export interface PmoSession {
   userId: string;
-  orgId: string;
+  tenantId: string;
   userName: string;
   role: string;
 }

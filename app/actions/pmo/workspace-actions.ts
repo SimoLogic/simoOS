@@ -4,18 +4,18 @@ import { z } from "zod";
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 
 const UpdateWorkspaceThemeSchema = z.object({
-  orgId: z.string().uuid(),
+  tenantId: z.string().uuid(),
   workspaceId: z.string().uuid(),
   themeColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid HEX color"),
 });
 
 export async function updateWorkspaceThemeAction(
-  orgId: string,
+  tenantId: string,
   workspaceId: string,
   themeColor: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const validated = UpdateWorkspaceThemeSchema.parse({ orgId, workspaceId, themeColor });
+    const validated = UpdateWorkspaceThemeSchema.parse({ tenantId, workspaceId, themeColor });
     const db = getPmoDB();
 
     // Assuming we have a pmo_workspaces table, or we just put it on active workspace in store for now 
@@ -27,7 +27,7 @@ export async function updateWorkspaceThemeAction(
         .from("pmo_workspaces")
         .update({ theme_color: validated.themeColor })
         .eq("id", validated.workspaceId)
-        .eq("org_id", validated.orgId);
+        .eq("tenant_id", validated.tenantId);
 
     if (error && error.code !== '42P01') { // 42P01 is undefined_table
         throwIfDbError(error, "updateWorkspaceTheme");

@@ -14,7 +14,7 @@ function getSfApiUrl(instanceUrl: string, endpoint: string) {
  * the vault and retries ONCE. Enforces the Token Vault auto-refresh contract.
  */
 async function sfFetch(
-  orgId: string,
+  tenantId: string,
   userId: string,
   token: TokenData,
   url: string,
@@ -31,7 +31,7 @@ async function sfFetch(
 
   if (res.status === 401) {
     // Auto-refresh on expired token (Mirror Sync Protocol resilience)
-    const refreshed = await refreshSalesforceToken(orgId, userId);
+    const refreshed = await refreshSalesforceToken(tenantId, userId);
     res = await fetch(url, {
       ...options,
       headers: {
@@ -52,11 +52,11 @@ async function sfFetch(
  * Returns the Salesforce Task ID created/updated.
  */
 export async function pushTaskToSalesforce(
-  orgId: string,
+  tenantId: string,
   userId: string,
   pmoTask: { id: string; title: string; status: string; description?: string }
 ): Promise<{ salesforceTaskId: string }> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected or missing instanceUrl");
   }
@@ -68,7 +68,7 @@ export async function pushTaskToSalesforce(
     Status: pmoTask.status === "done" ? "Completed" : "In Progress",
   };
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, "sobjects/Task/"), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, "sobjects/Task/"), {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -101,11 +101,11 @@ interface SfQueryResponse {
  *
  * This is the core of the Llave #4 (Mirror Sync Protocol).
  */
-export async function pullTasksFromSalesforce(orgId: string, userId: string): Promise<{
+export async function pullTasksFromSalesforce(tenantId: string, userId: string): Promise<{
   synced: number;
   conflicts: number;
 }> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected");
   }
@@ -116,7 +116,7 @@ export async function pullTasksFromSalesforce(orgId: string, userId: string): Pr
     "SELECT Id, Subject, Description, Status, LastModifiedDate FROM Task WHERE LastModifiedDate = LAST_N_DAYS:1 LIMIT 200"
   );
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, `query?q=${soql}`), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, `query?q=${soql}`), {
     method: "GET",
   });
 
@@ -135,7 +135,7 @@ export async function pullTasksFromSalesforce(orgId: string, userId: string): Pr
     const { data: localTask } = await db
       .from("pmo_tasks")
       .select("id, title, description, status, updated_at")
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("external_id", sfTask.Id)
       .single();
 
@@ -147,7 +147,7 @@ export async function pullTasksFromSalesforce(orgId: string, userId: string): Pr
     if (hasConflict) {
       // Write a conflict event — UI will surface the Mirror Sync Modal
       await db.from("pmo_sync_events").insert({
-        org_id: orgId,
+        tenant_id: tenantId,
         task_id: localTask.id,
         event_type: "salesforce_pull",
         status: "conflict_detected",
@@ -177,17 +177,17 @@ export async function pullTasksFromSalesforce(orgId: string, userId: string): Pr
  * Used to populate the Mirror Sync comparison modal.
  */
 export async function fetchSalesforceTaskForSync(
-  orgId: string,
+  tenantId: string,
   userId: string,
   sfTaskId: string
 ): Promise<SfTask> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected");
   }
   const instanceUrl = (token.metadata as { instanceUrl: string }).instanceUrl;
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Task/${sfTaskId}`), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Task/${sfTaskId}`), {
     method: "GET",
   });
 
@@ -211,13 +211,13 @@ type SfTaskPatch = Partial<{
  * Updates pmo_sync_mappings and logs a pmo_sync_events record.
  */
 export async function updateTaskInSalesforce(
-  orgId:         string,
+  tenantId:         string,
   userId:        string,
   pmoTaskId:     string,
   sfTaskId:      string,
   changedFields: SfTaskPatch
 ): Promise<void> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected or missing instanceUrl");
   }
@@ -233,7 +233,7 @@ export async function updateTaskInSalesforce(
 
   if (Object.keys(sfPatch).length === 0) return;
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Task/${sfTaskId}`), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Task/${sfTaskId}`), {
     method: "PATCH",
     body:   JSON.stringify(sfPatch),
   });
@@ -255,7 +255,7 @@ export async function updateTaskInSalesforce(
 
   // Audit log
   await db.from("pmo_sync_events").insert({
-    org_id:        orgId,
+    tenant_id:        tenantId,
     task_id:       pmoTaskId,
     event_type:    "salesforce_push",
     status:        "completed",
@@ -270,19 +270,19 @@ export async function updateTaskInSalesforce(
  * webhook to Simo IS (Mirror Sync Protocol closure).
  */
 export async function completeTaskInSalesforce(
-  orgId:     string,
+  tenantId:     string,
   userId:    string,
   pmoTaskId: string,
   sfTaskId:  string
 ): Promise<void> {
-  await updateTaskInSalesforce(orgId, userId, pmoTaskId, sfTaskId, { status: "Completed" });
+  await updateTaskInSalesforce(tenantId, userId, pmoTaskId, sfTaskId, { status: "Completed" });
 
   const db = getPmoDB();
   const { data: task } = await db
     .from("pmo_tasks")
     .select("source_playbook_id, source_playbook_task_id, occurrence_index")
     .eq("id", pmoTaskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   const simoWebhookUrl = process.env.SIMO_IS_WEBHOOK_URL;
@@ -292,7 +292,7 @@ export async function completeTaskInSalesforce(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         event:                "TASK_COMPLETED",
-        orgId,
+        tenantId,
         sourcePlaybookId:     task.source_playbook_id,
         sourcePlaybookTaskId: task.source_playbook_task_id,
         occurrenceIndex:      task.occurrence_index,
@@ -326,11 +326,11 @@ export interface CreateSfEventResult {
  * Returns sfEventId + syncMappingId (needed by ReadBackZoomUrlJob in SF-3).
  */
 export async function createEventInSalesforce(
-  orgId:    string,
+  tenantId:    string,
   userId:   string,
   pmoEvent: PmoEventInput
 ): Promise<CreateSfEventResult> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected or missing instanceUrl");
   }
@@ -344,7 +344,7 @@ export async function createEventInSalesforce(
   };
   if (pmoEvent.isZoom) sfPayload.IsOnlineMeeting = true;
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, "sobjects/Event/"), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, "sobjects/Event/"), {
     method: "POST",
     body:   JSON.stringify(sfPayload),
   });
@@ -361,7 +361,7 @@ export async function createEventInSalesforce(
     .from("pmo_sync_mappings")
     .upsert(
       {
-        org_id:              orgId,
+        tenant_id:              tenantId,
         pmo_entity_type:     "EVENT",
         pmo_entity_id:       pmoEntityId,
         provider:            "SALESFORCE",
@@ -391,17 +391,17 @@ export async function createEventInSalesforce(
  * Specifically used to read back the Zoom meeting URL (Location or OnlineMeetingUrl).
  */
 export async function fetchSalesforceEvent(
-  orgId: string,
+  tenantId: string,
   userId: string,
   sfEventId: string
 ): Promise<any> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected or missing instanceUrl");
   }
   const instanceUrl = (token.metadata as { instanceUrl: string }).instanceUrl;
 
-  const res = await sfFetch(orgId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Event/${sfEventId}`), {
+  const res = await sfFetch(tenantId, userId, token, getSfApiUrl(instanceUrl, `sobjects/Event/${sfEventId}`), {
     method: "GET",
   });
 
@@ -434,11 +434,11 @@ interface SfOpportunityRec { Id: string; Name: string; StageName?: string }
  * Returns a unified array with a discriminated `type` field.
  */
 export async function searchSalesforceLeads(
-  orgId:  string,
+  tenantId:  string,
   userId: string,
   query:  string
 ): Promise<SfSearchResult[]> {
-  const token = await getIntegrationToken(orgId, userId, "salesforce");
+  const token = await getIntegrationToken(tenantId, userId, "salesforce");
   if (!token?.accessToken || !(token.metadata as { instanceUrl?: string })?.instanceUrl) {
     throw new Error("Salesforce integration not connected or missing instanceUrl");
   }
@@ -458,7 +458,7 @@ export async function searchSalesforceLeads(
 
   await Promise.all(subQueries.map(async ({ soql, type }) => {
     const url = getSfApiUrl(instanceUrl, `query?q=${encodeURIComponent(soql)}`);
-    const res = await sfFetch(orgId, userId, token, url, { method: "GET" });
+    const res = await sfFetch(tenantId, userId, token, url, { method: "GET" });
     if (!res.ok) return;
 
     if (type === "Lead") {

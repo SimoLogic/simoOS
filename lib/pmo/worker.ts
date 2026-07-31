@@ -43,7 +43,7 @@ console.log(`[BullMQ] Starting Worker for queue: ${SF_SYNC_QUEUE_NAME}...`);
 export const sfSyncWorker = new Worker(
   SF_SYNC_QUEUE_NAME,
   async (job: Job<SfSyncJobData>) => {
-    const { type, orgId, userId } = job.data;
+    const { type, tenantId, userId } = job.data;
     console.log(`[BullMQ] Processing SF Sync Job: ${type} (JobId: ${job.id})`);
 
     switch (type) {
@@ -57,16 +57,16 @@ export const sfSyncWorker = new Worker(
           .eq("id", job.data.pmoTaskId)
           .single();
         if (!pmoTask) throw new Error(`Task ${job.data.pmoTaskId} not found for SF Push`);
-        return await pushTaskToSalesforce(orgId, userId, pmoTask as any);
+        return await pushTaskToSalesforce(tenantId, userId, pmoTask as any);
 
       case "TASK_UPDATE":
-        return await updateTaskInSalesforce(orgId, userId, job.data.pmoTaskId, job.data.sfTaskId, job.data.changedFields as any);
+        return await updateTaskInSalesforce(tenantId, userId, job.data.pmoTaskId, job.data.sfTaskId, job.data.changedFields as any);
 
       case "TASK_COMPLETE":
-        return await completeTaskInSalesforce(orgId, userId, job.data.pmoTaskId, job.data.sfTaskId);
+        return await completeTaskInSalesforce(tenantId, userId, job.data.pmoTaskId, job.data.sfTaskId);
 
       case "EVENT_CREATE":
-        const result = await createEventInSalesforce(orgId, userId, {
+        const result = await createEventInSalesforce(tenantId, userId, {
           id: job.data.pmoEventId,
           ...job.data.eventInput
         });
@@ -75,7 +75,7 @@ export const sfSyncWorker = new Worker(
         if (job.data.isZoom && result.sfEventId && result.syncMappingId) {
           console.log(`[BullMQ] Enqueuing READBACK_ZOOM for Mapping ${result.syncMappingId}`);
           await sfReadBackZoomQueue.add("readback-zoom", {
-            orgId,
+            tenantId,
             userId,
             sfEventId: result.sfEventId,
             pmoEventId: job.data.pmoEventId,
@@ -112,10 +112,10 @@ const socketServerPlaceholder = {
 export const sfReadBackZoomWorker = new Worker(
   SF_READBACK_ZOOM_QUEUE_NAME,
   async (job: Job<ReadBackZoomJobData>) => {
-    const { userId, orgId, sfEventId, pmoEventId, syncMappingId, attempt } = job.data;
+    const { userId, tenantId, sfEventId, pmoEventId, syncMappingId, attempt } = job.data;
     console.log(`[BullMQ] Zoom Readback Attempt ${attempt} for SF Event ${sfEventId}`);
 
-    const sfEvent = await fetchSalesforceEvent(orgId, userId, sfEventId);
+    const sfEvent = await fetchSalesforceEvent(tenantId, userId, sfEventId);
     const joinUrl = sfEvent?.Location || sfEvent?.OnlineMeetingUrl || null;
 
     if (joinUrl) {
@@ -145,7 +145,7 @@ export const sfReadBackZoomWorker = new Worker(
     // Agotado: loggear error
     const db = getPmoDB();
     await db.from("pmo_sync_events").insert({
-      org_id: orgId,
+      tenant_id: tenantId,
       event_type: "zoom_readback",
       status: "error",
       payload: { sfEventId, pmoEventId, error: "Zoom URL not found after 3 attempts" }

@@ -10,7 +10,7 @@ import { getTasksService, createTaskService } from "@/lib/services/pmo/task.serv
 // For now, let's assume we invoke standard flow.
 import { createTaskAction } from "@/app/actions/pmo/task-actions"; // Let's use the actual action
 
-export const ImportExportMenu = ({ orgId, boardId, groupId = null }: { orgId: string, boardId: string, groupId?: string | null }) => {
+export const ImportExportMenu = ({ tenantId, boardId, groupId = null }: { tenantId: string, boardId: string, groupId?: string | null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,7 +22,7 @@ export const ImportExportMenu = ({ orgId, boardId, groupId = null }: { orgId: st
      // Ideally we fetch current grid filtered state, here we load board tasks
      try {
        // A dedicated server action is better, but this suffices for raw export
-       const response = await fetch(`/api/pmo/export?boardId=${boardId}&orgId=${orgId}`); // Mock endpoint or use Server Action logic
+       const response = await fetch(`/api/pmo/export?boardId=${boardId}&tenantId=${tenantId}`); // Mock endpoint or use Server Action logic
        // For real logic without creating new API:
        // We should call a server action that returns JSON, then Papa.unparse
        const json = [{ Title: "Task Example", Status: "Listo" }]; // Mock

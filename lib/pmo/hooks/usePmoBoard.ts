@@ -4,7 +4,7 @@
 // PROTOCOLO DE INTEGRACIÓN (State vs DB):
 // 1. Lee tenant_id desde Zustand (Global State)  
 // 2. Inyecta tenant_id a la Server Action
-// 3. Server Action consulta PostgreSQL con filtro orgId
+// 3. Server Action consulta PostgreSQL con filtro tenantId
 // 4. Devuelve datos al componente
 //
 // Sprint 2: Implementar con React Query + Server Actions reales
@@ -26,13 +26,13 @@ interface UsePmoBoardResult {
  * usePmoBoard — Carga un board PMO desde la base de datos
  * 
  * @param boardId - ID del board a cargar
- * @param orgId   - Tenant ID (obtenido de usePmoStore, no hardcodeado)
+ * @param tenantId   - Tenant ID (obtenido de usePmoStore, no hardcodeado)
  * 
  * SPRINT 2: Implementar fetchBoard() con Server Action real
  */
 export function usePmoBoard(
   boardId: string | null,
-  orgId: string | null
+  tenantId: string | null
 ): UsePmoBoardResult {
   const [board, setBoard] = useState<PmoBoard | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,20 +40,20 @@ export function usePmoBoard(
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    if (!boardId || !orgId) return;
+    if (!boardId || !tenantId) return;
 
     setIsLoading(true);
     setError(null);
 
     // TODO Sprint 2: Reemplazar con Server Action real
     // import { fetchPmoBoard } from "@/app/actions/pmo/board-actions";
-    // const result = await fetchPmoBoard({ boardId, orgId });
+    // const result = await fetchPmoBoard({ boardId, tenantId });
     
     // Sprint 1 stub — simula latencia de red
     const timeout = setTimeout(() => {
       setBoard({
         id: boardId,
-        orgId,
+        tenantId,
         workspaceId: "ws-demo",
         title: "My Playbook — Q2 2025",
         isPlaybookBoard: false,
@@ -69,7 +69,7 @@ export function usePmoBoard(
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [boardId, orgId, refreshToken]);
+  }, [boardId, tenantId, refreshToken]);
 
   return {
     board,

@@ -51,7 +51,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {/* AI Summary Modal */}
                 {showAiSummary && activeBoardId && (
                     <AiSummaryModal 
-                        orgId="org-1" 
+                        tenantId="org-1" 
                         boardId={activeBoardId} 
                         onClose={() => setShowAiSummary(false)} 
                     />

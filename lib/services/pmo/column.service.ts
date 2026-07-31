@@ -7,7 +7,7 @@ import type { PmoColumn, PmoFieldType } from "@/types/pmo.types";
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 export interface CreateColumnInput {
-  orgId:    string;
+  tenantId:    string;
   boardId:  string;
   title:    string;
   type:     PmoFieldType;
@@ -37,7 +37,7 @@ function mapColumnFromDb(row: Record<string, unknown>): PmoColumn {
 
 // ─── SERVICES ─────────────────────────────────────────────────────────────────
 
-export async function getColumnsService(boardId: string, orgId: string): Promise<PmoColumn[]> {
+export async function getColumnsService(boardId: string, tenantId: string): Promise<PmoColumn[]> {
   if (!boardId?.trim()) return [];
   const db = getPmoDB();
 
@@ -45,7 +45,7 @@ export async function getColumnsService(boardId: string, orgId: string): Promise
     .from("pmo_columns")
     .select("*")
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   throwIfDbError(error, "getColumns");
@@ -59,7 +59,7 @@ export async function createColumnService(input: CreateColumnInput): Promise<Pmo
     .from("pmo_columns")
     .select("position")
     .eq("board_id", input.boardId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .order("position", { ascending: false })
     .limit(1);
 
@@ -68,7 +68,7 @@ export async function createColumnService(input: CreateColumnInput): Promise<Pmo
   const { data, error } = await db
     .from("pmo_columns")
     .insert({
-      org_id:   input.orgId,
+      tenant_id:   input.tenantId,
       board_id: input.boardId,
       title:    input.title.trim(),
       type:     input.type,
@@ -86,7 +86,7 @@ export async function createColumnService(input: CreateColumnInput): Promise<Pmo
 export async function updateColumnService(
   columnId: string,
   boardId:  string,
-  orgId:    string,
+  tenantId:    string,
   input:    UpdateColumnInput
 ): Promise<PmoColumn> {
   const db = getPmoDB();
@@ -101,7 +101,7 @@ export async function updateColumnService(
     .update(patch)
     .eq("id", columnId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -112,7 +112,7 @@ export async function updateColumnService(
 export async function deleteColumnService(
   columnId: string,
   boardId:  string,
-  orgId:    string
+  tenantId:    string
 ): Promise<void> {
   const db = getPmoDB();
 
@@ -121,14 +121,14 @@ export async function deleteColumnService(
     .delete()
     .eq("id", columnId)
     .eq("board_id", boardId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteColumn");
 }
 
 export async function reorderColumnsService(
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   orderedIds: string[]
 ): Promise<void> {
   const db = getPmoDB();
@@ -140,7 +140,7 @@ export async function reorderColumnsService(
         .update({ position: index })
         .eq("id", id)
         .eq("board_id", boardId)
-        .eq("org_id", orgId)
+        .eq("tenant_id", tenantId)
     )
   );
 }
@@ -151,9 +151,9 @@ export async function reorderColumnsService(
  */
 export async function seedDefaultColumnsService(
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<PmoColumn[]> {
-  const defaults: Omit<CreateColumnInput, "orgId" | "boardId">[] = [
+  const defaults: Omit<CreateColumnInput, "tenantId" | "boardId">[] = [
     { title: "Task",      type: "text",     widthPx: 280 },
     { title: "Status",    type: "status",   widthPx: 140 },
     { title: "Assignee",  type: "person",   widthPx: 160 },
@@ -163,7 +163,7 @@ export async function seedDefaultColumnsService(
 
   const created: PmoColumn[] = [];
   for (let i = 0; i < defaults.length; i++) {
-    const col = await createColumnService({ ...defaults[i], orgId, boardId });
+    const col = await createColumnService({ ...defaults[i], tenantId, boardId });
     created.push(col);
   }
   return created;

@@ -27,7 +27,7 @@ export interface BoardPresenceUser {
 
 export interface UseBoardPresenceOptions {
   boardId:   string | null;
-  orgId:     string | null;
+  tenantId:     string | null;
   /** Usuario local (yo) */
   currentUser: {
     userId:    string;
@@ -100,7 +100,7 @@ function getPresenceClient() {
  * ```tsx
  * const { presentUsers, count } = useBoardPresence({
  *   boardId,
- *   orgId,
+ *   tenantId,
  *   currentUser: { userId: session.userId, name: session.name },
  * });
  * 
@@ -110,7 +110,7 @@ function getPresenceClient() {
  */
 export function useBoardPresence({
   boardId,
-  orgId,
+  tenantId,
   currentUser,
   enabled = true,
 }: UseBoardPresenceOptions): BoardPresenceState {
@@ -119,10 +119,10 @@ export function useBoardPresence({
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!enabled || !boardId || !orgId || !currentUser?.userId) return;
+    if (!enabled || !boardId || !tenantId || !currentUser?.userId) return;
 
     const supabase     = getPresenceClient();
-    const channelName  = `pmo:presence:${orgId}:${boardId}`;
+    const channelName  = `pmo:presence:${tenantId}:${boardId}`;
 
     // Limpiar canal anterior
     if (channelRef.current) {
@@ -194,7 +194,7 @@ export function useBoardPresence({
       setIsConnected(false);
       setPresentUsers([]);
     };
-  }, [boardId, orgId, currentUser?.userId, currentUser?.name, enabled]);
+  }, [boardId, tenantId, currentUser?.userId, currentUser?.name, enabled]);
 
   return {
     presentUsers,

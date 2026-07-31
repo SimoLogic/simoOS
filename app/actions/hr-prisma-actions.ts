@@ -4,7 +4,7 @@
  * HR SERVER ACTIONS — Prisma-Powered (New Sub-Modules)
  *
  * Architecture:
- *  • All queries filter by orgId (Key #1 — multi-tenant isolation)
+ *  • All queries filter by tenantId (Key #1 — multi-tenant isolation)
  *  • Salaries & IDs encrypted/decrypted via lib/security/hr-vault.ts (Key #4)
  *  • isLocked enforced by assertNotLocked() before any write (Key #3)
  *  • WorkdayHelper used in payroll + vacation calculations (Key #2)
@@ -48,7 +48,7 @@ function fail(error: unknown): ActionResult<never> {
 
 export interface HrEmployeeProfile {
     id: string;
-    orgId: string;
+    tenantId: string;
     eid: string;
     status: string;
     emailCorporate: string | null;
@@ -127,15 +127,15 @@ export interface HrReviewView {
  * This is the Deep Fetch pattern — zero N+1, single roundtrip.
  */
 export async function getEmployeeProfileAction(
-    orgId: string,
+    tenantId: string,
     eid: string,
 ): Promise<ActionResult<HrEmployeeProfile>> {
-    if (!orgId?.trim()) return fail("orgId is required");
+    if (!tenantId?.trim()) return fail("tenantId is required");
     if (!eid?.trim()) return fail("eid is required");
 
     try {
         const emp = await prisma.hrEmployee.findFirst({
-            where: { orgId, eid },
+            where: { tenantId, eid },
             include: {
                 contracts: {
                     orderBy: { createdAt: "desc" },
@@ -157,7 +157,7 @@ export async function getEmployeeProfileAction(
             },
         });
 
-        if (!emp) return fail(`Employee ${eid} not found in org ${orgId}`);
+        if (!emp) return fail(`Employee ${eid} not found in org ${tenantId}`);
 
         // Decrypt sensitive fields
         const identificacion = await decryptIdentificacion(emp.identificacionEnc);
@@ -216,7 +216,7 @@ export async function getEmployeeProfileAction(
 
         return ok<HrEmployeeProfile>({
             id: emp.id,
-            orgId: emp.orgId,
+            tenantId: emp.tenantId,
             eid: emp.eid,
             status: emp.status,
             emailCorporate: emp.emailCorporate,
@@ -245,7 +245,7 @@ export async function getEmployeeProfileAction(
 // ─── 2. PAYROLL — Create Period ───────────────────────────────────────────────
 
 const CreatePayrollSchema = z.object({
-    orgId: z.string().min(1),
+    tenantId: z.string().min(1),
     employeeId: z.string().uuid(),
     contractId: z.string().uuid(),
     periodLabel: z.string().regex(/^\d{4}-\d{2}$/, "Format: YYYY-MM"),
@@ -268,14 +268,14 @@ export async function createPayrollPeriodAction(
     if (!parsed.success) return fail(parsed.error.message);
 
     const {
-        orgId, employeeId, contractId, periodLabel,
+        tenantId, employeeId, contractId, periodLabel,
         periodStart, periodEnd, vacationDaysDeducted, orgConfig,
     } = parsed.data;
 
     try {
         // Verify contract belongs to this org and is not locked
         const contract = await prisma.hrContract.findFirst({
-            where: { id: contractId, orgId },
+            where: { id: contractId, tenantId },
         });
         if (!contract) return fail("Contract not found");
         assertNotLocked(contract.isLocked, "HrContract");
@@ -303,7 +303,7 @@ export async function createPayrollPeriodAction(
 
         const payroll = await prisma.hrPayroll.create({
             data: {
-                orgId,
+                tenantId,
                 employeeId,
                 contractId,
                 periodLabel,
@@ -328,15 +328,15 @@ export async function createPayrollPeriodAction(
 // ─── 3. PAYROLL — Lock (Process) ──────────────────────────────────────────────
 
 export async function lockPayrollPeriodAction(
-    orgId: string,
+    tenantId: string,
     payrollId: string,
     processedBy: string,
 ): Promise<ActionResult<{ id: string; isLocked: boolean }>> {
-    if (!orgId?.trim() || !payrollId?.trim()) return fail("orgId and payrollId required");
+    if (!tenantId?.trim() || !payrollId?.trim()) return fail("tenantId and payrollId required");
 
     try {
         const payroll = await prisma.hrPayroll.findFirst({
-            where: { id: payrollId, orgId },
+            where: { id: payrollId, tenantId },
         });
         if (!payroll) return fail("Payroll period not found");
         assertNotLocked(payroll.isLocked, "HrPayroll");
@@ -359,7 +359,7 @@ export async function lockPayrollPeriodAction(
 // ─── 4. VACATION — Create Request ─────────────────────────────────────────────
 
 const CreateVacationSchema = z.object({
-    orgId: z.string().min(1),
+    tenantId: z.string().min(1),
     employeeId: z.string().uuid(),
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -379,7 +379,7 @@ export async function createVacationRequestAction(
     const parsed = CreateVacationSchema.safeParse(input);
     if (!parsed.success) return fail(parsed.error.message);
 
-    const { orgId, employeeId, startDate, endDate, notes, orgConfig } = parsed.data;
+    const { tenantId, employeeId, startDate, endDate, notes, orgConfig } = parsed.data;
 
     try {
         const start = new Date(startDate);
@@ -396,7 +396,7 @@ export async function createVacationRequestAction(
 
         const vac = await prisma.hrVacationRequest.create({
             data: {
-                orgId,
+                tenantId,
                 employeeId,
                 startDate: start,
                 endDate: end,
@@ -424,16 +424,16 @@ export async function createVacationRequestAction(
 // ─── 5. VACATION — Approve / Reject ──────────────────────────────────────────
 
 export async function updateVacationStatusAction(
-    orgId: string,
+    tenantId: string,
     vacationId: string,
     status: "APPROVED" | "REJECTED" | "CANCELLED",
     approvedById?: string,
 ): Promise<ActionResult<{ id: string; status: string }>> {
-    if (!orgId?.trim()) return fail("orgId required");
+    if (!tenantId?.trim()) return fail("tenantId required");
 
     try {
         const vac = await prisma.hrVacationRequest.findFirst({
-            where: { id: vacationId, orgId },
+            where: { id: vacationId, tenantId },
         });
         if (!vac) return fail("Vacation request not found");
         if (vac.status !== "PENDING") return fail(`Cannot change status from ${vac.status}`);
@@ -456,7 +456,7 @@ export async function updateVacationStatusAction(
 // ─── 6. PERFORMANCE — Create Review ──────────────────────────────────────────
 
 const CreateReviewSchema = z.object({
-    orgId: z.string().min(1),
+    tenantId: z.string().min(1),
     employeeId: z.string().uuid(),
     reviewerId: z.string().min(1),
     reviewPeriod: z.string().regex(/^Q[1-4]-\d{4}$/, "Format: Q1-2026"),
@@ -479,7 +479,7 @@ export async function createPerformanceReviewAction(
     if (!parsed.success) return fail(parsed.error.message);
 
     const {
-        orgId, employeeId, reviewerId, reviewPeriod, reviewDate,
+        tenantId, employeeId, reviewerId, reviewPeriod, reviewDate,
         scoreDelivery, scoreAttitude, scoreCollaboration, scoreInnovation,
         strengthsNotes, improvementNotes, nextGoals,
     } = parsed.data;
@@ -494,7 +494,7 @@ export async function createPerformanceReviewAction(
 
         const review = await prisma.hrPerformanceReview.create({
             data: {
-                orgId,
+                tenantId,
                 employeeId,
                 reviewerId,
                 reviewPeriod,
@@ -520,12 +520,12 @@ export async function createPerformanceReviewAction(
 // ─── 7. PERFORMANCE — Submit & Acknowledge (isLocked) ────────────────────────
 
 export async function submitPerformanceReviewAction(
-    orgId: string,
+    tenantId: string,
     reviewId: string,
 ): Promise<ActionResult<{ id: string; status: string }>> {
     try {
         const review = await prisma.hrPerformanceReview.findFirst({
-            where: { id: reviewId, orgId },
+            where: { id: reviewId, tenantId },
         });
         if (!review) return fail("Review not found");
         assertNotLocked(review.isLocked, "HrPerformanceReview");
@@ -543,12 +543,12 @@ export async function submitPerformanceReviewAction(
 }
 
 export async function acknowledgePerformanceReviewAction(
-    orgId: string,
+    tenantId: string,
     reviewId: string,
 ): Promise<ActionResult<{ id: string; isLocked: boolean }>> {
     try {
         const review = await prisma.hrPerformanceReview.findFirst({
-            where: { id: reviewId, orgId },
+            where: { id: reviewId, tenantId },
         });
         if (!review) return fail("Review not found");
         assertNotLocked(review.isLocked, "HrPerformanceReview");
@@ -567,19 +567,19 @@ export async function acknowledgePerformanceReviewAction(
 
 // ─── 8. EMPLOYEE LIST (for dashboard KPIs) ────────────────────────────────────
 
-export async function getHrKpiStatsAction(orgId: string) {
-    if (!orgId?.trim()) return fail("orgId required");
+export async function getHrKpiStatsAction(tenantId: string) {
+    if (!tenantId?.trim()) return fail("tenantId required");
 
     try {
         const [total, byStatus, pendingVacations, pendingReviews] = await Promise.all([
-            prisma.hrEmployee.count({ where: { orgId } }),
+            prisma.hrEmployee.count({ where: { tenantId } }),
             prisma.hrEmployee.groupBy({
                 by: ["status"],
-                where: { orgId },
+                where: { tenantId },
                 _count: { id: true },
             }),
-            prisma.hrVacationRequest.count({ where: { orgId, status: "PENDING" } }),
-            prisma.hrPerformanceReview.count({ where: { orgId, status: "SUBMITTED" } }),
+            prisma.hrVacationRequest.count({ where: { tenantId, status: "PENDING" } }),
+            prisma.hrPerformanceReview.count({ where: { tenantId, status: "SUBMITTED" } }),
         ]);
 
         const statusMap = Object.fromEntries(

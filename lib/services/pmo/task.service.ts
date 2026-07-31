@@ -39,7 +39,7 @@ function getAutomationQueue() {
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 
 export interface CreateTaskInput {
-  orgId:       string;
+  tenantId:       string;
   boardId:     string;
   groupId:     string;
   title:       string;
@@ -68,14 +68,14 @@ export interface UpdateTaskInput {
 
 export interface MoveTaskInput {
   taskId:      string;
-  orgId:       string;
+  tenantId:       string;
   newGroupId:  string;
   newPosition: number;
 }
 
 export interface DeleteTaskInput {
   taskId:  string;
-  orgId:   string;
+  tenantId:   string;
   userId:  string;
   vector?: DeleteVector;
 }
@@ -92,7 +92,7 @@ export interface DeleteTaskResult {
 function mapTaskFromDb(row: Record<string, unknown>): PmoTask {
   return {
     id:                   String(row.id),
-    orgId:                String(row.org_id),
+    tenantId:                String(row.tenant_id),
     boardId:              String(row.board_id),
     groupId:              String(row.group_id),
     title:                String(row.title),
@@ -125,17 +125,17 @@ function mapTaskFromDb(row: Record<string, unknown>): PmoTask {
 
 export async function getTasksService(
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   groupId?: string
 ): Promise<PmoTask[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+  if (!boardId?.trim() || !tenantId?.trim()) return [];
   const db = getPmoDB();
 
   let query = db
     .from("pmo_tasks")
     .select("*")
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   if (groupId) query = query.eq("group_id", groupId);
@@ -147,7 +147,7 @@ export async function getTasksService(
 
 export async function getTaskByIdService(
   taskId: string,
-  orgId:  string
+  tenantId:  string
 ): Promise<PmoTask | null> {
   const db = getPmoDB();
 
@@ -155,7 +155,7 @@ export async function getTaskByIdService(
     .from("pmo_tasks")
     .select("*")
     .eq("id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if ((error as { code?: string } | null)?.code === "PGRST116") return null;
@@ -165,16 +165,16 @@ export async function getTaskByIdService(
 
 export async function searchTasksService(
   queryParam: string,
-  orgId: string,
+  tenantId: string,
   limit: number = 10
 ): Promise<PmoTask[]> {
-  if (!queryParam?.trim() || !orgId?.trim()) return [];
+  if (!queryParam?.trim() || !tenantId?.trim()) return [];
   const db = getPmoDB();
 
   const { data, error } = await db
     .from("pmo_tasks")
     .select("*")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .or(`title.ilike.%${queryParam}%,description.ilike.%${queryParam}%`)
     .limit(limit);
 
@@ -190,7 +190,7 @@ export async function createTaskService(input: CreateTaskInput): Promise<PmoTask
     .from("pmo_tasks")
     .select("position")
     .eq("group_id", input.groupId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .order("position", { ascending: false })
     .limit(1);
 
@@ -202,7 +202,7 @@ export async function createTaskService(input: CreateTaskInput): Promise<PmoTask
   const { data, error } = await db
     .from("pmo_tasks")
     .insert({
-      org_id:                 input.orgId,
+      tenant_id:                 input.tenantId,
       board_id:               input.boardId,
       group_id:               input.groupId,
       title:                  input.title.trim(),
@@ -227,7 +227,7 @@ export async function createTaskService(input: CreateTaskInput): Promise<PmoTask
 
 export async function updateTaskService(
   taskId:  string,
-  orgId:   string,
+  tenantId:   string,
   input:   UpdateTaskInput,
   userId?: string  // Requerido para webhook outgoing audit trail
 ): Promise<PmoTask> {
@@ -238,7 +238,7 @@ export async function updateTaskService(
     .from("pmo_tasks")
     .select("status, is_protected, source_playbook_id, source_playbook_task_id, occurrence_index, title, due_date")
     .eq("id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -261,7 +261,7 @@ export async function updateTaskService(
     .from("pmo_tasks")
     .update(patch)
     .eq("id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -273,13 +273,13 @@ export async function updateTaskService(
      const logs = [];
      if (input.status !== undefined && input.status !== current?.status) {
          logs.push({
-             org_id: orgId, task_id: taskId, user_id: userId,
+             tenant_id: tenantId, task_id: taskId, user_id: userId,
              action_type: "STATUS_CHANGE", old_value: current?.status, new_value: input.status
          });
      }
      if (input.title !== undefined && input.title.trim() !== current?.title) {
          logs.push({
-             org_id: orgId, task_id: taskId, user_id: userId,
+             tenant_id: tenantId, task_id: taskId, user_id: userId,
              action_type: "TITLE_CHANGE", old_value: current?.title, new_value: input.title.trim()
          });
      }
@@ -299,7 +299,7 @@ export async function updateTaskService(
   if (wasNotDone && isNowDone && isProtected && hasPlaybookId) {
     triggerOutgoingWebhook({
       taskId,
-      orgId,
+      tenantId,
       sourcePlaybookId:     String(current.source_playbook_id),
       sourcePlaybookTaskId: String(current.source_playbook_task_id ?? taskId),
       occurrenceIndex:      current.occurrence_index != null ? Number(current.occurrence_index) : null,
@@ -317,7 +317,7 @@ export async function updateTaskService(
       "evaluate_triggers",
       {
         taskId,
-        orgId,
+        tenantId,
         userId: userId ?? "system",
         changes: {
           oldStatus: current?.status,
@@ -350,7 +350,7 @@ export async function moveTaskService(input: MoveTaskInput): Promise<PmoTask> {
       updated_at:  new Date().toISOString(),
     })
     .eq("id", input.taskId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .select()
     .single();
 
@@ -368,7 +368,7 @@ export async function deleteTaskService(input: DeleteTaskInput): Promise<DeleteT
   // ── SHIELD 1: TaskGuard (Service Layer) ───────────────────────────────────
   const guard = await guardDelete({
     taskId:   input.taskId,
-    orgId:    input.orgId,
+    tenantId:    input.tenantId,
     userId:   input.userId,
     vector:   input.vector ?? "server_action",
   });
@@ -390,7 +390,7 @@ export async function deleteTaskService(input: DeleteTaskInput): Promise<DeleteT
     .from("pmo_tasks")
     .delete()
     .eq("id", input.taskId)
-    .eq("org_id", input.orgId);
+    .eq("tenant_id", input.tenantId);
 
   throwIfDbError(error, "deleteTask");
   return { success: true, taskId: input.taskId };
@@ -402,11 +402,11 @@ export async function deleteTaskService(input: DeleteTaskInput): Promise<DeleteT
  */
 export async function batchDeleteTasksService(
   taskIds: string[],
-  orgId:   string,
+  tenantId:   string,
   userId:  string
 ): Promise<{ deleted: string[]; blocked: string[] }> {
   const { deletableIds, blockedIds } = await guardBatchDelete(
-    taskIds, orgId, userId, "server_action"
+    taskIds, tenantId, userId, "server_action"
   );
 
   if (deletableIds.length > 0) {
@@ -415,7 +415,7 @@ export async function batchDeleteTasksService(
       .from("pmo_tasks")
       .delete()
       .in("id", deletableIds)
-      .eq("org_id", orgId);
+      .eq("tenant_id", tenantId);
 
     throwIfDbError(error, "batchDeleteTasks");
   }

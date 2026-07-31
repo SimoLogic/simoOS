@@ -108,7 +108,7 @@ export const PmoSidebar: React.FC<PmoSidebarProps> = ({ activeSubModule, onSelec
         if (!tenant_id) return;
         const name = prompt("Enter new Dashboard Panel Name:");
         if (!name?.trim()) return;
-        const res = await createPanelAction({ orgId: tenant_id, ownerId: "user-fallback", name: name.trim() });
+        const res = await createPanelAction({ tenantId: tenant_id, ownerId: "user-fallback", name: name.trim() });
         if (res.success && res.data) {
             setGlobalPanels(prev => [...prev, res.data!]);
             setActivePanelId(res.data.id);

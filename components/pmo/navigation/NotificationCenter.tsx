@@ -5,14 +5,14 @@ import { Bell, Check, Loader2, Info, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getMyNotificationsAction, markNotificationReadAction, type PmoNotification } from "@/app/actions/pmo/notification-actions";
 
-export const NotificationCenter = ({ orgId }: { orgId: string }) => {
+export const NotificationCenter = ({ tenantId }: { tenantId: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState<PmoNotification[]>([]);
 
   const fetchNotifications = async () => {
     setLoading(true);
-    const data = await getMyNotificationsAction(orgId);
+    const data = await getMyNotificationsAction(tenantId);
     setNotifications(data);
     setLoading(false);
   };
@@ -25,14 +25,14 @@ export const NotificationCenter = ({ orgId }: { orgId: string }) => {
         // Real-time Supabase socket is better, but this suffices for static checks.
         fetchNotifications();
     }
-  }, [isOpen, orgId]);
+  }, [isOpen, tenantId]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAsRead = async (id: string) => {
     // Optimistic Update (Latency Zero Rules)
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    await markNotificationReadAction(id, orgId);
+    await markNotificationReadAction(id, tenantId);
   };
 
   return (

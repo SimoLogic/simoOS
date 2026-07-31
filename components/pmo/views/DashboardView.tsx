@@ -35,7 +35,7 @@ export const WIDGETS_WARNING_THRESHOLD = 30;
 interface DashboardViewProps {
   board: PmoBoard;
   optimisticTasks: Record<string, Partial<PmoTask>>;
-  orgId?: string;
+  tenantId?: string;
   ownerId?: string;
 }
 
@@ -46,7 +46,7 @@ const DEFAULT_WIDGETS: PanelWidget[] = [
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  board, optimisticTasks, orgId, ownerId,
+  board, optimisticTasks, tenantId, ownerId,
 }) => {
   const [panel, setPanel] = useState<PmoPanel | null>(null);
   const [widgets, setWidgets] = useState<PanelWidget[]>(DEFAULT_WIDGETS);
@@ -66,15 +66,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Load panel from DB
   useEffect(() => {
-    if (!orgId || !ownerId) return;
-    getPanelsAction(orgId, ownerId).then(res => {
+    if (!tenantId || !ownerId) return;
+    getPanelsAction(tenantId, ownerId).then(res => {
       if (res.success && res.data.length > 0) {
         const p = res.data[0];
         setPanel(p);
         if (p.config.widgets.length > 0) setWidgets(p.config.widgets);
       }
     });
-  }, [orgId, ownerId]);
+  }, [tenantId, ownerId]);
 
   const metrics = useMemo(() => {
     let total = 0, completed = 0;
@@ -101,16 +101,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, []);
 
   const handleSave = async () => {
-    if (!orgId || !ownerId) return;
+    if (!tenantId || !ownerId) return;
     setSaving(true);
     try {
       if (panel) {
-        await updatePanelAction(panel.id, orgId, { config: { widgets } });
+        await updatePanelAction(panel.id, tenantId, { config: { widgets } });
       } else {
-        const res = await createPanelAction({ orgId, ownerId, name: `${board.title} Dashboard` });
+        const res = await createPanelAction({ tenantId, ownerId, name: `${board.title} Dashboard` });
         if (res.success) {
           setPanel(res.data);
-          await updatePanelAction(res.data.id, orgId, { config: { widgets } });
+          await updatePanelAction(res.data.id, tenantId, { config: { widgets } });
         }
       }
       setDirty(false);
@@ -129,7 +129,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       case "workload":
         return <WorkloadWidget boardId={board.id} />;
       case "activity":
-        return <TaskLogWidget boardId={board.id} orgId={orgId} />;
+        return <TaskLogWidget boardId={board.id} tenantId={tenantId} />;
       default:
         return <div className="bg-white rounded-xl border border-gray-200 p-4 h-full flex items-center justify-center text-gray-400 text-sm">Widget: {w.type}</div>;
     }

@@ -24,7 +24,7 @@ export function startAutomationWorker(): Worker {
     "pmo-automations",
     async (job: Job) => {
       if (job.name === "evaluate_triggers") {
-        const { taskId, orgId, userId, changes } = job.data;
+        const { taskId, tenantId, userId, changes } = job.data;
         const db = getPmoDB();
 
         // Rule: If Task became "done" → Notify Assignee
@@ -33,12 +33,12 @@ export function startAutomationWorker(): Worker {
             .from("pmo_tasks")
             .select("title, assignee_id")
             .eq("id", taskId)
-            .eq("org_id", orgId)
+            .eq("tenant_id", tenantId)
             .single();
 
           if (task && task.assignee_id && task.assignee_id !== userId) {
             await db.from("pmo_notifications").insert({
-              org_id: orgId,
+              tenant_id: tenantId,
               user_id: task.assignee_id,
               title: "Task Completed",
               message: `The task "${task.title}" was marked as done by another user.`,

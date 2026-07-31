@@ -21,7 +21,7 @@ export async function DELETE(
 
     // Registrar en pmo_sync_events: { type: "REVOKE", provider, userId }
     const { error: insertError } = await db.from("pmo_sync_events").insert({
-      org_id: session.orgId,
+      tenant_id: session.tenantId,
       event_type: "REVOKE",
       status: "success",
       payload: { provider: provider.toUpperCase(), userId: session.userId }

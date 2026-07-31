@@ -20,7 +20,7 @@ type ActionResult<T> =
 
 const AddColumnSchema = z.object({
   boardId: z.string().min(1),
-  orgId:   z.string().min(1),
+  tenantId:   z.string().min(1),
   title:   z.string().min(1).max(255).trim(),
   type:    z.enum([
     "text", "status", "person", "date", "date_range", "number",
@@ -32,13 +32,13 @@ const AddColumnSchema = z.object({
 });
 
 // ── SHIELD: verify board is not locked before mutations ───────────────────────
-async function assertBoardIsNotLocked(boardId: string, orgId: string): Promise<void> {
+async function assertBoardIsNotLocked(boardId: string, tenantId: string): Promise<void> {
   const db = getPmoDB();
   const { data } = await db
     .from("pmo_boards")
     .select("is_view_locked")
     .eq("id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
   if ((data as { is_view_locked?: boolean } | null)?.is_view_locked) {
     throw new Error("BOARD_LOCKED: This board is locked. Unlock it before adding columns.");
@@ -50,9 +50,9 @@ export async function addColumnAction(
 ): Promise<ActionResult<PmoColumn>> {
   try {
     const validated = AddColumnSchema.parse(input);
-    await assertBoardIsNotLocked(validated.boardId, validated.orgId);
+    await assertBoardIsNotLocked(validated.boardId, validated.tenantId);
     const column = await createColumnService({
-      orgId:    validated.orgId,
+      tenantId:    validated.tenantId,
       boardId:  validated.boardId,
       title:    validated.title,
       type:     validated.type as PmoFieldType,
@@ -71,12 +71,12 @@ export async function addColumnAction(
 export async function updateColumnAction(
   columnId: string,
   boardId:  string,
-  orgId:    string,
+  tenantId:    string,
   patch:    { title?: string; widthPx?: number; settings?: Record<string, unknown> }
 ): Promise<ActionResult<PmoColumn>> {
   try {
-    await assertBoardIsNotLocked(boardId, orgId);
-    const column = await updateColumnService(columnId, boardId, orgId, patch);
+    await assertBoardIsNotLocked(boardId, tenantId);
+    const column = await updateColumnService(columnId, boardId, tenantId, patch);
     return { success: true, data: column };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -86,10 +86,10 @@ export async function updateColumnAction(
 export async function deleteColumnAction(
   columnId: string,
   boardId:  string,
-  orgId:    string
+  tenantId:    string
 ): Promise<ActionResult<void>> {
   try {
-    await assertBoardIsNotLocked(boardId, orgId);
+    await assertBoardIsNotLocked(boardId, tenantId);
     // Protect system columns (Task, Status, Assignee) — position 0, 1, 2
     const db = getPmoDB();
     const { data } = await db
@@ -101,7 +101,7 @@ export async function deleteColumnAction(
     if (row && typeof row.position === "number" && row.position < 3) {
       return { success: false, error: "COLUMN_PROTECTED: Cannot delete a system column." };
     }
-    await deleteColumnService(columnId, boardId, orgId);
+    await deleteColumnService(columnId, boardId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -110,11 +110,11 @@ export async function deleteColumnAction(
 
 export async function reorderColumnsAction(
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   orderedIds: string[]
 ): Promise<ActionResult<void>> {
   try {
-    await reorderColumnsService(boardId, orgId, orderedIds);
+    await reorderColumnsService(boardId, tenantId, orderedIds);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -123,10 +123,10 @@ export async function reorderColumnsAction(
 
 export async function getColumnsAction(
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<PmoColumn[]> {
   try {
-    return await getColumnsService(boardId, orgId);
+    return await getColumnsService(boardId, tenantId);
   } catch {
     return [];
   }
@@ -135,7 +135,7 @@ export async function getColumnsAction(
 export async function updateCustomFieldValueAction(
   taskId:   string,
   boardId:  string,
-  orgId:    string,
+  tenantId:    string,
   fieldKey: string,
   value:    unknown
 ): Promise<ActionResult<void>> {
@@ -146,7 +146,7 @@ export async function updateCustomFieldValueAction(
       .from("pmo_tasks")
       .select("custom_field_values")
       .eq("id", taskId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .single();
 
     const existing = (taskRow as { custom_field_values?: Record<string, unknown> } | null)
@@ -162,7 +162,7 @@ export async function updateCustomFieldValueAction(
       })
       .eq("id", taskId)
       .eq("board_id", boardId)
-      .eq("org_id", orgId);
+      .eq("tenant_id", tenantId);
 
     if (error) return { success: false, error: error.message };
     return { success: true, data: undefined };

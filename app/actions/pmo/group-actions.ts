@@ -15,10 +15,10 @@ import type { PmoGroup } from "@/types/pmo.types";
 
 // ─── ZOD SCHEMAS ──────────────────────────────────────────────────────────────
 
-const OrgIdSchema = z.string().min(1, "orgId is required");
+const OrgIdSchema = z.string().min(1, "tenantId is required");
 
 const CreateGroupSchema = z.object({
-  orgId:   OrgIdSchema,
+  tenantId:   OrgIdSchema,
   boardId: z.string().min(1, "boardId is required"),
   title:   z.string().min(1, "Group title is required").max(255).trim(),
   color:   z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").optional(),
@@ -27,14 +27,14 @@ const CreateGroupSchema = z.object({
 const UpdateGroupSchema = z.object({
   groupId:     z.string().min(1),
   boardId:     z.string().min(1),
-  orgId:       OrgIdSchema,
+  tenantId:       OrgIdSchema,
   title:       z.string().min(1).max(255).trim().optional(),
   color:       z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   isCollapsed: z.boolean().optional(),
 });
 
 const ReorderGroupsSchema = z.object({
-  orgId:      OrgIdSchema,
+  tenantId:      OrgIdSchema,
   boardId:    z.string().min(1),
   orderedIds: z.array(z.string().min(1)).min(1),
 });
@@ -49,11 +49,11 @@ type ActionResult<T> =
 
 export async function getGroupsAction(
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<PmoGroup[]> {
-  if (!boardId?.trim() || !orgId?.trim()) return [];
+  if (!boardId?.trim() || !tenantId?.trim()) return [];
   try {
-    return await getGroupsService(boardId, orgId);
+    return await getGroupsService(boardId, tenantId);
   } catch (err: unknown) {
     console.error("[PMO Action] getGroups:", err);
     return [];
@@ -82,7 +82,7 @@ export async function updateGroupAction(
     const group = await updateGroupService(
       validated.groupId,
       validated.boardId,
-      validated.orgId,
+      validated.tenantId,
       {
         title:       validated.title,
         color:       validated.color,
@@ -100,13 +100,13 @@ export async function updateGroupAction(
 export async function deleteGroupAction(
   groupId: string,
   boardId: string,
-  orgId:   string
+  tenantId:   string
 ): Promise<ActionResult<void>> {
-  if (!groupId?.trim() || !boardId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "groupId, boardId, and orgId are required" };
+  if (!groupId?.trim() || !boardId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "groupId, boardId, and tenantId are required" };
   }
   try {
-    await deleteGroupService(groupId, boardId, orgId);
+    await deleteGroupService(groupId, boardId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

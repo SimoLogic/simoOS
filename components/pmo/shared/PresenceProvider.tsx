@@ -7,7 +7,7 @@ const PresenceContext = createContext<BoardPresenceState | null>(null);
 
 interface PresenceProviderProps {
   boardId: string | null;
-  orgId: string | null;
+  tenantId: string | null;
   currentUser: {
     userId: string;
     name: string;
@@ -16,12 +16,12 @@ interface PresenceProviderProps {
   children: ReactNode;
 }
 
-export function PresenceProvider({ boardId, orgId, currentUser, children }: PresenceProviderProps) {
+export function PresenceProvider({ boardId, tenantId, currentUser, children }: PresenceProviderProps) {
   const presence = useBoardPresence({
     boardId,
-    orgId,
+    tenantId,
     currentUser,
-    enabled: !!boardId && !!orgId && !!currentUser,
+    enabled: !!boardId && !!tenantId && !!currentUser,
   });
 
   return (
