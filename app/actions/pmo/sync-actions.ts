@@ -6,20 +6,20 @@ import { revalidatePath } from "next/cache";
 
 const ResolveConflictSchema = z.object({
   eventId: z.string().uuid(),
-  orgId: z.string(),
+  tenantId: z.string(),
   resolutionMode: z.enum(["keep_employee", "apply_simo"]),
 });
 
-export async function getPendingConflictsAction(orgId: string, limit = 50) {
+export async function getPendingConflictsAction(tenantId: string, limit = 50) {
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_sync_events")
     .select(`
-      id, org_id, task_id, event_type, status,
+      id, tenant_id, task_id, event_type, status,
       synced_fields, conflicts_found, timestamp_at, payload,
       pmo_tasks(title, group_id, board_id)
     `)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "conflict_detected")
     .order("timestamp_at", { ascending: false })
     .limit(limit);
@@ -34,7 +34,7 @@ export async function resolveConflictAction(payload: z.infer<typeof ResolveConfl
   const result = ResolveConflictSchema.safeParse(payload);
   if (!result.success) return { success: false, error: "Invalid payload" };
 
-  const { eventId, orgId, resolutionMode } = result.data;
+  const { eventId, tenantId, resolutionMode } = result.data;
   const db = getPmoDB();
 
   // 1. Obtener el evento
@@ -42,7 +42,7 @@ export async function resolveConflictAction(payload: z.infer<typeof ResolveConfl
     .from("pmo_sync_events")
     .select("task_id, conflicts_found")
     .eq("id", eventId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (fetchErr || !event) {
@@ -60,7 +60,7 @@ export async function resolveConflictAction(payload: z.infer<typeof ResolveConfl
         .from("pmo_tasks")
         .update({ status: statusConflict.simoValue, updated_at: new Date().toISOString() })
         .eq("id", event.task_id)
-        .eq("org_id", orgId);
+        .eq("tenant_id", tenantId);
         
       if (updateErr) return { success: false, error: "Failed to apply Simo value to task" };
     }
@@ -75,7 +75,7 @@ export async function resolveConflictAction(payload: z.infer<typeof ResolveConfl
       resolved_at: new Date().toISOString()
     })
     .eq("id", eventId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   if (resolveErr) return { success: false, error: resolveErr.message };
 

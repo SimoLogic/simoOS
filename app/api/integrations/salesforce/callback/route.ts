@@ -29,10 +29,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid state parameter" }, { status: 400 });
   }
 
-  const { orgId, userId } = state;
+  const { tenantId, userId } = state;
 
-  if (!orgId || !userId) {
-    return NextResponse.json({ error: "Invalid state payload: missing orgId or userId" }, { status: 400 });
+  if (!tenantId || !userId) {
+    return NextResponse.json({ error: "Invalid state payload: missing tenantId or userId" }, { status: 400 });
   }
 
   if (!SF_CLIENT_ID || !SF_CLIENT_SECRET) {
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
     // Use Token Vault to encrypt and save to Database (Shield Protocol & Key #3 compliance)
     const providerUserId = tokenData.id ? tokenData.id.split('/').pop() : userId; // Fallback
-    await saveIntegrationToken(orgId, userId, "salesforce", providerUserId, tokens);
+    await saveIntegrationToken(tenantId, userId, "salesforce", providerUserId, tokens);
 
     // Redirect user back to the dashboard or settings
     const dashboardUrl = new URL("/es/pmo/settings/integrations?success=salesforce", req.url);

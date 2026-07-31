@@ -73,14 +73,14 @@ const TEMPLATES: Template[] = [
 ];
 
 interface Props {
-  orgId: string;
+  tenantId: string;
   workspaceId: string;
   isOpen: boolean;
   onClose: () => void;
   onCreated: (boardId: string) => void;
 }
 
-export function TemplateSelectorModal({ orgId, workspaceId, isOpen, onClose, onCreated }: Props) {
+export function TemplateSelectorModal({ tenantId, workspaceId, isOpen, onClose, onCreated }: Props) {
   const [selected, setSelected] = useState<string>("crm");
   const [boardName, setBoardName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,7 +97,7 @@ export function TemplateSelectorModal({ orgId, workspaceId, isOpen, onClose, onC
     try {
       // Create board. If blank, seed defaults. If not, seed false to build our own.
       const res = await createBoardAction({
-        orgId,
+        tenantId,
         workspaceId,
         title: boardName.trim(),
         seedColumns: isBlank,
@@ -114,7 +114,7 @@ export function TemplateSelectorModal({ orgId, workspaceId, isOpen, onClose, onC
       if (!isBlank && template) {
         // Create the default Task title column first
         await addColumnAction({
-          orgId,
+          tenantId,
           boardId,
           title: "Item",
           type: "text",
@@ -123,7 +123,7 @@ export function TemplateSelectorModal({ orgId, workspaceId, isOpen, onClose, onC
 
         for (const col of template.columns) {
           await addColumnAction({
-            orgId,
+            tenantId,
             boardId,
             title: col.title,
             type: col.type as PmoFieldType,

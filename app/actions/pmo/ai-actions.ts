@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 /**
  * Generates an executive summary of project progress based on activity logs.
  */
-export async function getProjectSummaryAction(orgId: string, boardId: string) {
+export async function getProjectSummaryAction(tenantId: string, boardId: string) {
     try {
         const db = getPmoDB();
         
@@ -22,7 +22,7 @@ export async function getProjectSummaryAction(orgId: string, boardId: string) {
                 created_at,
                 pmo_tasks!inner(title, board_id)
             `)
-            .eq("org_id", orgId)
+            .eq("tenant_id", tenantId)
             .eq("pmo_tasks.board_id", boardId)
             .order("created_at", { ascending: false })
             .limit(50);

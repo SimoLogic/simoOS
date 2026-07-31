@@ -2,7 +2,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import type { PmoEvent } from "@/types/pmo.types";
 
 export interface CreateEventInput {
-  orgId: string;
+  tenantId: string;
   title: string;
   description?: string;
   startDateTime: string;
@@ -14,7 +14,7 @@ export async function createEventService(input: CreateEventInput): Promise<PmoEv
   const { data: event, error } = await db
     .from("pmo_events")
     .insert({
-      org_id: input.orgId,
+      tenant_id: input.tenantId,
       title: input.title,
       description: input.description,
       start_date_time: input.startDateTime,

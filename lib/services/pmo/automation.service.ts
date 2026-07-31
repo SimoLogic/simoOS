@@ -5,7 +5,7 @@
 // SEGURIDAD:
 //   - Circuit Breaker: MAX_DEPTH=3 previene bucles infinitos.
 //   - Shield: Tareas protegidas (isProtected=true) NO son modificables por automations.
-//   - Multi-tenant: orgId obligatorio en toda consulta.
+//   - Multi-tenant: tenantId obligatorio en toda consulta.
 // BACKEND: Usa getPmoDB() (Supabase), NO Prisma.
 
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
@@ -15,7 +15,7 @@ import type { PmoTask } from "@/types/pmo.types";
 
 export interface PmoAutomation {
   id:            string;
-  orgId:         string;
+  tenantId:         string;
   boardId:       string;
   name:          string;
   triggerType:   "on_status_change" | "on_column_change";
@@ -27,7 +27,7 @@ export interface PmoAutomation {
 }
 
 interface CreateAutomationInput {
-  orgId:         string;
+  tenantId:         string;
   boardId:       string;
   name:          string;
   triggerType:   "on_status_change" | "on_column_change";
@@ -50,7 +50,7 @@ interface UpdateAutomationInput {
 function mapAutomationFromDb(row: Record<string, unknown>): PmoAutomation {
   return {
     id:            String(row.id),
-    orgId:         String(row.org_id),
+    tenantId:         String(row.tenant_id),
     boardId:       String(row.board_id),
     name:          String(row.name),
     triggerType:   row.trigger_type as PmoAutomation["triggerType"],
@@ -66,14 +66,14 @@ function mapAutomationFromDb(row: Record<string, unknown>): PmoAutomation {
 
 export async function getAutomationsService(
   boardId: string,
-  orgId: string
+  tenantId: string
 ): Promise<PmoAutomation[]> {
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_automations")
     .select("*")
     .eq("board_id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: true });
 
   throwIfDbError(error, "getAutomations");
@@ -87,7 +87,7 @@ export async function createAutomationService(
   const { data, error } = await db
     .from("pmo_automations")
     .insert({
-      org_id:         input.orgId,
+      tenant_id:         input.tenantId,
       board_id:       input.boardId,
       name:           input.name.trim(),
       trigger_type:   input.triggerType,
@@ -105,7 +105,7 @@ export async function createAutomationService(
 
 export async function updateAutomationService(
   automationId: string,
-  orgId: string,
+  tenantId: string,
   input: UpdateAutomationInput
 ): Promise<PmoAutomation> {
   const db = getPmoDB();
@@ -122,7 +122,7 @@ export async function updateAutomationService(
     .from("pmo_automations")
     .update(patch)
     .eq("id", automationId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -132,14 +132,14 @@ export async function updateAutomationService(
 
 export async function deleteAutomationService(
   automationId: string,
-  orgId: string
+  tenantId: string
 ): Promise<void> {
   const db = getPmoDB();
   const { error } = await db
     .from("pmo_automations")
     .delete()
     .eq("id", automationId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteAutomation");
 }
@@ -159,7 +159,7 @@ const MAX_DEPTH = 3;
  */
 export async function processAutomations(
   taskId:  string,
-  orgId:   string,
+  tenantId:   string,
   boardId: string,
   delta:   Record<string, unknown>,
   depth:   number = 0
@@ -179,7 +179,7 @@ export async function processAutomations(
       .from("pmo_automations")
       .select("*")
       .eq("board_id", boardId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("is_active", true);
 
     if (error) {
@@ -195,7 +195,7 @@ export async function processAutomations(
 
       if (triggered) {
         console.log(`[Automation] ⚡ Rule "${rule.name}" triggered for task ${taskId} (depth=${depth})`);
-        await executeAction(rule, taskId, orgId, boardId, depth + 1);
+        await executeAction(rule, taskId, tenantId, boardId, depth + 1);
       }
     }
   } catch (err) {
@@ -233,7 +233,7 @@ function evaluateTrigger(
 async function executeAction(
   rule: PmoAutomation,
   taskId: string,
-  orgId: string,
+  tenantId: string,
   boardId: string,
   depth: number
 ): Promise<void> {
@@ -245,7 +245,7 @@ async function executeAction(
       .from("pmo_tasks")
       .select("is_protected, custom_field_values")
       .eq("id", taskId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .single();
 
     if (taskRow?.is_protected) {
@@ -273,7 +273,7 @@ async function executeAction(
         .from("pmo_tasks")
         .update({ [dbField]: value, updated_at: new Date().toISOString() })
         .eq("id", taskId)
-        .eq("org_id", orgId);
+        .eq("tenant_id", tenantId);
 
       if (error) {
         console.error(`[Automation] DB error on set_column (native):`, error);
@@ -281,7 +281,7 @@ async function executeAction(
       }
 
       // RECURSIVE: Trigger downstream automations for this change
-      await processAutomations(taskId, orgId, boardId, { [field]: value }, depth);
+      await processAutomations(taskId, tenantId, boardId, { [field]: value }, depth);
 
     } else {
       // Custom field update (JSONB merge)
@@ -292,7 +292,7 @@ async function executeAction(
         .from("pmo_tasks")
         .update({ custom_field_values: updatedCfv, updated_at: new Date().toISOString() })
         .eq("id", taskId)
-        .eq("org_id", orgId);
+        .eq("tenant_id", tenantId);
 
       if (error) {
         console.error(`[Automation] DB error on set_column (custom):`, error);
@@ -300,7 +300,7 @@ async function executeAction(
       }
 
       await processAutomations(
-        taskId, orgId, boardId,
+        taskId, tenantId, boardId,
         { customFieldValues: { [field]: value } },
         depth
       );
@@ -311,7 +311,7 @@ async function executeAction(
     const { error } = await db
       .from("simo_notifications")
       .insert({
-        org_id:     orgId,
+        tenant_id:     tenantId,
         user_id:    "system",
         type:       "AUTOMATION",
         module:     "PMO",

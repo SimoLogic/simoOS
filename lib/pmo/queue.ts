@@ -40,10 +40,10 @@ export async function enqueuePlaybookAssignment(payload: Record<string, unknown>
 // Queue 2: Salesforce Sync Jobs (NEW — SF-3)
 // ─────────────────────────────────────────────────────────────────────────────
 export type SfSyncJobData =
-  | { type: "TASK_CREATE";   orgId: string; userId: string; pmoTaskId: string }
-  | { type: "TASK_UPDATE";   orgId: string; userId: string; pmoTaskId: string; sfTaskId: string; changedFields: Record<string, string> }
-  | { type: "TASK_COMPLETE"; orgId: string; userId: string; pmoTaskId: string; sfTaskId: string }
-  | { type: "EVENT_CREATE";  orgId: string; userId: string; pmoEventId: string; isZoom: boolean; eventInput: {
+  | { type: "TASK_CREATE";   tenantId: string; userId: string; pmoTaskId: string }
+  | { type: "TASK_UPDATE";   tenantId: string; userId: string; pmoTaskId: string; sfTaskId: string; changedFields: Record<string, string> }
+  | { type: "TASK_COMPLETE"; tenantId: string; userId: string; pmoTaskId: string; sfTaskId: string }
+  | { type: "EVENT_CREATE";  tenantId: string; userId: string; pmoEventId: string; isZoom: boolean; eventInput: {
       title: string; startDateTime: string; endDateTime: string; description?: string;
     }
   };
@@ -71,7 +71,7 @@ export async function enqueueSfSync(data: SfSyncJobData, idempotencyKey?: string
 // Queue 3: ReadBack Zoom URL (NEW — SF-3)
 // ─────────────────────────────────────────────────────────────────────────────
 export interface ReadBackZoomJobData {
-  orgId:         string;
+  tenantId:         string;
   userId:        string;
   sfEventId:     string;
   pmoEventId:    string;

@@ -4,7 +4,7 @@ import { getPendingCountAction } from '@/lib/actions/my-queue-actions';
 interface MyQueueStore {
     unreadCount: number;
     hasFetched: boolean;
-    fetchUnreadCount: (orgId: string, userId: string) => Promise<void>;
+    fetchUnreadCount: (tenantId: string, userId: string) => Promise<void>;
     decrementUnread: () => void;
 }
 
@@ -12,10 +12,10 @@ export const useMyQueueStore = create<MyQueueStore>((set, get) => ({
     unreadCount: 0,
     hasFetched: false,
 
-    fetchUnreadCount: async (orgId: string, userId: string) => {
+    fetchUnreadCount: async (tenantId: string, userId: string) => {
         // Only fetch once per session lifecycle effectively to save db calls,
         // or can be customized to poll
-        const count = await getPendingCountAction(orgId, userId);
+        const count = await getPendingCountAction(tenantId, userId);
         set({ unreadCount: count, hasFetched: true });
     },
 

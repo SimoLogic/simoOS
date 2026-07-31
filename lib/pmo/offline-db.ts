@@ -13,7 +13,7 @@ export class PmoOfflineDB extends Dexie {
     constructor() {
         super("PmoOfflineDB");
         this.version(1).stores({
-            tasks: "id, boardId, orgId, status, syncStatus"
+            tasks: "id, boardId, tenantId, status, syncStatus"
         });
     }
 

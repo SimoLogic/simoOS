@@ -21,7 +21,7 @@ import { CalendarDays } from "lucide-react";
 
 interface CalendarViewProps {
   boardId: string;
-  orgId: string;
+  tenantId: string;
 }
 
 // SPRINT 5 PLACEHOLDER — Implementación completa en Prompt #25

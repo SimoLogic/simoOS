@@ -45,7 +45,7 @@ export const PlaybookAssignmentSchema = z.object({
   playbookId:     z.string().min(1),
   /** ID único de esta asignación — clave de idempotencia */
   assignmentId:   z.string().min(1),
-  orgId:          z.string().min(1),
+  tenantId:          z.string().min(1),
   boardId:        z.string().min(1),
   /** ID del empleado que recibe el Playbook */
   employeeId:     z.string().min(1),
@@ -84,7 +84,7 @@ export interface ProcessResult {
  * Garantiza que reenvíos de Simo IS no dupliquen tareas.
  */
 async function taskAlreadyExists(
-  orgId:                string,
+  tenantId:                string,
   boardId:              string,
   sourcePlaybookTaskId: string,
   occurrenceIndex:      number
@@ -93,7 +93,7 @@ async function taskAlreadyExists(
   const { data } = await db
     .from("pmo_tasks")
     .select("id")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("board_id", boardId)
     .eq("source_playbook_task_id", sourcePlaybookTaskId)
     .eq("occurrence_index", occurrenceIndex)
@@ -105,7 +105,7 @@ async function taskAlreadyExists(
 // ─── REGISTRO DE SYNC EVENT ───────────────────────────────────────────────────
 
 async function logSyncEvent(
-  orgId:        string,
+  tenantId:        string,
   assignmentId: string,
   status:       "queued" | "processing" | "completed" | "failed",
   details:      Record<string, unknown>
@@ -113,7 +113,7 @@ async function logSyncEvent(
   const db = getPmoDB();
   const { error } = await db.from("pmo_sync_events").upsert(
     {
-      org_id:           orgId,
+      tenant_id:           tenantId,
       idempotency_key:  assignmentId,
       event_type:       "playbook_assignment",
       status,
@@ -140,7 +140,7 @@ export async function processPlaybookAssignment(
   assignment: PlaybookAssignment
 ): Promise<ProcessResult> {
   const {
-    playbookId, assignmentId, orgId, boardId,
+    playbookId, assignmentId, tenantId, boardId,
     employeeId, startDate, tenantCountry, userCountry, timezone,
     taskTemplates, targetGroupId, groupTitle,
   } = assignment;
@@ -150,14 +150,14 @@ export async function processPlaybookAssignment(
   let tasksCreated = 0;
   let tasksSkipped = 0;
 
-  await logSyncEvent(orgId, assignmentId, "processing", { playbookId, taskCount: taskTemplates.length });
+  await logSyncEvent(tenantId, assignmentId, "processing", { playbookId, taskCount: taskTemplates.length });
 
   // ── Resolver o crear grupoo destino ────────────────────────────────────────
   let groupId = targetGroupId ?? "";
   if (!groupId) {
     try {
       const group = await createGroupService({
-        orgId,
+        tenantId,
         boardId,
         title: groupTitle,
         color: "#6161FF", // vibe-purple — identifica grupos de Playbook
@@ -166,7 +166,7 @@ export async function processPlaybookAssignment(
     } catch (err) {
       const msg = `Failed to create group: ${(err as Error).message}`;
       errors.push(msg);
-      await logSyncEvent(orgId, assignmentId, "failed", { error: msg });
+      await logSyncEvent(tenantId, assignmentId, "failed", { error: msg });
       return { success: false, playbookId, assignmentId, tasksCreated: 0, tasksSkipped: 0, groupId: "", errors };
     }
   }
@@ -191,7 +191,7 @@ export async function processPlaybookAssignment(
       for (const occ of occurrences) {
         // IDEMPOTENCIA: skip si ya existe
         const exists = await taskAlreadyExists(
-          orgId, boardId,
+          tenantId, boardId,
           template.sourcePlaybookTaskId,
           occ.occurrenceIndex
         );
@@ -203,7 +203,7 @@ export async function processPlaybookAssignment(
 
         // REGLA DE ORO #1: isProtected=true + sourcePlaybookId SIEMPRE
         await createTaskService({
-          orgId,
+          tenantId,
           boardId,
           groupId,
           title:               template.title + (occurrences.length > 1 ? ` (${occ.occurrenceIndex + 1}/${occurrences.length})` : ""),
@@ -227,7 +227,7 @@ export async function processPlaybookAssignment(
   }
 
   const finalStatus = errors.length === 0 ? "completed" : (tasksCreated > 0 ? "completed" : "failed");
-  await logSyncEvent(orgId, assignmentId, finalStatus, {
+  await logSyncEvent(tenantId, assignmentId, finalStatus, {
     playbookId, tasksCreated, tasksSkipped,
     errors: errors.length > 0 ? errors : undefined,
   });

@@ -45,7 +45,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 interface CardsViewProps {
   boardId:    string;
-  orgId:      string;
+  tenantId:      string;
   isReadOnly?: boolean;
   mode?:      "my-plan" | "my-projects";
 }
@@ -54,7 +54,7 @@ interface CardsViewProps {
 
 export const CardsView: React.FC<CardsViewProps> = ({
   boardId,
-  orgId,
+  tenantId,
   isReadOnly,
   mode = "my-projects",
 }) => {
@@ -72,7 +72,7 @@ export const CardsView: React.FC<CardsViewProps> = ({
   const loadBoard = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getBoardAction(boardId, orgId);
+      const result = await getBoardAction(boardId, tenantId);
       if (result.success) setBoard(result.data);
       else setError(result.error ?? "Board not found");
     } catch (err) {
@@ -80,7 +80,7 @@ export const CardsView: React.FC<CardsViewProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [boardId, orgId]);
+  }, [boardId, tenantId]);
 
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
@@ -306,7 +306,7 @@ export const CardsView: React.FC<CardsViewProps> = ({
       {peekTask && (
         <SidePeek
           task={peekTask}
-          orgId={orgId}
+          tenantId={tenantId}
           userId={user_ide ?? "system"}
           isOpen={!!activePeekTaskId}
           onClose={() => setActivePeekTaskId(null)}

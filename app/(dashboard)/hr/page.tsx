@@ -79,8 +79,8 @@ function NavCard({ href, icon, title, description, badge, badgeColor = "bg-cobal
 
 // ─── Stats Section ────────────────────────────────────────────────────────────
 
-async function HRStats({ orgId }: { orgId: string }) {
-    const result = await getHrKpiStatsAction(orgId);
+async function HRStats({ tenantId }: { tenantId: string }) {
+    const result = await getHrKpiStatsAction(tenantId);
 
     if (!result.success) {
         return (
@@ -134,7 +134,7 @@ async function HRStats({ orgId }: { orgId: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-// In production, pull orgId from auth session / middleware
+// In production, pull tenantId from auth session / middleware
 const DEFAULT_ORG_ID = process.env.DEMO_ORG_ID ?? "demo-org-id";
 
 export default function HRCommandCenterPage() {
@@ -165,7 +165,7 @@ export default function HRCommandCenterPage() {
                                 <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
                             ))
                         }>
-                            <HRStats orgId={DEFAULT_ORG_ID} />
+                            <HRStats tenantId={DEFAULT_ORG_ID} />
                         </Suspense>
                     </div>
                 </section>
@@ -221,7 +221,7 @@ export default function HRCommandCenterPage() {
                             <p className="text-sm font-semibold text-emerald-700">Shield Protocol Active</p>
                             <p className="text-xs text-emerald-600 mt-0.5">
                                 Salary data encrypted with AES-256-GCM · Signed contracts and processed payrolls are immutable ·
-                                Every query filtered by org_id
+                                Every query filtered by tenant_id
                             </p>
                         </div>
                     </div>

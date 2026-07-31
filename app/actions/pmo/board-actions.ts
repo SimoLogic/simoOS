@@ -24,16 +24,16 @@ import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
 
 // ─── ZOD SCHEMAS (Triple Shield — Shield 2) ────────────────────────────────────
 
-const OrgIdSchema = z.string().min(1, "orgId is required").max(100);
+const OrgIdSchema = z.string().min(1, "tenantId is required").max(100);
 
 const CreateWorkspaceSchema = z.object({
-  orgId:       OrgIdSchema,
+  tenantId:       OrgIdSchema,
   name:        z.string().min(1, "Workspace name is required").max(255).trim(),
   description: z.string().max(1000).optional(),
 });
 
 const CreateBoardSchema = z.object({
-  orgId:        OrgIdSchema,
+  tenantId:        OrgIdSchema,
   workspaceId:  z.string().min(1, "workspaceId is required"),
   title:        z.string().min(1, "Board title is required").max(255).trim(),
   description:  z.string().max(2000).optional(),
@@ -44,7 +44,7 @@ const CreateBoardSchema = z.object({
 
 const UpdateBoardSchema = z.object({
   boardId:     z.string().min(1),
-  orgId:       OrgIdSchema,
+  tenantId:       OrgIdSchema,
   title:       z.string().min(1).max(255).trim().optional(),
   description: z.string().max(2000).optional(),
   activeView:  z.enum(["grid","kanban","gantt","calendar","dashboard"]).optional(),
@@ -59,10 +59,10 @@ type ActionResult<T> =
 
 // ─── WORKSPACE ACTIONS ─────────────────────────────────────────────────────────
 
-export async function getWorkspacesAction(orgId: string): Promise<PmoWorkspace[]> {
-  if (!orgId?.trim()) return [];
+export async function getWorkspacesAction(tenantId: string): Promise<PmoWorkspace[]> {
+  if (!tenantId?.trim()) return [];
   try {
-    return await getWorkspacesService(orgId);
+    return await getWorkspacesService(tenantId);
   } catch (err: unknown) {
     console.error("[PMO Action] getWorkspaces:", err);
     return [];
@@ -88,12 +88,12 @@ export async function createWorkspaceAction(
 // ─── BOARD ACTIONS ─────────────────────────────────────────────────────────────
 
 export async function getBoardsAction(
-  orgId: string,
+  tenantId: string,
   workspaceId?: string
 ): Promise<PmoBoard[]> {
-  if (!orgId?.trim()) return [];
+  if (!tenantId?.trim()) return [];
   try {
-    return await getBoardsService(orgId, workspaceId);
+    return await getBoardsService(tenantId, workspaceId);
   } catch (err: unknown) {
     console.error("[PMO Action] getBoards:", err);
     return [];
@@ -102,22 +102,22 @@ export async function getBoardsAction(
 
 export async function getBoardAction(
   boardId: string,
-  orgId: string
+  tenantId: string
 ): Promise<ActionResult<PmoBoard>> {
   try {
-    const board = await getBoardByIdService(boardId, orgId);
+    const board = await getBoardByIdService(boardId, tenantId);
     if (!board) return { success: false, error: "Board not found" };
 
     // ── HYDRATE: Fetch groups, tasks AND columns in parallel ──
     const [groups, tasks, columns] = await Promise.all([
-      getGroupsService(boardId, orgId),
-      getTasksService(boardId, orgId),
-      getColumnsService(boardId, orgId),
+      getGroupsService(boardId, tenantId),
+      getTasksService(boardId, tenantId),
+      getColumnsService(boardId, tenantId),
     ]);
     
     // Fetch subitems for all tasks
     const taskIds = tasks.map(t => t.id);
-    const subitems = taskIds.length > 0 ? await getSubitemsByTaskIdsService(taskIds, orgId) : [];
+    const subitems = taskIds.length > 0 ? await getSubitemsByTaskIdsService(taskIds, tenantId) : [];
 
     // Nest tasks under their parent group
     const hydratedGroups = groups.map((g) => ({
@@ -146,7 +146,7 @@ export async function createBoardAction(
 
     // Auto-crear columnas default (Task, Status, Assignee, Due Date, Priority)
     if (validated.seedColumns) {
-      await seedDefaultColumnsService(board.id, board.orgId);
+      await seedDefaultColumnsService(board.id, board.tenantId);
     }
 
     return { success: true, data: board };
@@ -164,7 +164,7 @@ export async function updateBoardAction(
 ): Promise<ActionResult<PmoBoard>> {
   try {
     const validated = UpdateBoardSchema.parse(input);
-    const board = await updateBoardService(validated.boardId, validated.orgId, {
+    const board = await updateBoardService(validated.boardId, validated.tenantId, {
       title:        validated.title,
       description:  validated.description,
       activeView:   validated.activeView as BoardView | undefined,
@@ -181,13 +181,13 @@ export async function updateBoardAction(
 
 export async function deleteBoardAction(
   boardId: string,
-  orgId: string
+  tenantId: string
 ): Promise<ActionResult<void>> {
-  if (!boardId?.trim() || !orgId?.trim()) {
-    return { success: false, error: "boardId and orgId are required" };
+  if (!boardId?.trim() || !tenantId?.trim()) {
+    return { success: false, error: "boardId and tenantId are required" };
   }
   try {
-    await deleteBoardService(boardId, orgId);
+    await deleteBoardService(boardId, tenantId);
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };
@@ -196,10 +196,10 @@ export async function deleteBoardAction(
 
 export async function archiveBoardAction(
   boardId: string,
-  orgId: string
+  tenantId: string
 ): Promise<ActionResult<void>> {
   try {
-    await updateBoardService(boardId, orgId, { isArchived: true });
+    await updateBoardService(boardId, tenantId, { isArchived: true });
     return { success: true, data: undefined };
   } catch (err: unknown) {
     return { success: false, error: (err as Error).message };

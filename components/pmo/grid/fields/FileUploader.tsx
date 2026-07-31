@@ -15,12 +15,12 @@ const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 interface FileUploaderProps {
     taskId: string;
-    orgId: string;
+    tenantId: string;
     userId: string;
     onUploadComplete?: () => void;
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, orgId, userId, onUploadComplete }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, tenantId, userId, onUploadComplete }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, orgId, userI
         try {
             // 1. Generate unique path
             const ext = file.name.split('.').pop();
-            const storagePath = `${orgId}/${taskId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+            const storagePath = `${tenantId}/${taskId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
 
             // 2. Upload to Supabase Storage
             const { error: storageError } = await supabase.storage
@@ -46,7 +46,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ taskId, orgId, userI
             if (storageError) throw new Error(storageError.message);
 
             // 3. Log into our PMO schema
-            const res = await logAttachmentAction(taskId, orgId, userId, file.name, file.size, file.type, storagePath);
+            const res = await logAttachmentAction(taskId, tenantId, userId, file.name, file.size, file.type, storagePath);
             
             if (!res.success) throw new Error(res.error);
 

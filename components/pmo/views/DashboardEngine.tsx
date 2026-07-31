@@ -5,11 +5,11 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // MODE 1 — Ad-hoc (MyPlanShell / MyProjects):
-//   <DashboardEngine defaultBoardIds={[boardId]} orgId={orgId} />
+//   <DashboardEngine defaultBoardIds={[boardId]} tenantId={tenantId} />
 //   → Renders the 3 default widgets statically. No pmo_panels dependencies.
 //
 // MODE 2 — Global Panel (S-15 Cross-Board):
-//   <DashboardEngine panelId={panel.id} orgId={orgId} />
+//   <DashboardEngine panelId={panel.id} tenantId={tenantId} />
 //   → Fetches widgets & sourceBoardIds from pmo_panels. Renders unified layout.
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -48,7 +48,7 @@ export const WIDGETS_WARNING_THRESHOLD = 30;
 interface DashboardEngineProps {
   panelId?: string;
   defaultBoardIds?: string[];
-  orgId: string;
+  tenantId: string;
   isReadOnly?: boolean;
 }
 
@@ -58,7 +58,7 @@ const DEFAULT_WIDGETS_FACTORY = (boardIds: string[]): PanelWidget[] => [
   { id: "activity", type: "activity", sourceBoardIds: boardIds, x: 0, y: 4, w: 12, h: 6, config: {} },
 ];
 
-export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }: DashboardEngineProps) {
+export function DashboardEngine({ panelId, defaultBoardIds, tenantId, isReadOnly }: DashboardEngineProps) {
   const [panel, setPanel] = useState<PmoPanel | null>(null);
   const [widgets, setWidgets] = useState<PanelWidget[]>([]);
   const [metrics, setMetrics] = useState<ProjectHealthMetrics | null>(null);
@@ -94,7 +94,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
 
       // MODO GLOBAL (S-15)
       if (panelId) {
-        const res = await getPanelByIdAction(panelId, orgId);
+        const res = await getPanelByIdAction(panelId, tenantId);
         if (!alive) return;
         if (res.success && res.data) {
           setPanel(res.data);
@@ -113,7 +113,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [panelId, defaultBoardIds, orgId]);
+  }, [panelId, defaultBoardIds, tenantId]);
 
   // 2. Fetch Aggregated Metrics for everything requested by widgets
   const uniqueBoardIds = useMemo(() => {
@@ -130,7 +130,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
     let alive = true;
     (async () => {
       if (uniqueBoardIds.length === 0) return;
-      const res = await getCrossBoardHealthAction(uniqueBoardIds, orgId);
+      const res = await getCrossBoardHealthAction(uniqueBoardIds, tenantId);
       if (!alive) return;
       if (res.success && res.data) {
         setMetrics(res.data);
@@ -138,7 +138,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
     })();
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardsKey, orgId, optimisticTasks]);
+  }, [boardsKey, tenantId, optimisticTasks]);
 
   const layout = widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h }));
 
@@ -157,7 +157,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
     if (!panelId || isReadOnly) return;
     setSaving(true);
     try {
-      const res = await updatePanelAction(panelId, orgId, { config: { widgets } });
+      const res = await updatePanelAction(panelId, tenantId, { config: { widgets } });
       if (res.success) setDirty(false);
     } finally {
       setSaving(false);
@@ -181,7 +181,7 @@ export function DashboardEngine({ panelId, defaultBoardIds, orgId, isReadOnly }:
         // For MVP S-15, we pass the first sourceBoardId
         return <WorkloadWidget boardId={targetBoardIds[0]} />;
       case "activity":
-        return <TaskLogWidget boardId={targetBoardIds[0]} orgId={orgId} />;
+        return <TaskLogWidget boardId={targetBoardIds[0]} tenantId={tenantId} />;
       default:
         // Future extensions: "task_type_breakdown", "sla_heatmap"
         return (

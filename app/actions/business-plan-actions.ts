@@ -5,9 +5,9 @@
  * PLAYBOOK DESIGNER — SERVER ACTIONS (Business Plan Module)
  * ============================================================================
  * Follows State vs. Database Protocol (SIMO IS Rules):
- * - Frontend reads orgId from useTenant() (Zustand session state)
+ * - Frontend reads tenantId from useTenant() (Zustand session state)
  * - These server actions are the ONLY interface to the DB for playbooks
- * - All queries filtered by org_id (multi-tenant isolation)
+ * - All queries filtered by tenant_id (multi-tenant isolation)
  * - Uses Supabase JS client (matching PMO pattern in this project)
  * ============================================================================
  */
@@ -60,13 +60,13 @@ export interface PlaybookStepUpsertInput {
 /**
  * Fetch all playbooks for the current tenant (lightweight, no steps).
  */
-export async function getPlaybooksAction(orgId: string) {
-  if (!orgId) return [];
+export async function getPlaybooksAction(tenantId: string) {
+  if (!tenantId) return [];
 
   const { data, error } = await supabase
     .from("bp_playbooks")
     .select("id, name, type, family, strategy, status, purpose, version, global_owner_ids, created_at, updated_at")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false });
 
   if (error) { console.error("[BP Action] getPlaybooks:", error.message); return []; }
@@ -89,14 +89,14 @@ export async function getPlaybooksAction(orgId: string) {
 /**
  * Fetch a single playbook with all its steps (ordered by position).
  */
-export async function getPlaybookDetailAction(playbookId: string, orgId: string) {
-  if (!playbookId || !orgId) return null;
+export async function getPlaybookDetailAction(playbookId: string, tenantId: string) {
+  if (!playbookId || !tenantId) return null;
 
   const { data: pb, error: pbErr } = await supabase
     .from("bp_playbooks")
     .select("*")
     .eq("id", playbookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (pbErr || !pb) return null;
@@ -105,7 +105,7 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
     .from("bp_playbook_steps")
     .select("*")
     .eq("playbook_id", playbookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   return { ...pb, globalOwners: pb.global_owner_ids ?? [], steps: steps ?? [] };
@@ -115,11 +115,11 @@ export async function getPlaybookDetailAction(playbookId: string, orgId: string)
  * Saves (create or update) the playbook header metadata.
  * Supports version tracking and duplicate lineage (parent_id).
  */
-export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertInput): Promise<{ id: string; error?: string } | { id?: undefined; error: string }> {
-  if (!orgId) return { error: "orgId is required" };
+export async function upsertPlaybookAction(tenantId: string, data: PlaybookUpsertInput): Promise<{ id: string; error?: string } | { id?: undefined; error: string }> {
+  if (!tenantId) return { error: "tenantId is required" };
 
   const payload: Record<string, unknown> = {
-    org_id: orgId,
+    tenant_id: tenantId,
     name: data.name,
     type: data.type,
     family: data.family,
@@ -138,7 +138,7 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
       .from("bp_playbooks")
       .update(payload)
       .eq("id", data.id)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .select("id")
       .single();
     if (error) return { error: `[header update] ${error.message}` };
@@ -168,15 +168,15 @@ export async function upsertPlaybookAction(orgId: string, data: PlaybookUpsertIn
  */
 export async function checkPlaybookNameAction(
   name: string,
-  orgId: string,
+  tenantId: string,
   excludeId?: string
 ): Promise<{ exists: boolean; conflictId?: string; currentVersion?: number }> {
-  if (!name || !orgId) return { exists: false };
+  if (!name || !tenantId) return { exists: false };
 
   let query = supabase
     .from("bp_playbooks")
     .select("id, version")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .ilike("name", name.trim())
     .neq("status", "INACTIVE");
 
@@ -190,13 +190,13 @@ export async function checkPlaybookNameAction(
 /**
  * Deactivate a playbook (soft delete — sets status to INACTIVE).
  */
-export async function deactivatePlaybookAction(orgId: string, playbookId: string) {
-  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+export async function deactivatePlaybookAction(tenantId: string, playbookId: string) {
+  if (!tenantId || !playbookId) throw new Error("tenantId and playbookId are required");
   const { error } = await supabase
     .from("bp_playbooks")
     .update({ status: "INACTIVE", updated_at: new Date().toISOString() })
     .eq("id", playbookId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
   if (error) throw new Error(error.message);
   revalidatePath("/business-plan");
 }
@@ -206,17 +206,17 @@ export async function deactivatePlaybookAction(orgId: string, playbookId: string
  * New playbook gets " COPY" suffix, DRAFT status, version 1, parent_id = original.
  */
 export async function duplicatePlaybookAction(
-  orgId: string,
+  tenantId: string,
   sourcePlaybookId: string
 ): Promise<{ id?: string; error?: string }> {
-  if (!orgId || !sourcePlaybookId) return { error: "orgId and sourcePlaybookId are required" };
+  if (!tenantId || !sourcePlaybookId) return { error: "tenantId and sourcePlaybookId are required" };
 
   // 1. Fetch source playbook header
   const { data: source, error: srcErr } = await supabase
     .from("bp_playbooks")
     .select("*")
     .eq("id", sourcePlaybookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (srcErr || !source) return { error: `Source not found: ${srcErr?.message ?? 'no data'}` };
@@ -226,7 +226,7 @@ export async function duplicatePlaybookAction(
   const { data: existing } = await supabase
     .from("bp_playbooks")
     .select("name")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .ilike("name", `${source.name} COPY%`);
 
   const existingNames = new Set((existing ?? []).map((p: { name: string }) => p.name));
@@ -243,7 +243,7 @@ export async function duplicatePlaybookAction(
     .from("bp_playbooks")
     .insert({
       id: newId,
-      org_id: orgId,
+      tenant_id: tenantId,
       name: copyName,
       type: source.type,
       family: source.family,
@@ -264,14 +264,14 @@ export async function duplicatePlaybookAction(
     .from("bp_playbook_steps")
     .select("*")
     .eq("playbook_id", sourcePlaybookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   // 4. Clone steps into the new playbook (new IDs, same content)
   if (srcSteps && srcSteps.length > 0) {
     const clonedSteps = srcSteps.map((s: Record<string, unknown>) => ({
       id: crypto.randomUUID(),
-      org_id: orgId,
+      tenant_id: tenantId,
       playbook_id: newId,
       uid: s.uid,
       step_num: s.step_num,
@@ -314,16 +314,16 @@ export async function duplicatePlaybookAction(
  * statusFilter: ['DRAFT', 'PUBLISHED', 'INACTIVE'] — pass empty array for ALL
  */
 export async function getPlaybooksForMarketplaceAction(
-  orgId: string,
+  tenantId: string,
   statusFilter: string[] = ['DRAFT', 'PUBLISHED']
 ) {
-  if (!orgId) return [];
+  if (!tenantId) return [];
 
   // Step 1: Fetch playbook headers
   let headerQuery = supabase
     .from("bp_playbooks")
     .select("id, name, type, family, strategy, purpose, status, version, parent_id, created_at, updated_at, global_owner_ids")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false });
 
   if (statusFilter.length > 0) {
@@ -343,7 +343,7 @@ export async function getPlaybooksForMarketplaceAction(
     .from("bp_playbook_steps")
     .select("*")
     .in("playbook_id", playbookIds)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   if (stepsError) {
@@ -370,11 +370,11 @@ export async function getPlaybooksForMarketplaceAction(
  * Bulk upsert all steps. Removes stale steps not in the incoming array.
  */
 export async function upsertPlaybookStepsAction(
-  orgId: string,
+  tenantId: string,
   playbookId: string,
   steps: PlaybookStepUpsertInput[]
 ): Promise<{ success: boolean; error?: string }> {
-  if (!orgId || !playbookId) return { success: false, error: "orgId and playbookId are required" };
+  if (!tenantId || !playbookId) return { success: false, error: "tenantId and playbookId are required" };
 
   // Strategy: DELETE ALL existing steps, then INSERT fresh.
   // This avoids the duplication bug where upsert with new UUIDs always inserts.
@@ -382,7 +382,7 @@ export async function upsertPlaybookStepsAction(
     .from("bp_playbook_steps")
     .delete()
     .eq("playbook_id", playbookId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   if (delError) {
     console.error("[BP] Step delete error:", delError.message);
@@ -392,7 +392,7 @@ export async function upsertPlaybookStepsAction(
   // Insert fresh steps with new UUIDs
   const rows = steps.map((s) => ({
     id: crypto.randomUUID(),
-    org_id: orgId,
+    tenant_id: tenantId,
     playbook_id: playbookId,
     uid: s.uid,
     step_num: s.stepNum,
@@ -435,14 +435,14 @@ export async function upsertPlaybookStepsAction(
 /**
  * Deletes a DRAFT playbook. Published (SUBMITTED) playbooks are protected.
  */
-export async function deletePlaybookAction(orgId: string, playbookId: string) {
-  if (!orgId || !playbookId) throw new Error("orgId and playbookId are required");
+export async function deletePlaybookAction(tenantId: string, playbookId: string) {
+  if (!tenantId || !playbookId) throw new Error("tenantId and playbookId are required");
 
   const { data: pb } = await supabase
     .from("bp_playbooks")
     .select("status")
     .eq("id", playbookId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (!pb) throw new Error("Playbook not found");
@@ -457,12 +457,12 @@ export async function deletePlaybookAction(orgId: string, playbookId: string) {
 /**
  * Fetch active Internal Roles from dim_role_title
  */
-export async function getActiveRoleTitlesForPlaybookAction(orgId: string) {
-  if (!orgId) return [];
+export async function getActiveRoleTitlesForPlaybookAction(tenantId: string) {
+  if (!tenantId) return [];
   const { data, error } = await supabase
     .from("dim_role_title")
     .select("id, role_title")
-    .eq("tenant_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "Active")
     .order("role_title", { ascending: true });
 
@@ -473,12 +473,12 @@ export async function getActiveRoleTitlesForPlaybookAction(orgId: string) {
 /**
  * Fetch active Employees for Counteraction Assignment in Playbook Designer
  */
-export async function getActiveEmployeesForPlaybookAction(orgId: string) {
-  if (!orgId) return [];
+export async function getActiveEmployeesForPlaybookAction(tenantId: string) {
+  if (!tenantId) return [];
   const { data, error } = await supabase
     .from("dim_employee")
     .select("eid, primer_nombre, primer_apellido, role_title")
-    .eq("tenant_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "Active")
     .order("primer_apellido", { ascending: true });
 
@@ -490,12 +490,12 @@ export async function getActiveEmployeesForPlaybookAction(orgId: string) {
  * Fetch all External Roles (Active/Inactive) for the settings panel.
  * The sidebar component will filter by Active.
  */
-export async function getActiveExternalRolesAction(orgId: string) {
-  if (!orgId) return [];
+export async function getActiveExternalRolesAction(tenantId: string) {
+  if (!tenantId) return [];
   const { data, error } = await supabase
     .from("dim_external_role")
     .select("id, name, status, business_type, size, annual_volume, num_agents, notes")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("name", { ascending: true });
 
   if (error) { console.error("[BP Action] getActiveExternalRoles:", error.message); return []; }
@@ -514,12 +514,12 @@ export interface ExternalRoleInput {
 /**
  * Create a new External Role
  */
-export async function createExternalRoleAction(orgId: string, payload: ExternalRoleInput) {
-  if (!orgId || !payload.name) return { success: false, error: "Missing required fields" };
+export async function createExternalRoleAction(tenantId: string, payload: ExternalRoleInput) {
+  if (!tenantId || !payload.name) return { success: false, error: "Missing required fields" };
   const { error } = await supabase
     .from("dim_external_role")
     .insert({
-      org_id: orgId,
+      tenant_id: tenantId,
       name: payload.name,
       business_type: payload.businessType || null,
       size: payload.size || null,
@@ -539,14 +539,14 @@ export async function createExternalRoleAction(orgId: string, payload: ExternalR
 /**
  * Toggle External Role Status
  */
-export async function toggleExternalRoleStatusAction(orgId: string, id: string, currentStatus: string) {
-  if (!orgId || !id) return { success: false, error: "Missing required fields" };
+export async function toggleExternalRoleStatusAction(tenantId: string, id: string, currentStatus: string) {
+  if (!tenantId || !id) return { success: false, error: "Missing required fields" };
   const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
   const { error } = await supabase
     .from("dim_external_role")
     .update({ status: newStatus })
     .eq("id", id)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
   
   if (error) return { success: false, error: error.message };
   return { success: true };
@@ -555,8 +555,8 @@ export async function toggleExternalRoleStatusAction(orgId: string, id: string, 
 /**
  * Fetch all PUBLISHED Playbooks with their Steps (for the Marketplace)
  */
-export async function getPublishedPlaybooksAction(orgId: string) {
-  if (!orgId) return [];
+export async function getPublishedPlaybooksAction(tenantId: string) {
+  if (!tenantId) return [];
   const { data, error } = await supabase
     .from("bp_playbooks")
     .select(`
@@ -568,7 +568,7 @@ export async function getPublishedPlaybooksAction(orgId: string) {
         is_locked, is_repeatable
       )
     `)
-    .eq("tenant_id", orgId)
+    .eq("tenant_id", tenantId)
     .eq("status", "PUBLISHED")
     .order("created_at", { ascending: false });
 
@@ -583,6 +583,6 @@ export async function getPublishedPlaybooksAction(orgId: string) {
  * Alias: Fetch a single playbook with all its steps by ID (Marketplace Preview).
  * Delegates to getPlaybookDetailAction � no logic duplication.
  */
-export async function getPlaybookByIdAction(playbookId: string, orgId: string) {
-  return getPlaybookDetailAction(playbookId, orgId);
+export async function getPlaybookByIdAction(playbookId: string, tenantId: string) {
+  return getPlaybookDetailAction(playbookId, tenantId);
 }

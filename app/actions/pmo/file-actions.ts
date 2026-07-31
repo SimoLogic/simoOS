@@ -27,7 +27,7 @@ export interface AttachmentRecord {
  */
 export async function logAttachmentAction(
   taskId: string,
-  orgId: string,
+  tenantId: string,
   userId: string,
   fileName: string,
   sizeBytes: number,
@@ -44,7 +44,7 @@ export async function logAttachmentAction(
       .from("pmo_attachments")
       .insert({
         task_id: taskId,
-        org_id: orgId,
+        tenant_id: tenantId,
         uploader_id: userId,
         file_name: fileName,
         file_size_bytes: sizeBytes,
@@ -65,14 +65,14 @@ export async function logAttachmentAction(
 /**
  * Retrieves attachments metadata for a specific task.
  */
-export async function getAttachmentsAction(taskId: string, orgId: string): Promise<AttachmentRecord[]> {
+export async function getAttachmentsAction(taskId: string, tenantId: string): Promise<AttachmentRecord[]> {
     try {
         const db = getPmoDB();
         const { data, error } = await db
             .from("pmo_attachments")
             .select("*")
             .eq("task_id", taskId)
-            .eq("org_id", orgId)
+            .eq("tenant_id", tenantId)
             .order("created_at", { ascending: false });
             
         throwIfDbError(error, "getAttachments");
@@ -86,14 +86,14 @@ export async function getAttachmentsAction(taskId: string, orgId: string): Promi
  * Deletes an attachment metadata row. 
  * Note: Storage object removal should ideally follow or precede this.
  */
-export async function deleteAttachmentAction(attachmentId: string, orgId: string): Promise<boolean> {
+export async function deleteAttachmentAction(attachmentId: string, tenantId: string): Promise<boolean> {
      try {
         const db = getPmoDB();
         const { error } = await db
             .from("pmo_attachments")
             .delete()
             .eq("id", attachmentId)
-            .eq("org_id", orgId);
+            .eq("tenant_id", tenantId);
             
         if (error) throw error;
         return true;

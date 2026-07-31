@@ -11,15 +11,15 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const orgId = searchParams.get("orgId");
+  const tenantId = searchParams.get("tenantId");
   const userId = searchParams.get("userId");
 
-  if (!orgId || !userId) {
-    return NextResponse.json({ error: "Missing orgId or userId" }, { status: 400 });
+  if (!tenantId || !userId) {
+    return NextResponse.json({ error: "Missing tenantId or userId" }, { status: 400 });
   }
 
-  // Pass orgId and userId in the state parameter to recover them in the callback
-  const state = Buffer.from(JSON.stringify({ orgId, userId })).toString("base64");
+  // Pass tenantId and userId in the state parameter to recover them in the callback
+  const state = Buffer.from(JSON.stringify({ tenantId, userId })).toString("base64");
 
   const url = new URL(SF_AUTH_URL);
   url.searchParams.set("client_id", SF_CLIENT_ID);

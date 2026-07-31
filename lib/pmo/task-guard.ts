@@ -18,7 +18,7 @@ export type DeleteVector = "http_api" | "ui" | "sql_direct" | "server_action";
 
 export interface GuardContext {
   taskId:  string;
-  orgId:   string;
+  tenantId:   string;
   userId:  string;
   vector:  DeleteVector;
   ipAddress?: string;
@@ -40,11 +40,11 @@ export interface GuardResult {
  * checkTaskProtection — Consulta is_protected de una tarea directamente en DB.
  * 
  * Usa la DB como fuente de verdad (no confiar en el estado del cliente).
- * Filtra por orgId para garantizar aislamiento multi-tenant.
+ * Filtra por tenantId para garantizar aislamiento multi-tenant.
  */
 async function checkTaskProtection(
   taskId: string,
-  orgId: string
+  tenantId: string
 ): Promise<{ isProtected: boolean; title: string } | null> {
   const db = getPmoDB();
 
@@ -52,7 +52,7 @@ async function checkTaskProtection(
     .from("pmo_tasks")
     .select("id, is_protected, title, source_playbook_id")
     .eq("id", taskId)
-    .eq("org_id", orgId)   // ← SIEMPRE filtrar por org_id (multi-tenant)
+    .eq("tenant_id", tenantId)   // ← SIEMPRE filtrar por tenant_id (multi-tenant)
     .single();
 
   if (error) {
@@ -83,7 +83,7 @@ async function logSecurityEvent(
   const db = getPmoDB();
 
   const { error } = await db.from("pmo_security_events").insert({
-    org_id:       ctx.orgId,
+    tenant_id:       ctx.tenantId,
     user_id:      ctx.userId,
     task_id:      ctx.taskId,
     attempted_at: new Date().toISOString(),
@@ -110,7 +110,7 @@ async function logSecurityEvent(
  * 
  * Uso:
  * ```ts
- * const guard = await guardDelete({ taskId, orgId, userId, vector: "server_action" });
+ * const guard = await guardDelete({ taskId, tenantId, userId, vector: "server_action" });
  * if (!guard.allowed) {
  *   return { success: false, ...guard.blocked };
  * }
@@ -118,7 +118,7 @@ async function logSecurityEvent(
  * ```
  */
 export async function guardDelete(ctx: GuardContext): Promise<GuardResult> {
-  const task = await checkTaskProtection(ctx.taskId, ctx.orgId);
+  const task = await checkTaskProtection(ctx.taskId, ctx.tenantId);
 
   // Tarea no encontrada en este org → OK (no hay nada que borrar, no es violación)
   if (!task) {
@@ -155,7 +155,7 @@ export async function guardDelete(ctx: GuardContext): Promise<GuardResult> {
  */
 export async function guardBatchDelete(
   taskIds: string[],
-  orgId: string,
+  tenantId: string,
   userId: string,
   vector: DeleteVector
 ): Promise<{ deletableIds: string[]; blockedIds: string[] }> {
@@ -165,7 +165,7 @@ export async function guardBatchDelete(
     .from("pmo_tasks")
     .select("id, is_protected, title, source_playbook_id")
     .in("id", taskIds)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "guardBatchDelete");
 
@@ -178,7 +178,7 @@ export async function guardBatchDelete(
     if (isProtected) {
       blockedIds.push(task.id);
       logPromises.push(
-        logSecurityEvent({ taskId: task.id, orgId, userId, vector }, {
+        logSecurityEvent({ taskId: task.id, tenantId, userId, vector }, {
           taskTitle: task.title,
           reason: "Batch delete blocked — Simo IS Playbook task",
         })

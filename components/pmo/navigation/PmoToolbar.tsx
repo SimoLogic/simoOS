@@ -11,7 +11,7 @@ import { BoardPresenceStack } from "@/components/pmo/shared/BoardPresenceStack";
 
 interface PmoToolbarProps {
   boardId: string;
-  orgId: string;
+  tenantId: string;
   boardName: string;
   workspaceName?: string;
   onNewTaskClick?: () => void;
@@ -20,7 +20,7 @@ interface PmoToolbarProps {
   isReadOnly?: boolean;
 }
 
-export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, onAutomationsClick, isReadOnly }: PmoToolbarProps) {
+export function PmoToolbar({ boardId, tenantId, boardName, workspaceName = "Workspace", onNewTaskClick, onNewGroupClick, onAutomationsClick, isReadOnly }: PmoToolbarProps) {
   const activeView = usePmoStore(s => s.activeView);
   const filterStatus = usePmoStore(s => s.filterStatus);
   const setFilterStatus = usePmoStore(s => s.setFilterStatus);
@@ -60,9 +60,9 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
               {/* Invisible Global Listener for Time Travel */}
               <KeyboardShortcuts />
               
-              <NotificationCenter orgId="org-1" />
+              <NotificationCenter tenantId="org-1" />
               
-              <ImportExportMenu orgId="org-1" boardId="b1" />
+              <ImportExportMenu tenantId="org-1" boardId="b1" />
               
               <button 
                 onClick={onNewGroupClick}
@@ -81,7 +81,7 @@ export function PmoToolbar({ boardId, orgId, boardName, workspaceName = "Workspa
               <button 
                 onClick={async () => {
                   if(confirm("Are you sure you want to archive this board?")) {
-                    const res = await archiveBoardAction(boardId, orgId);
+                    const res = await archiveBoardAction(boardId, tenantId);
                     if (res.success) {
                         alert("Board archived successfully.");
                         window.location.reload();

@@ -36,7 +36,7 @@ type SidePeekTab = "updates" | "activity" | "subitems";
 
 interface SidePeekProps {
   task: PmoTask;
-  orgId: string;
+  tenantId: string;
   userId: string;
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +47,7 @@ interface SidePeekProps {
 
 export function SidePeek({
   task,
-  orgId,
+  tenantId,
   userId,
   isOpen,
   onClose,
@@ -76,13 +76,13 @@ export function SidePeek({
     setError(null);
     try {
       if (tab === "updates") {
-        const data = await getUpdatesAction(task.id, orgId);
+        const data = await getUpdatesAction(task.id, tenantId);
         setUpdates(data);
       } else if (tab === "activity") {
-        const data = await getTaskActivityAction(task.id, orgId, 50);
+        const data = await getTaskActivityAction(task.id, tenantId, 50);
         setActivity(data);
       } else if (tab === "subitems") {
-        const data = await getSubitemsAction(task.id, orgId);
+        const data = await getSubitemsAction(task.id, tenantId);
         setSubitems(data);
       }
     } catch (err: unknown) {
@@ -90,7 +90,7 @@ export function SidePeek({
     } finally {
       setLoadingTab(false);
     }
-  }, [task.id, orgId]);
+  }, [task.id, tenantId]);
 
   // ESC to close
   useEffect(() => {
@@ -107,7 +107,7 @@ export function SidePeek({
     try {
       const result = await addUpdateAction({
         taskId:  task.id,
-        orgId,
+        tenantId,
         userId,
         body:    newUpdateText.trim(),
       });
@@ -123,7 +123,7 @@ export function SidePeek({
   };
 
   const handleDeleteUpdate = async (updateId: string) => {
-    const result = await deleteUpdateAction(updateId, orgId, userId);
+    const result = await deleteUpdateAction(updateId, tenantId, userId);
     if (result.success) {
       setUpdates(prev => prev.filter(u => u.id !== updateId));
     }
@@ -135,7 +135,7 @@ export function SidePeek({
     try {
       const result = await createSubitemAction({
         taskId: task.id,
-        orgId,
+        tenantId,
         title:  newSubitemTitle.trim(),
       });
       if (result.success) {
@@ -156,7 +156,7 @@ export function SidePeek({
     );
     const result = await updateSubitemAction({
       subitemId:   subitem.id,
-      orgId,
+      tenantId,
       userId,
       isCompleted: !subitem.isCompleted,
     });
@@ -170,7 +170,7 @@ export function SidePeek({
 
   const handleDeleteSubitem = async (subitemId: string) => {
     setSubitems(prev => prev.filter(s => s.id !== subitemId));
-    const result = await deleteSubitemAction(subitemId, orgId);
+    const result = await deleteSubitemAction(subitemId, tenantId);
     if (!result.success) {
       // Refetch to restore state
       loadTabData("subitems");

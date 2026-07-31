@@ -27,14 +27,14 @@ function err(msg: string, status: number) {
 
 async function checkIdempotency(
   idempotencyKey: string,
-  orgId: string
+  tenantId: string
 ): Promise<{ exists: boolean; cachedResponse?: Record<string, unknown> }> {
   const db = getPmoDB();
   const { data } = await db
     .from("pmo_sync_events")
     .select("status, payload")
     .eq("idempotency_key", idempotencyKey)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .limit(1)
     .single();
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── 5. Verificar Idempotencia en DB ───────────────────────────────────────
-  const idempotencyCheck = await checkIdempotency(idempotencyKey, payload.orgId);
+  const idempotencyCheck = await checkIdempotency(idempotencyKey, payload.tenantId);
   if (idempotencyCheck.exists) {
     console.info("[Simo Endpoint] Idempotent response for key:", idempotencyKey);
     return NextResponse.json({
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Registrar SyncEvent como queued
     const db = getPmoDB();
     await db.from("pmo_sync_events").insert({
-      org_id: payload.orgId,
+      tenant_id: payload.tenantId,
       idempotency_key: idempotencyKey,
       event_type: "playbook_assignment",
       status: "queued",

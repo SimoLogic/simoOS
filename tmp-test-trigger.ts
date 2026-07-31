@@ -3,23 +3,23 @@ import { getPmoDB } from "./lib/pmo/pmo-db";
 async function testTrigger() {
   console.log("🛡️ Iniciando Verificación de Seguridad de Triggers PMO...");
   const db = getPmoDB();
-  const orgId = "test-org-trigger";
+  const tenantId = "test-org-trigger";
 
   try {
     // 1. Crear workspace, board y grupo de prueba
-    const ws = await db.from("pmo_workspaces").insert({ org_id: orgId, name: "Test WS" }).select().single();
+    const ws = await db.from("pmo_workspaces").insert({ tenant_id: tenantId, name: "Test WS" }).select().single();
     if (ws.error) throw new Error("Failed to create WS: " + ws.error.message);
 
-    const board = await db.from("pmo_boards").insert({ org_id: orgId, workspace_id: ws.data.id, title: "Test Board" }).select().single();
+    const board = await db.from("pmo_boards").insert({ tenant_id: tenantId, workspace_id: ws.data.id, title: "Test Board" }).select().single();
     if (board.error) throw new Error("Failed to create Board: " + board.error.message);
 
-    const group = await db.from("pmo_groups").insert({ org_id: orgId, board_id: board.data.id, title: "Test Group" }).select().single();
+    const group = await db.from("pmo_groups").insert({ tenant_id: tenantId, board_id: board.data.id, title: "Test Group" }).select().single();
     if (group.error) throw new Error("Failed to create Group: " + group.error.message);
 
     // 2. Insertar tarea protegida (Regla de Oro #1)
     console.log("Creando tarea protegida...");
     const task = await db.from("pmo_tasks").insert({
-      org_id: orgId,
+      tenant_id: tenantId,
       board_id: board.data.id,
       group_id: group.data.id,
       title: "Protected Playbook Task",

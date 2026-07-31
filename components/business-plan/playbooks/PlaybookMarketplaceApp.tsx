@@ -13,7 +13,7 @@ type StatusFilter = 'ALL' | 'DRAFT' | 'PUBLISHED' | 'INACTIVE';
 
 export const PlaybookMarketplaceApp: React.FC = () => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
-  const orgId = currentTenant?.tenant_id ?? '';
+  const tenantId = currentTenant?.tenant_id ?? '';
   const router = useRouter();
 
   const [playbooks, setPlaybooks] = useState<any[]>([]);
@@ -29,19 +29,19 @@ export const PlaybookMarketplaceApp: React.FC = () => {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const fetchPlaybooks = async (statusFilter: StatusFilter) => {
-    if (!orgId) return;
+    if (!tenantId) return;
     setLoading(true);
     const statusArr =
       statusFilter === "ALL"
         ? ["DRAFT", "PUBLISHED", "INACTIVE"]
         : [statusFilter];
-    const data = await getPlaybooksForMarketplaceAction(orgId, statusArr);
+    const data = await getPlaybooksForMarketplaceAction(tenantId, statusArr);
     setPlaybooks(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    if (tenantLoading || !orgId) return;
+    if (tenantLoading || !tenantId) return;
     fetchPlaybooks(activeStatusFilter);
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') fetchPlaybooks(activeStatusFilter);
@@ -49,7 +49,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, activeStatusFilter, tenantLoading]);
+  }, [tenantId, activeStatusFilter, tenantLoading]);
 
   const filteredPlaybooks = playbooks.filter((pb) => {
     const term = search.toLowerCase();
@@ -79,7 +79,7 @@ export const PlaybookMarketplaceApp: React.FC = () => {
     e.stopPropagation();
     setDuplicatingId(pb.id);
     try {
-      const result = await duplicatePlaybookAction(orgId, pb.id);
+      const result = await duplicatePlaybookAction(tenantId, pb.id);
       if (result.error) {
         alert("Duplicate failed: " + result.error);
       } else {

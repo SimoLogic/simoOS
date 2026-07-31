@@ -1,6 +1,6 @@
 // ⚠️ LEER ARCHITECTURE.md antes de modificar
 // board.service.ts — CRUD para pmo_workspaces y pmo_boards
-// Patrón: Service recibe orgId explícito → TODA query filtra por org_id
+// Patrón: Service recibe tenantId explícito → TODA query filtra por tenant_id
 
 import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
@@ -8,13 +8,13 @@ import type { PmoBoard, PmoWorkspace, BoardView } from "@/types/pmo.types";
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface CreateWorkspaceInput {
-  orgId:       string;
+  tenantId:       string;
   name:        string;
   description?: string;
 }
 
 export interface CreateBoardInput {
-  orgId:        string;
+  tenantId:        string;
   workspaceId:  string;
   title:        string;
   description?: string;
@@ -35,7 +35,7 @@ export interface UpdateBoardInput {
 function mapBoardFromDb(row: Record<string, unknown>): PmoBoard {
   return {
     id:             String(row.id),
-    orgId:          String(row.org_id),
+    tenantId:          String(row.tenant_id),
     workspaceId:    String(row.workspace_id),
     title:          String(row.title),
     description:    row.description ? String(row.description) : undefined,
@@ -55,7 +55,7 @@ function mapBoardFromDb(row: Record<string, unknown>): PmoBoard {
 function mapWorkspaceFromDb(row: Record<string, unknown>): PmoWorkspace {
   return {
     id:        String(row.id),
-    orgId:     String(row.org_id),
+    tenantId:     String(row.tenant_id),
     name:      String(row.name),
     boards:    [],
     createdAt: String(row.created_at),
@@ -64,14 +64,14 @@ function mapWorkspaceFromDb(row: Record<string, unknown>): PmoWorkspace {
 
 // ─── WORKSPACE SERVICES ───────────────────────────────────────────────────────
 
-export async function getWorkspacesService(orgId: string): Promise<PmoWorkspace[]> {
-  if (!orgId?.trim()) return [];
+export async function getWorkspacesService(tenantId: string): Promise<PmoWorkspace[]> {
+  if (!tenantId?.trim()) return [];
   const db = getPmoDB();
 
   const { data, error } = await db
     .from("pmo_workspaces")
     .select("*")
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: true });
 
   throwIfDbError(error, "getWorkspaces");
@@ -83,7 +83,7 @@ export async function createWorkspaceService(input: CreateWorkspaceInput): Promi
 
   const { data, error } = await db
     .from("pmo_workspaces")
-    .insert({ org_id: input.orgId, name: input.name.trim(), description: input.description })
+    .insert({ tenant_id: input.tenantId, name: input.name.trim(), description: input.description })
     .select()
     .single();
 
@@ -93,11 +93,11 @@ export async function createWorkspaceService(input: CreateWorkspaceInput): Promi
 
 // ─── BOARD SERVICES ───────────────────────────────────────────────────────────
 
-export async function getBoardsService(orgId: string, workspaceId?: string): Promise<PmoBoard[]> {
-  if (!orgId?.trim()) return [];
+export async function getBoardsService(tenantId: string, workspaceId?: string): Promise<PmoBoard[]> {
+  if (!tenantId?.trim()) return [];
   const db = getPmoDB();
 
-  let query = db.from("pmo_boards").select("*").eq("org_id", orgId);
+  let query = db.from("pmo_boards").select("*").eq("tenant_id", tenantId);
   if (workspaceId) query = query.eq("workspace_id", workspaceId);
   query = query.order("created_at", { ascending: true });
 
@@ -106,14 +106,14 @@ export async function getBoardsService(orgId: string, workspaceId?: string): Pro
   return (data ?? []).map(mapBoardFromDb);
 }
 
-export async function getBoardByIdService(boardId: string, orgId: string): Promise<PmoBoard | null> {
+export async function getBoardByIdService(boardId: string, tenantId: string): Promise<PmoBoard | null> {
   const db = getPmoDB();
 
   const { data, error } = await db
     .from("pmo_boards")
     .select("*")
     .eq("id", boardId)
-    .eq("org_id", orgId)     // ← Multi-tenant guard
+    .eq("tenant_id", tenantId)     // ← Multi-tenant guard
     .single();
 
   if ((error as { code?: string } | null)?.code === "PGRST116") return null;
@@ -127,7 +127,7 @@ export async function createBoardService(input: CreateBoardInput): Promise<PmoBo
   const { data, error } = await db
     .from("pmo_boards")
     .insert({
-      org_id:           input.orgId,
+      tenant_id:           input.tenantId,
       workspace_id:     input.workspaceId,
       title:            input.title.trim(),
       description:      input.description ?? null,
@@ -143,7 +143,7 @@ export async function createBoardService(input: CreateBoardInput): Promise<PmoBo
 
 export async function updateBoardService(
   boardId: string,
-  orgId:   string,
+  tenantId:   string,
   input:   UpdateBoardInput
 ): Promise<PmoBoard> {
   const db = getPmoDB();
@@ -159,7 +159,7 @@ export async function updateBoardService(
     .from("pmo_boards")
     .update(patch)
     .eq("id", boardId)
-    .eq("org_id", orgId)   // ← Multi-tenant guard
+    .eq("tenant_id", tenantId)   // ← Multi-tenant guard
     .select()
     .single();
 
@@ -171,7 +171,7 @@ export async function updateBoardService(
  * deleteBoardService — Solo permite borrar boards que NO son Playbook boards.
  * Los Playbook boards son gestionados por Simo IS y no pueden borrarse manualmente.
  */
-export async function deleteBoardService(boardId: string, orgId: string): Promise<void> {
+export async function deleteBoardService(boardId: string, tenantId: string): Promise<void> {
   const db = getPmoDB();
 
   // Pre-check: no borrar Playbook boards
@@ -179,7 +179,7 @@ export async function deleteBoardService(boardId: string, orgId: string): Promis
     .from("pmo_boards")
     .select("is_playbook_board, title")
     .eq("id", boardId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .single();
 
   if (board?.is_playbook_board) {
@@ -192,7 +192,7 @@ export async function deleteBoardService(boardId: string, orgId: string): Promis
     .from("pmo_boards")
     .delete()
     .eq("id", boardId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteBoard");
 }

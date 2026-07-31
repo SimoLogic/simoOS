@@ -12,7 +12,7 @@ interface ConflictDetail {
 
 interface SyncConflictModalProps {
   eventId: string;
-  orgId: string;
+  tenantId: string;
   taskTitle: string;
   conflicts: ConflictDetail[];
   onResolved?: () => void;
@@ -20,7 +20,7 @@ interface SyncConflictModalProps {
   userId: string;
 }
 
-export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onResolved, onClose, userId }: SyncConflictModalProps) {
+export function SyncConflictModal({ eventId, tenantId, taskTitle, conflicts, onResolved, onClose, userId }: SyncConflictModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +28,7 @@ export function SyncConflictModal({ eventId, orgId, taskTitle, conflicts, onReso
     setLoading(true);
     setError(null);
     try {
-      const res = await resolveConflictAction({ eventId, orgId, resolutionMode: mode }, userId);
+      const res = await resolveConflictAction({ eventId, tenantId, resolutionMode: mode }, userId);
       if (res.success) {
         onResolved?.();
         onClose();

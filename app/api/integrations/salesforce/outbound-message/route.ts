@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         // Not perfectly typing direction, but the payload for TASK_UPDATE in BullMQ takes what it needs
         await enqueueSfSync({
           type: "TASK_UPDATE",
-          orgId: mapping.org_id,
+          tenantId: mapping.tenant_id,
           userId: "system", // Assuming system sync if no user context available in payload
           pmoTaskId: mapping.pmo_entity_id,
           sfTaskId: sfTaskId,

@@ -14,7 +14,7 @@ import { z } from "zod";
 // ─── SCHEMA ZOD ───────────────────────────────────────────────────────────────
 
 const MirrorSyncPayloadSchema = z.object({
-  orgId:                 z.string().min(1),
+  tenantId:                 z.string().min(1),
   taskId:                z.string().optional(),
   sourcePlaybookTaskId:  z.string().optional(),
   occurrenceIndex:       z.number().int().min(0).optional(),

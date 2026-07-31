@@ -9,7 +9,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 export interface PmoSubitem {
   id:             string;
   taskId:         string;
-  orgId:          string;
+  tenantId:          string;
   title:          string;
   isCompleted:    boolean;
   assigneeId:     string | null;
@@ -21,7 +21,7 @@ export interface PmoSubitem {
 
 export interface CreateSubitemInput {
   taskId:            string;
-  orgId:             string;
+  tenantId:             string;
   title:             string;
   assigneeId?:       string;
   dueDate?:          string;
@@ -42,7 +42,7 @@ function mapSubitemFromDb(row: Record<string, unknown>): PmoSubitem {
   return {
     id:                String(row.id),
     taskId:            String(row.task_id),
-    orgId:             String(row.org_id),
+    tenantId:             String(row.tenant_id),
     title:             String(row.title),
     isCompleted:       Boolean(row.is_completed),
     assigneeId:        row.assignee_id ? String(row.assignee_id) : null,
@@ -55,27 +55,27 @@ function mapSubitemFromDb(row: Record<string, unknown>): PmoSubitem {
 
 // ─── SERVICES ─────────────────────────────────────────────────────────────────
 
-export async function getSubitemsService(taskId: string, orgId: string): Promise<PmoSubitem[]> {
+export async function getSubitemsService(taskId: string, tenantId: string): Promise<PmoSubitem[]> {
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_subtasks")
     .select("*")
     .eq("task_id", taskId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   throwIfDbError(error, "getSubitems");
   return (data ?? []).map(mapSubitemFromDb);
 }
 
-export async function getSubitemsByTaskIdsService(taskIds: string[], orgId: string): Promise<PmoSubitem[]> {
-  if (!taskIds.length || !orgId?.trim()) return [];
+export async function getSubitemsByTaskIdsService(taskIds: string[], tenantId: string): Promise<PmoSubitem[]> {
+  if (!taskIds.length || !tenantId?.trim()) return [];
   const db = getPmoDB();
   const { data, error } = await db
     .from("pmo_subtasks")
     .select("*")
     .in("task_id", taskIds)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .order("position", { ascending: true });
 
   throwIfDbError(error, "getSubitemsByTaskIds");
@@ -90,7 +90,7 @@ export async function createSubitemService(input: CreateSubitemInput): Promise<P
     .from("pmo_subtasks")
     .select("position")
     .eq("task_id", input.taskId)
-    .eq("org_id", input.orgId)
+    .eq("tenant_id", input.tenantId)
     .order("position", { ascending: false })
     .limit(1);
 
@@ -100,7 +100,7 @@ export async function createSubitemService(input: CreateSubitemInput): Promise<P
     .from("pmo_subtasks")
     .insert({
       task_id:              input.taskId,
-      org_id:               input.orgId,
+      tenant_id:               input.tenantId,
       title:                input.title.trim(),
       assignee_id:          input.assigneeId ?? null,
       due_date:             input.dueDate ?? null,
@@ -117,7 +117,7 @@ export async function createSubitemService(input: CreateSubitemInput): Promise<P
 
 export async function updateSubitemService(
   subitemId: string,
-  orgId:     string,
+  tenantId:     string,
   input:     UpdateSubitemInput
 ): Promise<PmoSubitem> {
   const db = getPmoDB();
@@ -133,7 +133,7 @@ export async function updateSubitemService(
       .from("pmo_subtasks")
       .select("custom_field_values")
       .eq("id", subitemId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .single();
 
     const existingCfv = (existingRow as { custom_field_values?: Record<string, unknown> } | null)
@@ -145,7 +145,7 @@ export async function updateSubitemService(
     .from("pmo_subtasks")
     .update(patch)
     .eq("id", subitemId)
-    .eq("org_id", orgId)
+    .eq("tenant_id", tenantId)
     .select()
     .single();
 
@@ -153,13 +153,13 @@ export async function updateSubitemService(
   return mapSubitemFromDb(data);
 }
 
-export async function deleteSubitemService(subitemId: string, orgId: string): Promise<void> {
+export async function deleteSubitemService(subitemId: string, tenantId: string): Promise<void> {
   const db = getPmoDB();
   const { error } = await db
     .from("pmo_subtasks")
     .delete()
     .eq("id", subitemId)
-    .eq("org_id", orgId);
+    .eq("tenant_id", tenantId);
 
   throwIfDbError(error, "deleteSubitem");
 }

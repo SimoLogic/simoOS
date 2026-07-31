@@ -5,7 +5,7 @@ import { X, Palette, CheckCircle2, Loader2 } from "lucide-react";
 import { updateWorkspaceThemeAction } from "@/app/actions/pmo/workspace-actions";
 
 interface WorkspaceSettingsModalProps {
-  orgId: string;
+  tenantId: string;
   workspaceId: string;
   currentThemeColor?: string;
   onClose: () => void;
@@ -22,7 +22,7 @@ const VIBE_TOKENS = [
 ];
 
 export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
-  orgId,
+  tenantId,
   workspaceId,
   currentThemeColor = "#6161FF",
   onClose,
@@ -35,7 +35,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
   const handleSave = async () => {
     setLoading(true);
     setError(null);
-    const res = await updateWorkspaceThemeAction(orgId, workspaceId, selectedHex);
+    const res = await updateWorkspaceThemeAction(tenantId, workspaceId, selectedHex);
     
     if (res.success) {
       onThemeUpdated(selectedHex); // Tells parent to inject CSS variable --vibe-blue

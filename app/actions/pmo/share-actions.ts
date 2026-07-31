@@ -14,7 +14,7 @@ export interface BoardShare {
 /**
  * Generates a public share token for a board.
  */
-export async function createBoardShareAction(boardId: string, orgId: string, userId: string, expiresDays?: number) {
+export async function createBoardShareAction(boardId: string, tenantId: string, userId: string, expiresDays?: number) {
     try {
         const db = getPmoDB();
         const token = require("node:crypto").randomBytes(32).toString("hex"); // 64 chars hex string
@@ -24,7 +24,7 @@ export async function createBoardShareAction(boardId: string, orgId: string, use
             .from("pmo_board_shares")
             .insert({
                 board_id: boardId,
-                org_id: orgId,
+                tenant_id: tenantId,
                 created_by: userId,
                 token: token,
                 expires_at: expiresAt
@@ -51,7 +51,7 @@ export async function resolveShareTokenAction(token: string) {
         
         const { data, error } = await db
             .from("pmo_board_shares")
-            .select("board_id, org_id, expires_at")
+            .select("board_id, tenant_id, expires_at")
             .eq("token", token)
             .single();
 
@@ -61,7 +61,7 @@ export async function resolveShareTokenAction(token: string) {
             return { success: false, error: "Share link has expired." };
         }
 
-        return { success: true, boardId: data.board_id, orgId: data.org_id };
+        return { success: true, boardId: data.board_id, tenantId: data.tenant_id };
     } catch (err: unknown) {
         return { success: false, error: (err as Error).message };
     }

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const result = await pullTasksFromSalesforce(session.orgId, session.userId);
+    const result = await pullTasksFromSalesforce(session.tenantId, session.userId);
 
     return NextResponse.json({
       success: true,

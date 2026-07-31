@@ -1,7 +1,7 @@
 // ⚠️ Lee ARCHITECTURE.md antes de modificar
 // usePmoTasks — Hook para cargar tareas de un grupo de un Board PMO
 //
-// PROTOCOLO: Lee orgId de Zustand → Server Action → PostgreSQL
+// PROTOCOLO: Lee tenantId de Zustand → Server Action → PostgreSQL
 // Sprint 2: Implementar paginación + virtualización para >3,000 items
 
 "use client";
@@ -28,7 +28,7 @@ const HPC_THRESHOLD = 3000;
  */
 export function usePmoTasks(
   boardId: string | null,
-  orgId: string | null
+  tenantId: string | null
 ): UsePmoTasksResult {
   const [groups, setGroups] = useState<PmoGroup[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -39,14 +39,14 @@ export function usePmoTasks(
   const isHPCMode = totalCount > HPC_THRESHOLD;
 
   useEffect(() => {
-    if (!boardId || !orgId) return;
+    if (!boardId || !tenantId) return;
 
     setIsLoading(true);
     setError(null);
 
     // TODO Sprint 2: Reemplazar con Server Action
     // import { fetchPmoGroups } from "@/app/actions/pmo/task-actions";
-    // const result = await fetchPmoGroups({ boardId, orgId });
+    // const result = await fetchPmoGroups({ boardId, tenantId });
     
     // Sprint 1 stub
     const timeout = setTimeout(() => {
@@ -56,7 +56,7 @@ export function usePmoTasks(
     }, 200);
 
     return () => clearTimeout(timeout);
-  }, [boardId, orgId, refreshToken]);
+  }, [boardId, tenantId, refreshToken]);
 
   return {
     groups,

@@ -7,7 +7,7 @@ import { addColumnAction } from "@/app/actions/pmo/column-actions";
 
 interface ColumnTypeSelectorProps {
   boardId: string;
-  orgId:   string;
+  tenantId:   string;
   onColumnAdded: (column: PmoColumn) => void; // reactive — fires immediately on success
 }
 
@@ -48,7 +48,7 @@ const COLUMN_TYPES: ColumnTypeOption[] = [
 ];
 
 export const ColumnTypeSelector: React.FC<ColumnTypeSelectorProps> = ({
-  boardId, orgId, onColumnAdded
+  boardId, tenantId, onColumnAdded
 }) => {
   const [isOpen, setIsOpen]     = useState(false);
   const [step, setStep]         = useState<"pick" | "name">("pick");
@@ -96,7 +96,7 @@ export const ColumnTypeSelector: React.FC<ColumnTypeSelectorProps> = ({
 
     const result = await addColumnAction({
       boardId,
-      orgId,
+      tenantId,
       title: colName.trim(),
       type:  selected.type,
     });

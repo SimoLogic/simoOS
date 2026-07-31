@@ -122,7 +122,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
   duplicateFromId = null,
 }) => {
   const { currentTenant, isLoading: tenantLoading } = useTenant();
-  const orgId = currentTenant?.tenant_id ?? '';
+  const tenantId = currentTenant?.tenant_id ?? '';
   const isDuplicateMode = !!duplicateFromId;
 
   // ── Persistence State ──
@@ -174,11 +174,11 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
   });
 
   const refreshData = async () => {
-    if (!orgId) return;
+    if (!tenantId) return;
     const [intRoles, extRoles, emps] = await Promise.all([
-      getActiveRoleTitlesForPlaybookAction(orgId),
-      getActiveExternalRolesAction(orgId),
-      getActiveEmployeesForPlaybookAction(orgId)
+      getActiveRoleTitlesForPlaybookAction(tenantId),
+      getActiveExternalRolesAction(tenantId),
+      getActiveEmployeesForPlaybookAction(tenantId)
     ]);
     const mappedInt = intRoles.map(r => ({ id: r.id, name: r.role_title }));
     const mappedExt = extRoles.filter(r => r.status === 'Active').map(r => ({ id: r.id, name: r.name }));
@@ -194,7 +194,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
 
   // ── Deep Fetch: load specific or latest playbook on mount ──
   React.useEffect(() => {
-    if (!orgId || tenantLoading) return;
+    if (!tenantId || tenantLoading) return;
     const load = async () => {
       // Fetch Roles first — refreshData returns { intRoles, extRoles }
       const roleData = await refreshData();
@@ -213,7 +213,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
 
       if (targetId) {
         // Load specific playbook (Edit or Duplicate mode)
-        detail = await getPlaybookDetailAction(targetId, orgId);
+        detail = await getPlaybookDetailAction(targetId, tenantId);
       } else {
         // No targetId: Designer opens blank (ready for new playbook creation)
         // Do NOT load any existing playbook
@@ -279,7 +279,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
     };
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, initialPlaybookId, duplicateFromId]);
+  }, [tenantId, initialPlaybookId, duplicateFromId]);
 
   // ── WorkdayHelper Schedule Map (Llave #2) ──
   // Cascading projection: each step's date = previous step date + schedulerValue workdays
@@ -412,14 +412,14 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
    * Handles Draft saves, Publish (with auto-versioning), and name-collision check.
    */
   const handleSaveToDB = async (publish: boolean = false, forceVersion?: number): Promise<string | null> => {
-    if (!orgId) return null;
+    if (!tenantId) return null;
     setIsSaving(true);
     try {
       let saveName = playbookName; // mutable copy for auto-suffix
 
       // Name collision check
       if (isDuplicateMode || !playbookId) {
-        const nameCheck = await checkPlaybookNameAction(saveName, orgId, playbookId ?? undefined);
+        const nameCheck = await checkPlaybookNameAction(saveName, tenantId, playbookId ?? undefined);
         if (nameCheck.exists) {
           if (isDuplicateMode) {
             // In duplicate mode: show overwrite warning for user to decide
@@ -465,7 +465,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
         parentId: isDuplicateMode ? (duplicateFromId ?? null) : undefined,
       };
 
-      const savedPlaybook = await upsertPlaybookAction(orgId, headerData);
+      const savedPlaybook = await upsertPlaybookAction(tenantId, headerData);
 
       // Check for error returned from server action (not thrown — production-safe)
       if ('error' in savedPlaybook && savedPlaybook.error) {
@@ -479,7 +479,7 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
       setPlaybookVersion(nextVersion);
 
       const stepsResult = await upsertPlaybookStepsAction(
-        orgId,
+        tenantId,
         id,
         // Recalculate stepNum from real position to fix non-consecutive numbering
         activePB.steps.map((s, idx) => ({
@@ -627,14 +627,14 @@ export const PlaybookDesignerApp: React.FC<PlaybookDesignerAppProps> = ({
               </button>
               <button
                 onClick={() => handleSaveToDB(false)}
-                disabled={isSaving || !orgId}
+                disabled={isSaving || !tenantId}
                 className="px-4 py-1.5 bg-white border border-indigo-200 rounded font-black text-[9px] text-indigo-500 uppercase hover:bg-indigo-50 transition-colors shadow-sm disabled:opacity-40"
               >
                 {isSaving ? 'SAVING...' : lastSaved ? `SAVED ${lastSaved.toLocaleTimeString()}` : 'SAVE DRAFT'}
               </button>
               <button
                 onClick={() => handleSaveToDB(true)}
-                disabled={isSaving || !orgId}
+                disabled={isSaving || !tenantId}
                 className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded font-black text-[10px] shadow-md uppercase hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-40"
               >
                 <Save size={14} /> {isSaving ? 'PUBLISHING...' : 'SAVE & PUBLISH'}

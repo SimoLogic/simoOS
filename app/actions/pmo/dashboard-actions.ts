@@ -5,7 +5,7 @@ import { getPmoDB, throwIfDbError } from "@/lib/pmo/pmo-db";
 import { TaskStatus } from "@/types/pmo.types";
 import { countWorkdays } from "@/lib/workday-helper";
 
-const OrgIdSchema = z.string().min(1, "orgId is required");
+const OrgIdSchema = z.string().min(1, "tenantId is required");
 
 // ─── TYPES ─────────────────────────────────────────────────────────────────
 export interface ProjectHealthMetrics {
@@ -34,10 +34,10 @@ export interface DashboardActionResult<T> {
  */
 export async function getProjectHealthAction(
   boardId: string,
-  orgId: string
+  tenantId: string
 ): Promise<DashboardActionResult<ProjectHealthMetrics>> {
   try {
-    const validatedOrgId = OrgIdSchema.parse(orgId);
+    const validatedOrgId = OrgIdSchema.parse(tenantId);
     if (!boardId?.trim()) return { success: false, error: "boardId required" };
 
     const db = getPmoDB();
@@ -46,7 +46,7 @@ export async function getProjectHealthAction(
       .from("pmo_tasks")
       .select("status, due_date")
       .eq("board_id", boardId)
-      .eq("org_id", validatedOrgId);
+      .eq("tenant_id", validatedOrgId);
 
     throwIfDbError(error, "getProjectHealth");
 
@@ -108,10 +108,10 @@ export async function getProjectHealthAction(
  */
 export async function getCrossBoardHealthAction(
   boardIds: string[],
-  orgId: string
+  tenantId: string
 ): Promise<DashboardActionResult<ProjectHealthMetrics>> {
   try {
-    const validatedOrgId = OrgIdSchema.parse(orgId);
+    const validatedOrgId = OrgIdSchema.parse(tenantId);
     if (!boardIds || boardIds.length === 0) return { success: false, error: "boardIds array required to have at least one element" };
 
     const db = getPmoDB();
@@ -120,7 +120,7 @@ export async function getCrossBoardHealthAction(
       .from("pmo_tasks")
       .select("status, due_date")
       .in("board_id", boardIds)
-      .eq("org_id", validatedOrgId);
+      .eq("tenant_id", validatedOrgId);
 
     throwIfDbError(error, "getCrossBoardHealth");
 

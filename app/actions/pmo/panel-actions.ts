@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 
 export interface PmoPanel {
   id: string;
-  orgId: string;
+  tenantId: string;
   ownerId: string;
   name: string;
   icon: string;
@@ -34,7 +34,7 @@ function mapPanel(row: Record<string, unknown>): PmoPanel {
   const config = (row.config as { widgets?: PanelWidget[] }) ?? { widgets: [] };
   return {
     id: String(row.id),
-    orgId: String(row.org_id),
+    tenantId: String(row.tenant_id),
     ownerId: String(row.owner_id),
     name: String(row.name ?? "Untitled"),
     icon: String(row.icon ?? "📊"),
@@ -46,13 +46,13 @@ function mapPanel(row: Record<string, unknown>): PmoPanel {
 }
 
 // ─── GET ALL PANELS ───────────────────────────────────────────────────────────
-export async function getPanelsAction(orgId: string, ownerId: string) {
+export async function getPanelsAction(tenantId: string, ownerId: string) {
   try {
     const db = getPmoDB();
     const { data, error } = await db
       .from("pmo_panels")
       .select("*")
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("owner_id", ownerId)
       .order("position");
     throwIfDbError(error, "getPanels");
@@ -63,14 +63,14 @@ export async function getPanelsAction(orgId: string, ownerId: string) {
 }
 
 // ─── GET PANEL BY ID  ─────────────────────────────────────────────────────────
-export async function getPanelByIdAction(panelId: string, orgId: string) {
+export async function getPanelByIdAction(panelId: string, tenantId: string) {
   try {
     const db = getPmoDB();
     const { data, error } = await db
       .from("pmo_panels")
       .select("*")
       .eq("id", panelId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .single();
     throwIfDbError(error, "getPanelById");
     return { success: true as const, data: mapPanel(data) };
@@ -81,7 +81,7 @@ export async function getPanelByIdAction(panelId: string, orgId: string) {
 
 // ─── CREATE PANEL ─────────────────────────────────────────────────────────────
 export async function createPanelAction(input: {
-  orgId: string;
+  tenantId: string;
   ownerId: string;
   name: string;
   icon?: string;
@@ -91,7 +91,7 @@ export async function createPanelAction(input: {
     const { data, error } = await db
       .from("pmo_panels")
       .insert({
-        org_id: input.orgId,
+        tenant_id: input.tenantId,
         owner_id: input.ownerId,
         name: input.name.trim(),
         icon: input.icon ?? "📊",
@@ -111,7 +111,7 @@ export async function createPanelAction(input: {
 // ─── UPDATE PANEL ─────────────────────────────────────────────────────────────
 export async function updatePanelAction(
   panelId: string,
-  orgId: string,
+  tenantId: string,
   patch: { name?: string; icon?: string; config?: { widgets: PanelWidget[] } }
 ) {
   try {
@@ -125,7 +125,7 @@ export async function updatePanelAction(
       .from("pmo_panels")
       .update(dbPatch)
       .eq("id", panelId)
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .select()
       .single();
     throwIfDbError(error, "updatePanel");
@@ -137,14 +137,14 @@ export async function updatePanelAction(
 }
 
 // ─── DELETE PANEL ─────────────────────────────────────────────────────────────
-export async function deletePanelAction(panelId: string, orgId: string) {
+export async function deletePanelAction(panelId: string, tenantId: string) {
   try {
     const db = getPmoDB();
     const { error } = await db
       .from("pmo_panels")
       .delete()
       .eq("id", panelId)
-      .eq("org_id", orgId);
+      .eq("tenant_id", tenantId);
     throwIfDbError(error, "deletePanel");
     revalidatePath("/pmo");
     return { success: true as const };

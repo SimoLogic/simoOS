@@ -39,7 +39,7 @@ import { useSessionStore } from "@/lib/session-store";
 
 interface GridViewProps {
   boardId:    string;
-  orgId:      string;
+  tenantId:      string;
   isReadOnly?: boolean;
 }
 
@@ -52,7 +52,7 @@ const TITLE_COL_WIDTH = 280;  // Always first col
 const CHECKBOX_WIDTH  = 48;
 const COLOR_STRIP_W   = 4;
 
-export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }) => {
+export const GridView: React.FC<GridViewProps> = ({ boardId, tenantId, isReadOnly }) => {
   const [board, setBoard]                   = useState<PmoBoard | null>(null);
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState<string | null>(null);
@@ -84,7 +84,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   useEffect(() => {
     let cancelled = false;
     async function loadBoard() {
-      if (!boardId || !orgId) {
+      if (!boardId || !tenantId) {
         setLoading(false);
         setError("No board selected.");
         return;
@@ -92,7 +92,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
       setLoading(true);
       setError(null);
       try {
-        const result = await getBoardAction(boardId, orgId);
+        const result = await getBoardAction(boardId, tenantId);
         if (cancelled) return;
         if (result.success) {
           setBoard(result.data);
@@ -112,7 +112,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
     }
     loadBoard();
     return () => { cancelled = true; };
-  }, [boardId, orgId]);
+  }, [boardId, tenantId]);
 
   // ── REACTIVE COLUMN ADDITION (No page reload) ───────────────────────────────
   const handleColumnAdded = useCallback((newCol: PmoColumn) => {
@@ -147,7 +147,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
                 task: {
                   id: sub.id,
                   title: sub.title,
-                  orgId: sub.orgId,
+                  tenantId: sub.tenantId,
                   boardId: task.boardId,
                   groupId: task.groupId,
                   status: sub.isCompleted ? "done" : "not_started",
@@ -191,7 +191,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   const selectedCount  = Object.keys(rowSelection).length;
 
   const reloadBoard = useCallback(async () => {
-    const result = await getBoardAction(boardId, orgId);
+    const result = await getBoardAction(boardId, tenantId);
     if (result.success) {
       setBoard(result.data);
       setLocalColumns(result.data.columns ?? []);
@@ -199,7 +199,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
       result.data.groups?.forEach(g => { expanded[g.id] = true; });
       setExpandedGroups(expanded);
     }
-  }, [boardId, orgId]);
+  }, [boardId, tenantId]);
 
   const activePeekTask = useMemo(() => {
     if (!activePeekTaskId || !board) return null;
@@ -211,8 +211,8 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   }, [activePeekTaskId, board, optimisticTasks]);
 
   const handleCreateGroup = async (title: string, color: string) => {
-    if (!boardId || !orgId) return;
-    const res = await createGroupAction({ boardId, orgId, title, color });
+    if (!boardId || !tenantId) return;
+    const res = await createGroupAction({ boardId, tenantId, title, color });
     if (res.success) {
       window.dispatchEvent(new Event("pmo-workspaces-updated"));
       reloadBoard();
@@ -220,7 +220,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   };
 
   const handleUpdateGroup = async (groupId: string, title?: string, color?: string) => {
-    const res = await updateGroupAction({ groupId, boardId, orgId, title, color });
+    const res = await updateGroupAction({ groupId, boardId, tenantId, title, color });
     if (res.success) {
       window.dispatchEvent(new Event("pmo-workspaces-updated"));
       reloadBoard();
@@ -257,13 +257,13 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
   }
 
   return (
-    <PresenceProvider boardId={boardId} orgId={orgId} currentUser={currentUser}>
+    <PresenceProvider boardId={boardId} tenantId={tenantId} currentUser={currentUser}>
       <div className="w-full h-full flex flex-col bg-white overflow-hidden absolute inset-0">
-        {!isReadOnly && <CommandPalette orgId={orgId} />}
+        {!isReadOnly && <CommandPalette tenantId={tenantId} />}
 
         <PmoToolbar
           boardId={boardId}
-          orgId={orgId}
+          tenantId={tenantId}
           boardName={board?.title ?? "Board"}
           onNewTaskClick={() => setIsNewTaskOpen(true)}
           onNewGroupClick={() => setIsNewGroupOpen(true)}
@@ -319,7 +319,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
               <div data-onboarding="add-column-btn" className="flex items-center justify-center px-2 h-full border-r border-slate-200">
                 <ColumnTypeSelector
                   boardId={boardId}
-                  orgId={orgId}
+                  tenantId={tenantId}
                   onColumnAdded={handleColumnAdded}
                 />
               </div>
@@ -482,14 +482,14 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
           onUpdateStatus={async (status) => {
             const ids = Object.keys(rowSelection);
             ids.forEach(id => usePmoStore.getState().setOptimisticTaskUpdate(id, { status }));
-            const res = await bulkUpdateTasksAction(ids, orgId, user_ide ?? "system", { status });
+            const res = await bulkUpdateTasksAction(ids, tenantId, user_ide ?? "system", { status });
             if (res.success) clearSelection();
             else ids.forEach(id => usePmoStore.getState().clearOptimisticTaskUpdate(id));
           }}
           onUpdatePriority={async (priority) => {
             const ids = Object.keys(rowSelection);
             ids.forEach(id => usePmoStore.getState().setOptimisticTaskUpdate(id, { priority }));
-            const res = await bulkUpdateTasksAction(ids, orgId, user_ide ?? "system", { priority });
+            const res = await bulkUpdateTasksAction(ids, tenantId, user_ide ?? "system", { priority });
             if (res.success) clearSelection();
             else ids.forEach(id => usePmoStore.getState().clearOptimisticTaskUpdate(id));
           }}
@@ -500,7 +500,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
         {activePeekTask && (
           <SidePeek
             task={activePeekTask}
-            orgId={orgId}
+            tenantId={tenantId}
             userId={user_ide ?? "system"}
             isOpen={!!activePeekTaskId}
             onClose={() => setActivePeekTaskId(null)}
@@ -516,7 +516,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
         <NewTaskModal
           boardId={boardId}
           groupId={defaultGroupId}
-          orgId={orgId}
+          tenantId={tenantId}
           isOpen={isNewTaskOpen}
           onClose={() => setIsNewTaskOpen(false)}
           onTaskCreated={reloadBoard}
@@ -532,7 +532,7 @@ export const GridView: React.FC<GridViewProps> = ({ boardId, orgId, isReadOnly }
         isOpen={isAutomationsOpen}
         onClose={() => setIsAutomationsOpen(false)}
         boardId={boardId}
-        orgId={orgId}
+        tenantId={tenantId}
       />
     </PresenceProvider>
   );

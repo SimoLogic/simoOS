@@ -30,7 +30,7 @@ export interface MyPlanBoardResult {
 function mapTaskRow(row: Record<string, unknown>): PmoTask {
   return {
     id:                   String(row.id),
-    orgId:                String(row.org_id),
+    tenantId:                String(row.tenant_id),
     boardId:              String(row.board_id),
     groupId:              String(row.group_id ?? ""),
     title:                String(row.title ?? ""),
@@ -84,11 +84,11 @@ function mapGroupRow(row: Record<string, unknown>): PmoGroup {
  */
 export async function getMyPlanBoardAction(
   employeeEid: string,
-  orgId: string
+  tenantId: string
 ): Promise<{ success: true; data: MyPlanBoardResult } | { success: true; data: null } | { success: false; error: string }> {
   try {
-    if (!employeeEid?.trim() || !orgId?.trim()) {
-      return { success: false, error: "Missing employeeEid or orgId" };
+    if (!employeeEid?.trim() || !tenantId?.trim()) {
+      return { success: false, error: "Missing employeeEid or tenantId" };
     }
 
     const db = getPmoDB();
@@ -98,7 +98,7 @@ export async function getMyPlanBoardAction(
     const { data: boardRow, error: boardErr } = await db
       .from("pmo_boards")
       .select("*")
-      .eq("org_id", orgId)
+      .eq("tenant_id", tenantId)
       .eq("name", boardName)
       .single();
 
@@ -112,8 +112,8 @@ export async function getMyPlanBoardAction(
 
     // 2. Fetch groups, tasks, columns in parallel
     const [groupsResult, tasksResult] = await Promise.all([
-      db.from("pmo_groups").select("*").eq("board_id", boardId).eq("org_id", orgId).order("position"),
-      db.from("pmo_tasks").select("*").eq("board_id", boardId).eq("org_id", orgId).order("position"),
+      db.from("pmo_groups").select("*").eq("board_id", boardId).eq("tenant_id", tenantId).order("position"),
+      db.from("pmo_tasks").select("*").eq("board_id", boardId).eq("tenant_id", tenantId).order("position"),
     ]);
 
     throwIfDbError(groupsResult.error, "getMyPlanGroups");
@@ -128,10 +128,10 @@ export async function getMyPlanBoardAction(
     // 3. Fetch subitems
     const taskIds = tasks.map(t => t.id);
     let columns: PmoColumn[] = [];
-    try { columns = await getColumnsService(boardId, orgId); } catch { /* empty fallback */ }
+    try { columns = await getColumnsService(boardId, tenantId); } catch { /* empty fallback */ }
 
     const subitems = taskIds.length > 0
-      ? await getSubitemsByTaskIdsService(taskIds, orgId)
+      ? await getSubitemsByTaskIdsService(taskIds, tenantId)
       : [];
 
     // 4. Resolve blocking task titles
@@ -207,7 +207,7 @@ export async function getMyPlanBoardAction(
 
     const board: PmoBoard = {
       id: boardId,
-      orgId,
+      tenantId,
       workspaceId: String(boardRow.workspace_id ?? ""),
       title: String(boardRow.name ?? boardRow.title ?? "My Plan"),
       description: boardRow.description ? String(boardRow.description) : undefined,

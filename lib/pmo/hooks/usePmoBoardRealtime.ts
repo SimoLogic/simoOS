@@ -6,8 +6,8 @@
 //   - INSERT/UPDATE/DELETE en pmo_groups del board activo
 //
 // PROTOCOLO DE INTEGRACIÓN:
-//   1. Lee boardId + orgId desde props (vendrán del componente que lo usa)
-//   2. Filtra por boardId y orgId en el channel (multi-tenant safe)
+//   1. Lee boardId + tenantId desde props (vendrán del componente que lo usa)
+//   2. Filtra por boardId y tenantId en el channel (multi-tenant safe)
 //   3. Llama onTaskChange/onGroupChange con el evento recibido
 //
 // Sprint 4: Conectar los eventos a la mutación del estado local (invalidate queries)
@@ -33,7 +33,7 @@ export type RealtimeGroupEvent = {
 
 export interface UsePmoBoardRealtimeOptions {
   boardId:        string | null;
-  orgId:          string | null;
+  tenantId:          string | null;
   onTaskChange?:  (event: RealtimeTaskEvent) => void;
   onGroupChange?: (event: RealtimeGroupEvent) => void;
   enabled?:       boolean;
@@ -59,7 +59,7 @@ function getBrowserClient() {
  * ```ts
  * usePmoBoardRealtime({
  *   boardId,
- *   orgId,
+ *   tenantId,
  *   onTaskChange: (event) => {
  *     if (event.eventType === "UPDATE") refetchTasks();
  *   },
@@ -70,7 +70,7 @@ function getBrowserClient() {
  */
 export function usePmoBoardRealtime({
   boardId,
-  orgId,
+  tenantId,
   onTaskChange,
   onGroupChange,
   enabled = true,
@@ -78,7 +78,7 @@ export function usePmoBoardRealtime({
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!enabled || !boardId || !orgId) return;
+    if (!enabled || !boardId || !tenantId) return;
 
     const supabase = getBrowserClient();
     const channelName = `pmo:board:${boardId}`;
@@ -103,11 +103,11 @@ export function usePmoBoardRealtime({
         },
         (payload) => {
           if (!onTaskChange) return;
-          // Verificar org_id en el payload (seguridad multi-tenant adicional)
+          // Verificar tenant_id en el payload (seguridad multi-tenant adicional)
           const newRow = payload.new as Record<string, unknown> | null;
           const oldRow = payload.old as Record<string, unknown> | null;
-          const rowOrgId = (newRow?.org_id ?? oldRow?.org_id) as string | undefined;
-          if (rowOrgId && rowOrgId !== orgId) return; // Ignorar si no coincide org
+          const rowOrgId = (newRow?.tenant_id ?? oldRow?.tenant_id) as string | undefined;
+          if (rowOrgId && rowOrgId !== tenantId) return; // Ignorar si no coincide org
 
           onTaskChange({
             eventType: payload.eventType as "INSERT" | "UPDATE" | "DELETE",
@@ -149,5 +149,5 @@ export function usePmoBoardRealtime({
       supabase.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [boardId, orgId, enabled, onTaskChange, onGroupChange]);
+  }, [boardId, tenantId, enabled, onTaskChange, onGroupChange]);
 }

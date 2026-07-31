@@ -214,11 +214,12 @@ model BpPlaybookStep {
 }
 
 // id coincide 1:1 con auth.users.id de Supabase Auth (no gestionado por Prisma).
-// Este vínculo es lo que permite que RLS use auth.uid() para saber el tenant
-// del usuario autenticado — ver función pública current_tenant_id() en la migración.
+// Nota (2026-07-31): PMO/RRHH/BP quedan a nivel TENANT por ahora. El concepto
+// de sucursal (dim_branch) existe como catálogo pero todavía no hay selector
+// de sucursal en la UI — se agregará un branchId aquí cuando eso se construya.
 model User {
   id                   String    @id @default(uuid())
-  tenantId                String    @map("tenant_id")
+  tenantId             String    @map("tenant_id")
   email                String    @unique
   name                 String?
   countryCode          String    @default("CO") @map("country_code")

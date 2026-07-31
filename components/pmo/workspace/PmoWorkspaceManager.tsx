@@ -61,7 +61,7 @@ export const PmoWorkspaceManager: React.FC = () => {
         const name = prompt("New Workspace Name:");
         if (!name) return;
         
-        await createWorkspaceAction({ orgId: tenant_id, name });
+        await createWorkspaceAction({ tenantId: tenant_id, name });
         await loadData();
         window.dispatchEvent(new Event("pmo-workspaces-updated"));
     };
@@ -80,17 +80,17 @@ export const PmoWorkspaceManager: React.FC = () => {
     const activeView = usePmoStore(s => s.activeView);
 
     if (activeBoardId) {
-        const orgId = tenant_id || "";
+        const tenantId = tenant_id || "";
 
         const renderBoardView = () => {
             switch (activeView) {
                 case "cards":
-                    return <CardsView boardId={activeBoardId} orgId={orgId} isReadOnly={false} mode="my-projects" />;
+                    return <CardsView boardId={activeBoardId} tenantId={tenantId} isReadOnly={false} mode="my-projects" />;
                 default:
                     return (
                         <>
                             <BoardOnboarding boardId={activeBoardId} />
-                            <GridView boardId={activeBoardId} orgId={orgId} isReadOnly={false} />
+                            <GridView boardId={activeBoardId} tenantId={tenantId} isReadOnly={false} />
                         </>
                     );
             }
@@ -216,7 +216,7 @@ export const PmoWorkspaceManager: React.FC = () => {
 
             {isSettingsOpen && selectedWorkspace && tenant_id && (
                 <WorkspaceSettingsModal 
-                    orgId={tenant_id}
+                    tenantId={tenant_id}
                     workspaceId={selectedWorkspace.id}
                     currentThemeColor={selectedWorkspace.color}
                     onClose={() => { setIsSettingsOpen(false); setSelectedWorkspace(null); }}
@@ -228,7 +228,7 @@ export const PmoWorkspaceManager: React.FC = () => {
 
             {templateModalOpen && templateWorkspaceId && tenant_id && (
                 <TemplateSelectorModal
-                    orgId={tenant_id}
+                    tenantId={tenant_id}
                     workspaceId={templateWorkspaceId}
                     isOpen={true}
                     onClose={() => setTemplateModalOpen(false)}

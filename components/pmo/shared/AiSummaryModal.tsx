@@ -6,12 +6,12 @@ import { BrainCircuit, X, Loader2, Sparkles } from "lucide-react";
 import { getProjectSummaryAction } from "@/app/actions/pmo/ai-actions";
 
 interface AiSummaryModalProps {
-  orgId: string;
+  tenantId: string;
   boardId: string;
   onClose: () => void;
 }
 
-export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({ orgId, boardId, onClose }) => {
+export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({ tenantId, boardId, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({ orgId, boardId, 
   useEffect(() => {
     async function generate() {
       setLoading(true);
-      const res = await getProjectSummaryAction(orgId, boardId);
+      const res = await getProjectSummaryAction(tenantId, boardId);
       if (res.success) {
         setSummary(res.summary || "No se pudo generar el resumen.");
       } else {
@@ -28,7 +28,7 @@ export const AiSummaryModal: React.FC<AiSummaryModalProps> = ({ orgId, boardId, 
       setLoading(false);
     }
     generate();
-  }, [orgId, boardId]);
+  }, [tenantId, boardId]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
