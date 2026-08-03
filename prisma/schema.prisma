@@ -414,6 +414,49 @@ model HrPerformanceReview {
   @@map("hr_performance_reviews")
 }
 
+// ─── Carga Centralizada (Active Roster) ────────────────────────────────────
+// Refleja el maestro de empleados centralizado que HR sube periódicamente
+// (mensual). Campos no sensibles también viajan a BigQuery
+// (hr_centralizado.active_roster_raw) para análisis -- ver lib/bigquery/client.ts.
+// Lo sensible (cédula, dirección, cuenta bancaria, contacto de emergencia,
+// etc.) NUNCA sale de aquí -- vive cifrado en sensitiveDataEnc
+// (ver lib/security/hr-vault.ts, mismo mecanismo que el salario).
+// Decisión de gobierno de datos: 2026-07-31, ver docs/AGENT_CONTEXT_ANTIGRAVITY.md.
+model HrActiveRoster {
+  id                     String    @id @default(uuid())
+  tenantId               String    @map("tenant_id")
+  branchCode             String?   @map("branch_code")
+  employeeNumber         Int?      @map("employee_number")
+  fullName               String    @map("full_name")
+  gender                 String?
+  position               String?
+  area                   String?
+  supervisorName         String?   @map("supervisor_name")
+  corporateEmail         String?   @map("corporate_email")
+  dateStarted            DateTime? @map("date_started")
+  monthStarted           String?   @map("month_started")
+  indefiniteContractDate DateTime? @map("indefinite_contract_date")
+  antiquityLabel         String?   @map("antiquity_label")
+  contractType           String?   @map("contract_type")
+  professionalProfile    String?   @map("professional_profile")
+  university             String?
+  englishLevel           String?   @map("english_level")
+
+  /// Cifrado AES-256-GCM (encryptObject/decryptObject de hr-vault.ts):
+  /// cédula, dirección, barrio, ciudad, tel. personal/USA, email personal,
+  /// contacto de emergencia (nombre/tel/parentesco), fecha nacimiento,
+  /// EPS, pensión, cesantías, CCF, banco, número de cuenta.
+  sensitiveDataEnc       String?   @map("sensitive_data_enc")
+
+  uploadBatchId          String    @map("upload_batch_id")
+  uploadedAt             DateTime  @default(now()) @map("uploaded_at")
+
+  @@unique([tenantId, employeeNumber])
+  @@index([tenantId])
+  @@index([branchCode])
+  @@map("hr_active_roster")
+}
+
 model PmoIcalFeedToken {
   id           String    @id @default(uuid())
   userId       String    @unique @map("user_id")

@@ -32,6 +32,7 @@ export const moduleSubModules: Record<ModuleId, SubModule[]> = {
         { id: "payroll", label: "Payroll & Benefits" },
         { id: "hr-metrics", label: "HR Metrics" },
         { id: "payroll-changes", label: "Payroll Changes" },
+        { id: "centralized-upload", label: "Carga Centralizada" },
     ],
     finance: [
         { id: "pnl", label: "P&L Overview" },

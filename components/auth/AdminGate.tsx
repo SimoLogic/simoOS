@@ -8,6 +8,9 @@ interface AdminGateProps {
     children: React.ReactNode;
     /** Título mostrado en la pantalla de login (contexto de qué se está protegiendo). */
     title?: string;
+    /** Roles permitidos (OR) -- por defecto solo 'admin', mantiene el comportamiento
+     * original de este componente para el gate de HC Master ya en producción. */
+    requiredRoles?: string[];
 }
 
 type GateStatus = "checking" | "signed-out" | "not-admin" | "admin";
@@ -20,7 +23,11 @@ type GateStatus = "checking" | "signed-out" | "not-admin" | "admin";
  * No usa el cliente de lib/database.ts (ese prioriza service role key,
  * inapropiado para el navegador) -- ver lib/auth/supabase-browser-client.ts.
  */
-export const AdminGate: React.FC<AdminGateProps> = ({ children, title = "Acceso restringido" }) => {
+export const AdminGate: React.FC<AdminGateProps> = ({
+    children,
+    title = "Acceso restringido",
+    requiredRoles = ["admin"],
+}) => {
     const [status, setStatus] = useState<GateStatus>("checking");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -32,9 +39,11 @@ export const AdminGate: React.FC<AdminGateProps> = ({ children, title = "Acceso 
             setStatus("signed-out");
             return;
         }
-        const { data, error } = await supabaseBrowser.rpc("current_user_is_admin");
+        const { data, error } = await supabaseBrowser.rpc("current_user_has_any_role", {
+            required_roles: requiredRoles,
+        });
         if (error) {
-            console.error("current_user_is_admin RPC failed", error);
+            console.error("current_user_has_any_role RPC failed", error);
             setStatus("not-admin");
             return;
         }
