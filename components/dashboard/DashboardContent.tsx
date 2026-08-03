@@ -10,6 +10,7 @@ import { PmoDashboardHome } from "../pmo/PmoDashboardHome";
 import { PmoWorkspaceManager } from "../pmo/workspace/PmoWorkspaceManager";
 import { PayrollNovedades } from "../hr/PayrollNovedades";
 import { HCMaestro } from "../hr/HCMaestro";
+import { AdminGate } from "../auth/AdminGate";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
 import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
 import { GrowthifyModule } from "../business-plan/GrowthifyModule";
@@ -109,7 +110,9 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     ) : activeModule === "commercial-activity" ? (
                         <CommercialActivityModule activeSubModule={activeSubModule} />
                     ) : activeSubModule === "hc-master" ? (
-                        <HCMaestro />
+                        <AdminGate title="Datos de empleados (HC Master)">
+                            <HCMaestro />
+                        </AdminGate>
                     ) : activeSubModule === "payroll-changes" ? (
                         <PayrollNovedades />
                     ) : activeSubModule === "performance" ? (
