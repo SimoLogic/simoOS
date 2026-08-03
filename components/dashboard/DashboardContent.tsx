@@ -10,6 +10,7 @@ import { PmoDashboardHome } from "../pmo/PmoDashboardHome";
 import { PmoWorkspaceManager } from "../pmo/workspace/PmoWorkspaceManager";
 import { PayrollNovedades } from "../hr/PayrollNovedades";
 import { HCMaestro } from "../hr/HCMaestro";
+import { CentralizedUploadPage } from "../hr/CentralizedUploadPage";
 import { AdminGate } from "../auth/AdminGate";
 import { PerformanceModule } from "../business-plan/PerformanceModule";
 import { HRMetricsDashboard } from "../hr/HRMetricsDashboard";
@@ -112,6 +113,10 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     ) : activeSubModule === "hc-master" ? (
                         <AdminGate title="Datos de empleados (HC Master)">
                             <HCMaestro />
+                        </AdminGate>
+                    ) : activeSubModule === "centralized-upload" ? (
+                        <AdminGate title="Carga Centralizada de Empleados" requiredRoles={["admin", "hr"]}>
+                            <CentralizedUploadPage />
                         </AdminGate>
                     ) : activeSubModule === "payroll-changes" ? (
                         <PayrollNovedades />
