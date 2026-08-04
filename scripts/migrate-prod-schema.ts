@@ -1,8 +1,8 @@
 // Migration via Supabase Management API — POST /v1/projects/{ref}/database/query
 // This allows raw SQL execution without needing a direct Postgres password.
 
-const PROJECT_REF = "eezzumwlucfidzyppllj";
-const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlenp1bXdsdWNmaWR6eXBwbGxqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTkwMDAyNywiZXhwIjoyMDg3NDc2MDI3fQ.z3SPINVk3IuN0_Ez32s_azrjxnyS7KOe3kFMqRYHmMA";
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || "";
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
 
 import { createClient } from "@supabase/supabase-js";
@@ -327,7 +327,7 @@ async function runMigration() {
     // Actually, let's try the simplest approach: use the Supabase CLI
     console.log("\n📋 The migration SQL has been generated. Please execute it in the Supabase SQL Editor.");
     console.log("   Copy the contents of sql/migrate_prod_leveling.sql and paste in:");
-    console.log("   https://supabase.com/dashboard/project/eezzumwlucfidzyppllj/sql\n");
+    console.log(`   https://supabase.com/dashboard/project/${PROJECT_REF}/sql\n`);
     
     // Write the SQL to a file
     const fs = await import('fs');

@@ -2,8 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 import { addWorkdays } from "../lib/workday-helper";  // (start, workdays, tenantCountry, userCountry, timezone, extraHolidays)
 
-const SUPABASE_URL = 'https://eezzumwlucfidzyppllj.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlenp1bXdsdWNmaWR6eXBwbGxqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTkwMDAyNywiZXhwIjoyMDg3NDc2MDI3fQ.z3SPINVk3IuN0_Ez32s_azrjxnyS7KOe3kFMqRYHmMA';
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '');
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 const ORG_ID = "TNT-SEED26";
 

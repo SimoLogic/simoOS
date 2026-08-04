@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = "https://eezzumwlucfidzyppllj.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlenp1bXdsdWNmaWR6eXBwbGxqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTkwMDAyNywiZXhwIjoyMDg3NDc2MDI3fQ.z3SPINVk3IuN0_Ez32s_azrjxnyS7KOe3kFMqRYHmMA";
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '');
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
 
   // We can execute SQL using the exec_sql RPC function if it exists, or via REST standard methods.
   // Wait, Supabase client can't run DDL via REST unless we use an RPC.
-  // Does `eezzumwlucfidzyppllj` have an exec_sql RPC? We can test.
+  // Does el proyecto configurado en SUPABASE_PROJECT_REF have an exec_sql RPC? We can test.
   
   const addFKJobTitle = `
     DO $$ 
