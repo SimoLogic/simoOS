@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Hardcoding Production Keys as instructed by user
-const supabaseUrl = "https://eezzumwlucfidzyppllj.supabase.co";
-const supabaseKey = "sb_publishable_07-1wQQ4PZu30ErUFrUdvQ_0vwVp2oa"; 
+// Lee las credenciales reales desde variables de entorno (.env.local / Vercel)
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "");
+const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""); 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const OLD_ID = "HOMESI-SEED-TENANT-2026";
