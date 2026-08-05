@@ -9,9 +9,9 @@ interface DrillDownDrawerProps {
     branchCode: string | null;
     year: number | null;
     month: string;
-    category2: string;
+    category6: string;
     category7: string;
-    glCode: string;
+    description: string;
     cellTotal: number;
     onClose: () => void;
 }
@@ -25,9 +25,9 @@ export const DrillDownDrawer: React.FC<DrillDownDrawerProps> = ({
     branchCode,
     year,
     month,
-    category2,
+    category6,
     category7,
-    glCode,
+    description,
     cellTotal,
     onClose,
 }) => {
@@ -35,11 +35,11 @@ export const DrillDownDrawer: React.FC<DrillDownDrawerProps> = ({
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        getTransactionDetailAction(tenantId, branchCode, year, month, category2, category7, glCode).then((res) => {
+        getTransactionDetailAction(tenantId, branchCode, year, month, category6, category7, description).then((res) => {
             if (res.success) setRows(res.data);
             else setError(res.error);
         });
-    }, [tenantId, branchCode, year, month, category2, category7, glCode]);
+    }, [tenantId, branchCode, year, month, category6, category7, description]);
 
     return (
         <>
@@ -48,11 +48,11 @@ export const DrillDownDrawer: React.FC<DrillDownDrawerProps> = ({
                 <div className="flex items-start justify-between mb-4">
                     <div>
                         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{month}</div>
-                        <h3 className="text-base font-bold text-[#001A40] mt-1">{glCode}</h3>
+                        <h3 className="text-base font-bold text-[#001A40] mt-1">{description}</h3>
                         <div className="text-sm text-slate-500 mt-0.5">
-                            {category2} › {category7}
+                            {category6} › {category7}
                         </div>
-                        <div className="text-lg font-bold text-[#001A40] mt-2 font-mono tabular-nums">${fmt(cellTotal)}</div>
+                        <div className="text-2xl font-bold text-[#001A40] mt-2 tabular-nums">${fmt(cellTotal)}</div>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-[#001A40] p-1 rounded hover:bg-slate-100">
                         <X size={20} />
@@ -84,8 +84,8 @@ export const DrillDownDrawer: React.FC<DrillDownDrawerProps> = ({
                                             {r.check_description || r.vendor || "—"}
                                         </td>
                                         <td
-                                            className={`py-2 text-right font-mono tabular-nums ${
-                                                r.movement < 0 ? "text-rose-600" : "text-slate-700"
+                                            className={`py-2 text-right tabular-nums ${
+                                                r.movement < 0 ? "text-rose-600 font-semibold" : "text-slate-700"
                                             }`}
                                         >
                                             {fmt(r.movement)}

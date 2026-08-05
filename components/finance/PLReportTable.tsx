@@ -18,21 +18,30 @@ interface PivotRowProps {
     onCellClick: (month: string, path: string[], value: number) => void;
 }
 
+/**
+ * Estilo de números: SOLO 'Inter' (font-variant-numeric: tabular-nums vía
+ * clase tabular-nums de Tailwind) -- nada de font-mono/monoespaciado.
+ * Rojo reservado ÚNICAMENTE para el total de la fila (columna Total) y el
+ * Total General cuando son negativos -- los valores normales de gasto
+ * (aunque el movimiento contable sea negativo) van en slate-700 neutro,
+ * para no pintar toda la tabla de rojo. Decisión 2026-08-06.
+ */
 function PivotRow({ node, depth, months, path, onCellClick }: PivotRowProps) {
     const [collapsed, setCollapsed] = useState(depth > 0);
     const hasChildren = node.children.length > 0;
     const isLeaf = !hasChildren;
     const isParent = depth === 0;
     const myPath = [...path, node.label];
+    const periodTotal = months.reduce((sum, m) => sum + (node.byMonth[m] ?? 0), 0);
 
     return (
         <>
             <tr className={isParent ? "bg-slate-50/90 border-y border-slate-200/60" : ""}>
                 <td
-                    className={`py-2 pr-3 text-sm whitespace-nowrap ${
-                        isParent ? "font-bold text-[#001A40]" : "text-slate-700 font-normal pl-6"
+                    className={`py-2 px-3 text-xs whitespace-nowrap ${
+                        isParent ? "font-bold text-[#001A40]" : "text-slate-700 font-medium pl-6"
                     } ${hasChildren ? "cursor-pointer select-none" : ""}`}
-                    style={{ paddingLeft: 16 + depth * ROW_INDENT_PX }}
+                    style={{ paddingLeft: 12 + depth * ROW_INDENT_PX }}
                     onClick={() => hasChildren && setCollapsed((c) => !c)}
                 >
                     {hasChildren && <span className="inline-block w-3 text-slate-400">{collapsed ? "▸" : "▾"}</span>}
@@ -44,18 +53,20 @@ function PivotRow({ node, depth, months, path, onCellClick }: PivotRowProps) {
                         <td
                             key={m}
                             onClick={() => isLeaf && val !== 0 && onCellClick(m, myPath, val)}
-                            className={`py-2 px-3 text-sm text-right font-mono tabular-nums transition-all rounded ${
-                                val < 0 ? "text-rose-600" : "text-slate-600"
-                            } ${val === 0 ? "text-slate-300" : ""} ${
-                                isLeaf && val !== 0 ? "hover:bg-[#A6DEFF]/20 hover:text-[#001A40] cursor-pointer" : ""
-                            }`}
+                            className={`py-2 px-3 text-xs text-right tabular-nums transition-all rounded font-medium ${
+                                val === 0 ? "text-slate-300" : "text-slate-700"
+                            } ${isLeaf && val !== 0 ? "hover:bg-[#A6DEFF]/20 hover:text-[#001A40] cursor-pointer" : ""}`}
                         >
                             {fmt(val)}
                         </td>
                     );
                 })}
-                <td className="py-2 px-3 text-sm text-right font-mono tabular-nums font-medium text-[#001A40] border-l border-slate-200">
-                    {fmt(node.total)}
+                <td
+                    className={`py-2 px-3 text-xs text-right tabular-nums font-semibold border-l border-slate-200 ${
+                        periodTotal < 0 ? "text-rose-600 bg-rose-50/60 rounded" : "text-[#001A40]"
+                    }`}
+                >
+                    {fmt(periodTotal)}
                 </td>
             </tr>
             {!collapsed && node.children.map((child) => (
@@ -83,13 +94,13 @@ export const PLReportTable: React.FC<PLReportTableProps> = ({ tree, months, gran
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-[#001A40] text-white">
-                            <th className="py-3 px-4 text-left text-xs font-semibold tracking-wider">Categoría</th>
+                            <th className="py-2 px-3 text-left text-xs font-semibold tracking-wide">Categoría</th>
                             {months.map((m) => (
-                                <th key={m} className="py-3 px-4 text-right text-xs font-semibold tracking-wider whitespace-nowrap">
+                                <th key={m} className="py-2 px-3 text-right text-xs font-semibold tracking-wide whitespace-nowrap">
                                     {m.slice(0, 3).toUpperCase()}
                                 </th>
                             ))}
-                            <th className="py-3 px-4 text-right text-xs font-semibold tracking-wider border-l border-white/20">
+                            <th className="py-2 px-3 text-right text-xs font-semibold tracking-wide border-l border-white/20">
                                 Total
                             </th>
                         </tr>
@@ -100,17 +111,21 @@ export const PLReportTable: React.FC<PLReportTableProps> = ({ tree, months, gran
                         ))}
                     </tbody>
                     <tfoot>
-                        <tr className="bg-[#001A40] text-white font-bold text-base">
-                            <td className="py-3 px-4 rounded-bl-2xl">Total General</td>
+                        <tr className="bg-[#001A40] text-white font-bold text-xs">
+                            <td className="py-2 px-3 rounded-bl-2xl">Total General</td>
                             {months.map((m) => {
                                 const monthTotal = tree.reduce((sum, n) => sum + (n.byMonth[m] ?? 0), 0);
                                 return (
-                                    <td key={m} className="py-3 px-4 text-right font-mono tabular-nums">
+                                    <td key={m} className="py-2 px-3 text-right tabular-nums">
                                         {fmt(monthTotal)}
                                     </td>
                                 );
                             })}
-                            <td className="py-3 px-4 text-right font-mono tabular-nums border-l border-white/20 rounded-br-2xl">
+                            <td
+                                className={`py-2 px-3 text-right tabular-nums border-l border-white/20 rounded-br-2xl ${
+                                    grandTotal < 0 ? "text-rose-300" : ""
+                                }`}
+                            >
                                 {fmt(grandTotal)}
                             </td>
                         </tr>
