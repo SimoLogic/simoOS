@@ -78,3 +78,34 @@ export interface EnrichResult {
     uncategorizedCount: number;
     unknownBranchCount: number;
 }
+
+// ─── Reporte / Pivot (lib/finance-pl/pivot-engine.ts) ──────────────────────
+// Nota: se omiten los campos de cost_center del original (motor de reglas
+// deferido, no se usa en este incremento) -- siempre operational_pct
+// undefined => 100% Operational por defecto en expandForOpNonOp().
+export interface PLReportTx {
+    id: string;
+    month: string | null;
+    branch: string | null;
+    check_description: string | null;
+    vendor: string | null;
+    ref_numb: string | null;
+    debit: number;
+    credit: number;
+    movement: number | null;
+    gl_code: string | null;
+    gl_name: string | null;
+    category_2: string | null;
+    category_6: string | null;
+    category_7: string | null;
+    order_1: number | null;
+    order_2: number | null;
+    order_3: number | null;
+    check_description_2?: string | null;
+    check_description_3?: string | null;
+    loan_number?: string | null;
+    cost_center_id?: string | null;
+    cost_center_status?: string | null;
+    cost_centers?: { name: string } | null;
+    operational_pct?: number;
+}
