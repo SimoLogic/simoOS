@@ -30,6 +30,14 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
+const QUARTERS: Record<string, string[]> = {
+    full: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    q1: ["January", "February", "March"],
+    q2: ["April", "May", "June"],
+    q3: ["July", "August", "September"],
+    q4: ["October", "November", "December"],
+};
+
 function fmtKpi(n: number): string {
     return `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -50,6 +58,7 @@ export const FinancePLUploadPage: React.FC = () => {
     const [availableYears, setAvailableYears] = useState<number[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>("");
     const [selectedYear, setSelectedYear] = useState<number | null>(null);
+    const [selectedPeriod, setSelectedPeriod] = useState<string>("full");
     const [report, setReport] = useState<PLReportResult | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
     const [reportError, setReportError] = useState<string | null>(null);
@@ -199,6 +208,18 @@ export const FinancePLUploadPage: React.FC = () => {
                             </select>
                         )}
 
+                        <select
+                            value={selectedPeriod}
+                            onChange={(e) => setSelectedPeriod(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-full px-4 py-2 text-sm font-semibold text-[#001A40] shadow-sm"
+                        >
+                            <option value="full">Full Year (JAN - DEC)</option>
+                            <option value="q1">Q1 (JAN - MAR)</option>
+                            <option value="q2">Q2 (APR - JUN)</option>
+                            <option value="q3">Q3 (JUL - SEP)</option>
+                            <option value="q4">Q4 (OCT - DEC)</option>
+                        </select>
+
                         {isAdmin && (
                             <label className="bg-slate-100 hover:bg-slate-200 text-[#001A40] font-bold rounded-full px-4 py-2 text-sm transition-all cursor-pointer flex items-center gap-2">
                                 <Upload size={14} />
@@ -229,35 +250,35 @@ export const FinancePLUploadPage: React.FC = () => {
                 {/* KPI Cards */}
                 {kpis && (
                     <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
                             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Gross Income</div>
-                            <div className="text-xl font-bold text-[#001A40] mt-1 font-mono tabular-nums">
+                            <div className="text-2xl font-bold text-[#001A40] mt-1 tabular-nums">
                                 {fmtKpi(kpis.grossIncome)}
                             </div>
                         </div>
-                        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+                        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
                             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Operating Expenses</div>
-                            <div className="text-xl font-bold text-[#001A40] mt-1 font-mono tabular-nums">
+                            <div className="text-2xl font-bold text-[#001A40] mt-1 tabular-nums">
                                 {fmtKpi(kpis.operatingExpenses)}
                             </div>
                         </div>
                         <div
-                            className={`rounded-2xl p-5 border ${
+                            className={`rounded-2xl p-4 border ${
                                 netPositive ? "bg-emerald-50/60 border-emerald-200" : "bg-rose-50/60 border-rose-200"
                             }`}
                         >
                             <div className={`text-xs font-semibold uppercase tracking-wide ${netPositive ? "text-emerald-800" : "text-rose-800"}`}>
                                 Net Income
                             </div>
-                            <div className={`text-xl font-bold mt-1 font-mono tabular-nums ${netPositive ? "text-emerald-800" : "text-rose-800"}`}>
+                            <div className={`text-2xl font-bold mt-1 tabular-nums ${netPositive ? "text-emerald-800" : "text-rose-800"}`}>
                                 {fmtKpi(kpis.netIncome)}
                             </div>
                         </div>
-                        <div className="rounded-2xl p-5 border" style={{ backgroundColor: "rgba(166,222,255,0.15)", borderColor: "rgba(166,222,255,0.4)" }}>
+                        <div className="rounded-2xl p-4 border" style={{ backgroundColor: "rgba(166,222,255,0.15)", borderColor: "rgba(166,222,255,0.4)" }}>
                             <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#001A40" }}>
                                 Operating Margin
                             </div>
-                            <div className="text-xl font-bold mt-1 font-mono tabular-nums" style={{ color: "#001A40" }}>
+                            <div className="text-2xl font-bold mt-1 tabular-nums" style={{ color: "#001A40" }}>
                                 {kpis.operatingMarginPct.toFixed(1)}%
                             </div>
                         </div>
@@ -269,8 +290,12 @@ export const FinancePLUploadPage: React.FC = () => {
                 {!reportLoading && !reportError && report && (
                     <PLReportTable
                         tree={report.tree}
-                        months={report.months}
-                        grandTotal={report.grandTotal}
+                        months={report.months.filter((m) => QUARTERS[selectedPeriod].includes(m))}
+                        grandTotal={report.tree.reduce(
+                            (sum, n) =>
+                                sum + QUARTERS[selectedPeriod].reduce((s, m) => s + (n.byMonth[m] ?? 0), 0),
+                            0
+                        )}
                         onCellClick={(month, path, value) => setDrawer({ month, path, value })}
                     />
                 )}
@@ -287,9 +312,9 @@ export const FinancePLUploadPage: React.FC = () => {
                     branchCode={isAdmin ? selectedBranch || null : myBranchCode}
                     year={selectedYear}
                     month={drawer.month}
-                    category2={drawer.path[0] ?? "Uncategorized"}
+                    category6={drawer.path[0] ?? "(No Category 6)"}
                     category7={drawer.path[1] ?? "(No Category 7)"}
-                    glCode={drawer.path[2] ?? "(No GL)"}
+                    description={drawer.path[2] ?? "(No Description)"}
                     cellTotal={drawer.value}
                     onClose={() => setDrawer(null)}
                 />

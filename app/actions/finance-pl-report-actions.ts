@@ -134,7 +134,7 @@ export async function getPLReportAction(
         }));
 
         const expanded = expandForOpNonOp(txs);
-        const tree = buildDynamicPivot(expanded, ["category_2", "category_7", "gl"]);
+        const tree = buildDynamicPivot(expanded, ["category_6", "category_7", "description"]);
 
         const monthsPresent = new Set<string>();
         for (const t of txs) if (t.month) monthsPresent.add(t.month);
@@ -209,15 +209,15 @@ export async function getTransactionDetailAction(
     branchCode: string | null,
     year: number | null,
     month: string,
-    category2: string,
+    category6: string,
     category7: string,
-    glCode: string
+    description: string
 ): Promise<ActionResult<TransactionDetail[]>> {
     if (!tenantId?.trim()) return fail("Falta el tenant.");
     try {
         let query = supabaseFinancePl
             .from("pl_transactions")
-            .select("id, loan_number, check_description, vendor, ref_numb, journal_post_date, movement, gl_code, gl_name, category_2, category_7, month")
+            .select("id, loan_number, check_description, vendor, ref_numb, journal_post_date, movement, category_6, category_7, month")
             .eq("tenant_id", tenantId)
             .eq("month", month);
 
@@ -227,13 +227,14 @@ export async function getTransactionDetailAction(
         const { data, error } = await query;
         if (error) return fail(error.message);
 
-        // Filtramos en memoria por la combinación exacta (incluye el fallback
-        // "Uncategorized"/"(No Category 7)"/"(No GL)" que usa el motor de pivot).
+        // Filtramos en memoria por la combinación exacta (incluye los fallback
+        // "(No Category 6)"/"(No Category 7)"/"(No Description)" que usa el
+        // motor de pivot cuando el campo viene vacío).
         const rows = (data ?? []).filter((r) => {
-            const c2 = r.category_2?.trim() || "Uncategorized";
+            const c6 = r.category_6?.trim() || "(No Category 6)";
             const c7 = r.category_7?.trim() || "(No Category 7)";
-            const gl = r.gl_code?.trim() && r.gl_name?.trim() ? `${r.gl_code.trim()} — ${r.gl_name.trim()}` : (r.gl_code?.trim() ?? r.gl_name?.trim() ?? "(No GL)");
-            return c2 === category2 && c7 === category7 && gl === glCode;
+            const desc = r.check_description?.trim() || "(No Description)";
+            return c6 === category6 && c7 === category7 && desc === description;
         });
 
         return ok(

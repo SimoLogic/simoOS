@@ -114,8 +114,11 @@ function getGroup(tx: ExpandedTx, field: PivotField): { key: string; label: stri
       return { key: v, label: v, sortKey: tx.order_1 ?? 9999 };
     }
     case "category_6": {
+      // NOTA: el original de homesi-pl ordenaba category_6 por order_2.
+      // Para simoOS se cambió a order_1 -- decisión explícita del usuario
+      // 2026-08-05 (ver docs/AGENT_CONTEXT_ANTIGRAVITY.md).
       const v = tx.category_6?.trim() || "(No Category 6)";
-      return { key: v, label: v, sortKey: tx.order_2 ?? 9999 };
+      return { key: v, label: v, sortKey: tx.order_1 ?? 9999 };
     }
     case "category_7": {
       const v = tx.category_7?.trim() || "(No Category 7)";
