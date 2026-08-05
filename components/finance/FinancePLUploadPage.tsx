@@ -30,12 +30,18 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
+const ALL_MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+
 const QUARTERS: Record<string, string[]> = {
-    full: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    full: ALL_MONTHS,
     q1: ["January", "February", "March"],
     q2: ["April", "May", "June"],
     q3: ["July", "August", "September"],
     q4: ["October", "November", "December"],
+    ...Object.fromEntries(ALL_MONTHS.map((m) => [m, [m]])),
 };
 
 function fmtKpi(n: number): string {
@@ -214,10 +220,19 @@ export const FinancePLUploadPage: React.FC = () => {
                             className="bg-white border border-slate-200 rounded-full px-4 py-2 text-sm font-semibold text-[#001A40] shadow-sm"
                         >
                             <option value="full">Full Year (JAN - DEC)</option>
-                            <option value="q1">Q1 (JAN - MAR)</option>
-                            <option value="q2">Q2 (APR - JUN)</option>
-                            <option value="q3">Q3 (JUL - SEP)</option>
-                            <option value="q4">Q4 (OCT - DEC)</option>
+                            <optgroup label="Quarters">
+                                <option value="q1">Q1 (JAN - MAR)</option>
+                                <option value="q2">Q2 (APR - JUN)</option>
+                                <option value="q3">Q3 (JUL - SEP)</option>
+                                <option value="q4">Q4 (OCT - DEC)</option>
+                            </optgroup>
+                            <optgroup label="Month">
+                                {ALL_MONTHS.map((m) => (
+                                    <option key={m} value={m}>
+                                        {m}
+                                    </option>
+                                ))}
+                            </optgroup>
                         </select>
 
                         {isAdmin && (
