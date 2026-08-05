@@ -53,8 +53,8 @@ function PivotRow({ node, depth, months, path, onCellClick }: PivotRowProps) {
                         <td
                             key={m}
                             onClick={() => isLeaf && val !== 0 && onCellClick(m, myPath, val)}
-                            className={`py-2 px-3 text-xs text-right tabular-nums transition-all rounded font-medium ${
-                                val === 0 ? "text-slate-300" : "text-slate-700"
+                            className={`py-2 px-3 text-xs text-right tabular-nums transition-colors rounded ${
+                                val === 0 ? "text-slate-300 font-normal" : "text-slate-700 font-medium"
                             } ${isLeaf && val !== 0 ? "hover:bg-[#A6DEFF]/20 hover:text-[#001A40] cursor-pointer" : ""}`}
                         >
                             {fmt(val)}
@@ -63,7 +63,7 @@ function PivotRow({ node, depth, months, path, onCellClick }: PivotRowProps) {
                 })}
                 <td
                     className={`py-2 px-3 text-xs text-right tabular-nums font-semibold border-l border-slate-200 ${
-                        periodTotal < 0 ? "text-rose-600 bg-rose-50/60 rounded" : "text-[#001A40]"
+                        periodTotal < 0 ? "text-rose-700 bg-rose-50/70 px-2 py-0.5 rounded" : "text-slate-800"
                     }`}
                 >
                     {fmt(periodTotal)}
