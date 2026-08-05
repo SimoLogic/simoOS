@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/auth/supabase-browser-client";
+import { useTenant } from "@/lib/tenant-context";
 
 interface AdminGateProps {
     children: React.ReactNode;
@@ -33,6 +34,7 @@ export const AdminGate: React.FC<AdminGateProps> = ({
     const [password, setPassword] = useState("");
     const [loginError, setLoginError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { currentTenant, setCurrentTenantById } = useTenant();
 
     async function checkAdmin(session: Session | null) {
         if (!session) {
@@ -46,6 +48,22 @@ export const AdminGate: React.FC<AdminGateProps> = ({
             console.error("current_user_has_any_role RPC failed", error);
             setStatus("not-admin");
             return;
+        }
+        if (data) {
+            // Auto-selecciona el tenant del usuario -- hoy cada usuario
+            // pertenece a un solo tenant (public.users.tenant_id), así que no
+            // hace falta pedirle que elija manualmente en el dropdown "Select
+            // Tenant" del TopBar (ese selector sigue existiendo para el resto
+            // de la app, que no requiere login).
+            const { data: userRow, error: userError } = await supabaseBrowser
+                .from("users")
+                .select("tenant_id")
+                .eq("id", session.user.id)
+                .single();
+
+            if (!userError && userRow?.tenant_id && userRow.tenant_id !== currentTenant?.tenant_id) {
+                await setCurrentTenantById(userRow.tenant_id);
+            }
         }
         setStatus(data ? "admin" : "not-admin");
     }
