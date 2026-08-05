@@ -70,7 +70,16 @@ export async function uploadPLFileAction(
             branch_manager: b.branch_manager_name,
         }));
 
-        // Paso 3: crear el registro de carga
+        // Paso 3: borrar TODA la data anterior de este tenant (cada carga
+        // reemplaza la anterior por completo). ON DELETE CASCADE en
+        // pl_transactions.upload_id se encarga de las transacciones.
+        const { error: deleteError } = await supabaseFinancePl
+            .from("pl_uploads")
+            .delete()
+            .eq("tenant_id", tenantId);
+        if (deleteError) return fail(`Error limpiando cargas anteriores: ${deleteError.message}`);
+
+        // Paso 4: crear el registro de la nueva carga
         const { data: upload, error: uploadError } = await supabaseFinancePl
             .from("pl_uploads")
             .insert({ tenant_id: tenantId, file_name: fileName, row_count: rows.length, status: "processing" })
@@ -78,7 +87,7 @@ export async function uploadPLFileAction(
             .single();
         if (uploadError || !upload) return fail(`Error creando la carga: ${uploadError?.message}`);
 
-        // Paso 4: enriquecer (join contra gl_mapping/branches -- lógica original)
+        // Paso 5: enriquecer (join contra gl_mapping/branches -- lógica original)
         const { transactions, uncategorizedCount, unknownBranchCount } = enrichTransactions(
             rows,
             glMappings,
@@ -87,7 +96,7 @@ export async function uploadPLFileAction(
             "original"
         );
 
-        // Paso 5: insertar por lotes
+        // Paso 6: insertar por lotes
         for (let i = 0; i < transactions.length; i += INSERT_CHUNK_SIZE) {
             const chunk = transactions.slice(i, i + INSERT_CHUNK_SIZE).map((t) => ({
                 tenant_id: tenantId,
