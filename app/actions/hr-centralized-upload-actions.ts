@@ -160,7 +160,8 @@ function buildBigQueryRows(
  */
 export async function uploadActiveRosterAction(
     tenantId: string,
-    rows: RawActiveRosterRow[]
+    rows: RawActiveRosterRow[],
+    fileName?: string
 ): Promise<ActionResult<{ uploadBatchId: string; count: number; deactivatedCount: number }>> {
     // Los mensajes de error se muestran tal cual en la UI -> van en inglés.
     if (!tenantId?.trim()) return fail("No tenant selected.");
@@ -287,9 +288,81 @@ export async function uploadActiveRosterAction(
             deactivatedCount = deactivated.count;
         }
 
+        // Paso 5: deja constancia de la carga en el historial. Va en try/catch
+        // a propósito: en este punto el roster YA quedó guardado, así que un
+        // fallo escribiendo el historial (p. ej. la tabla todavía no existe en
+        // ese ambiente, ver sql/ddl_hr_upload_batches.sql) no debe hacer
+        // fracasar una carga que sí funcionó.
+        try {
+            await prisma.hrUploadBatch.create({
+                data: {
+                    tenantId,
+                    uploadBatchId,
+                    fileName: fileName ?? null,
+                    sourceRowCount: rows.length,
+                    savedCount,
+                    deactivatedCount,
+                    uploadedAt,
+                },
+            });
+        } catch (historyError) {
+            console.error(
+                "[uploadActiveRosterAction] roster saved but could not record upload history:",
+                historyError
+            );
+        }
+
         return ok({ uploadBatchId, count: savedCount, deactivatedCount });
     } catch (err) {
         console.error("[uploadActiveRosterAction] failed:", err);
         return fail(err instanceof Error ? err.message : "Unknown error while processing the upload.");
+    }
+}
+
+/** Una carga anterior, tal como la muestra la UI (fechas ya serializadas). */
+export interface UploadBatchSummary {
+    uploadBatchId: string;
+    fileName: string | null;
+    sourceRowCount: number;
+    savedCount: number;
+    deactivatedCount: number;
+    uploadedAt: string;
+}
+
+/**
+ * Últimas cargas del tenant, más reciente primero.
+ *
+ * La Carga Centralizada la llama al montar para poder mostrar qué se subió
+ * la última vez. Antes, el único registro de una carga era el useState del
+ * componente: si algo lo remontaba (ver el fix de AdminGate) o el usuario
+ * simplemente cambiaba de módulo y volvía, no quedaba ni rastro de que la
+ * carga había ocurrido. Esto lo hace persistente.
+ */
+export async function getRecentUploadBatchesAction(
+    tenantId: string,
+    limit = 5
+): Promise<ActionResult<UploadBatchSummary[]>> {
+    if (!tenantId?.trim()) return fail("No tenant selected.");
+
+    try {
+        const batches = await prisma.hrUploadBatch.findMany({
+            where: { tenantId },
+            orderBy: { uploadedAt: "desc" },
+            take: Math.min(Math.max(limit, 1), 20),
+        });
+
+        return ok(
+            batches.map((b) => ({
+                uploadBatchId: b.uploadBatchId,
+                fileName: b.fileName,
+                sourceRowCount: b.sourceRowCount,
+                savedCount: b.savedCount,
+                deactivatedCount: b.deactivatedCount,
+                uploadedAt: b.uploadedAt.toISOString(),
+            }))
+        );
+    } catch (err) {
+        console.error("[getRecentUploadBatchesAction] failed:", err);
+        return fail(err instanceof Error ? err.message : "Could not load the upload history.");
     }
 }

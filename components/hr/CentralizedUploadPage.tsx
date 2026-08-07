@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useTenant } from "@/lib/tenant-context";
 import {
     uploadActiveRosterAction,
+    getRecentUploadBatchesAction,
     type RawActiveRosterRow,
+    type UploadBatchSummary,
 } from "@/app/actions/hr-centralized-upload-actions";
 
 type UploadState =
@@ -23,9 +25,46 @@ type UploadState =
  *
  * Todo el texto visible va en inglés (regla global del proyecto).
  */
+
+/** Fecha+hora legible para el historial (ej. "Aug 7, 2026, 1:07 PM"). */
+function fmtDateTime(iso: string): string {
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+        ? "—"
+        : d.toLocaleString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+          });
+}
+
 export const CentralizedUploadPage: React.FC = () => {
     const { currentTenant } = useTenant();
     const [state, setState] = useState<UploadState>({ step: "idle" });
+
+    // El historial vive en la base, no en este useState: si el componente se
+    // remonta (o el usuario cambia de módulo y vuelve), la última carga sigue
+    // visible. Antes, el único rastro de una carga era el estado en memoria.
+    const [history, setHistory] = useState<UploadBatchSummary[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+
+    const tenantId = currentTenant?.tenant_id;
+
+    const loadHistory = useCallback(async () => {
+        if (!tenantId) return;
+        const result = await getRecentUploadBatchesAction(tenantId, 5);
+        // Un fallo acá no se le grita al usuario: el historial es informativo y
+        // la pantalla de carga tiene que seguir siendo usable igual.
+        setHistory(result.success ? result.data : []);
+        setHistoryLoading(false);
+    }, [tenantId]);
+
+    useEffect(() => {
+        setHistoryLoading(true);
+        loadHistory();
+    }, [loadHistory]);
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -69,7 +108,11 @@ export const CentralizedUploadPage: React.FC = () => {
         }
 
         setState({ step: "submitting", rows: state.rows, fileName: state.fileName });
-        const result = await uploadActiveRosterAction(currentTenant.tenant_id, state.rows);
+        const result = await uploadActiveRosterAction(
+            currentTenant.tenant_id,
+            state.rows,
+            state.fileName
+        );
 
         if (result.success) {
             setState({
@@ -78,6 +121,8 @@ export const CentralizedUploadPage: React.FC = () => {
                 deactivatedCount: result.data.deactivatedCount,
                 uploadBatchId: result.data.uploadBatchId,
             });
+            // Deja el historial al día sin recargar la página.
+            loadHistory();
         } else {
             setState({ step: "error", message: result.error });
         }
@@ -168,6 +213,56 @@ export const CentralizedUploadPage: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Historial persistente -- se lee de la base al montar, así que
+                    sobrevive a un remount o a cambiar de módulo y volver. */}
+                {!historyLoading && history.length > 0 && (
+                    <div className="mt-6">
+                        <h2 className="text-sm font-semibold text-slate-700 mb-1">Last upload</h2>
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                            <div className="text-sm text-slate-700">
+                                <strong>{history[0].savedCount}</strong> employees ·{" "}
+                                {fmtDateTime(history[0].uploadedAt)}
+                                {history[0].fileName && (
+                                    <span className="text-slate-500"> · {history[0].fileName}</span>
+                                )}
+                            </div>
+                            {history[0].deactivatedCount > 0 && (
+                                <div className="text-xs text-amber-700 mt-1">
+                                    {history[0].deactivatedCount} marked Inactive
+                                </div>
+                            )}
+                            <div className="text-xs text-slate-400 mt-1">
+                                Batch: {history[0].uploadBatchId}
+                            </div>
+                        </div>
+
+                        {history.length > 1 && (
+                            <>
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-5 mb-2">
+                                    Earlier uploads
+                                </h3>
+                                <ul className="flex flex-col divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    {history.slice(1).map((b) => (
+                                        <li
+                                            key={b.uploadBatchId}
+                                            className="flex items-baseline justify-between gap-4 px-4 py-2.5"
+                                        >
+                                            <span className="text-xs text-slate-600 truncate">
+                                                {b.fileName ?? "(file name not recorded)"}
+                                            </span>
+                                            <span className="text-xs text-slate-400 whitespace-nowrap">
+                                                {b.savedCount} employees
+                                                {b.deactivatedCount > 0 && ` · ${b.deactivatedCount} inactive`} ·{" "}
+                                                {fmtDateTime(b.uploadedAt)}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

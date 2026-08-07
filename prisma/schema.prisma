@@ -462,6 +462,29 @@ model HrActiveRoster {
   @@map("hr_active_roster")
 }
 
+/// Historial de cargas centralizadas -- una fila por archivo procesado.
+/// Existe para que la UI pueda mostrar la última carga al montar, sin
+/// depender del useState del componente (que se pierde en cualquier
+/// remount). Ver components/hr/CentralizedUploadPage.tsx.
+/// DDL: sql/ddl_hr_upload_batches.sql
+model HrUploadBatch {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  /// Mismo valor que hr_active_roster.upload_batch_id de esa carga.
+  uploadBatchId    String   @unique @map("upload_batch_id")
+  fileName         String?  @map("file_name")
+  /// Filas leídas de la hoja "Active" del Excel.
+  sourceRowCount   Int      @default(0) @map("source_row_count")
+  /// Empleados efectivamente guardados en Supabase.
+  savedCount       Int      @default(0) @map("saved_count")
+  /// Empleados que pasaron a Inactive por no venir en el archivo.
+  deactivatedCount Int      @default(0) @map("deactivated_count")
+  uploadedAt       DateTime @default(now()) @map("uploaded_at")
+
+  @@index([tenantId, uploadedAt])
+  @@map("hr_upload_batches")
+}
+
 model PmoIcalFeedToken {
   id           String    @id @default(uuid())
   userId       String    @unique @map("user_id")
