@@ -52,8 +52,35 @@ export async function GET() {
         });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
+
+        // El .message de google-auth-library resume el error -- pero la
+        // librería HTTP subyacente (gaxios) suele guardar el cuerpo REAL de
+        // la respuesta de Google en .response.data, con muchos más detalles
+        // (a veces incluye qué issuer/audience esperaba exactamente, códigos
+        // de error más específicos, etc.). Lo capturamos aparte.
+        const errAny = err as {
+            response?: { data?: unknown; status?: number; statusText?: string };
+            code?: string;
+            cause?: unknown;
+            stack?: string;
+        };
+
         return Response.json(
-            { ok: false, error: message, raw_token_claims: rawTokenClaims, raw_token_error: rawTokenError },
+            {
+                ok: false,
+                error: message,
+                error_code: errAny?.code ?? null,
+                error_response_data: errAny?.response?.data ?? null,
+                error_response_status: errAny?.response?.status ?? null,
+                error_cause: errAny?.cause ? String(errAny.cause) : null,
+                raw_token_claims: rawTokenClaims,
+                raw_token_error: rawTokenError,
+                env_check: {
+                    GCP_PROJECT_ID: process.env.GCP_PROJECT_ID ?? null,
+                    GCP_SERVICE_ACCOUNT_EMAIL: process.env.GCP_SERVICE_ACCOUNT_EMAIL ?? null,
+                    GCP_AUDIENCE: process.env.GCP_AUDIENCE ?? null,
+                },
+            },
             { status: 500 }
         );
     }
