@@ -155,14 +155,17 @@ function buildBigQueryRows(
  *   1. Excel -> BigQuery (append-only, todos los campos).
  *   2. Lee de vuelta el snapshot actual desde BigQuery
  *      (hr_centralizado.v_active_roster_current).
- *   3. Guarda ese snapshot en Supabase (sensible cifrado ahí).
+ *   3. Guarda ese snapshot en Supabase (sensible cifrado ahí), status "Active".
+ *   4. Marca "Inactive" a quien ya estaba en Supabase y no viene en esta carga.
  */
 export async function uploadActiveRosterAction(
     tenantId: string,
-    rows: RawActiveRosterRow[]
-): Promise<ActionResult<{ uploadBatchId: string; count: number }>> {
-    if (!tenantId?.trim()) return fail("Falta el tenant.");
-    if (!rows.length) return fail("El archivo no tiene filas para procesar.");
+    rows: RawActiveRosterRow[],
+    fileName?: string
+): Promise<ActionResult<{ uploadBatchId: string; count: number; deactivatedCount: number }>> {
+    // Los mensajes de error se muestran tal cual en la UI -> van en inglés.
+    if (!tenantId?.trim()) return fail("No tenant selected.");
+    if (!rows.length) return fail("The file has no rows to process.");
 
     const uploadBatchId = randomUUID();
     const uploadedAt = new Date();
@@ -170,7 +173,7 @@ export async function uploadActiveRosterAction(
     try {
         // Paso 1: Excel -> BigQuery
         const bigQueryRows = buildBigQueryRows(tenantId, uploadBatchId, uploadedAt, rows);
-        if (bigQueryRows.length === 0) return fail("No se encontraron filas válidas (con nombre) en el archivo.");
+        if (bigQueryRows.length === 0) return fail("No valid rows (with a name) were found in the file.");
 
         try {
             await insertActiveRosterRows(bigQueryRows);
@@ -178,7 +181,7 @@ export async function uploadActiveRosterAction(
             console.error("[uploadActiveRosterAction] BigQuery insert failed:", bqError);
             // Cadena estricta: si BigQuery falla, NO se toca Supabase.
             return fail(
-                `No se pudo guardar en BigQuery: ${bqError instanceof Error ? bqError.message : "error desconocido"}. No se actualizó Supabase.`
+                `Could not save to BigQuery: ${bqError instanceof Error ? bqError.message : "unknown error"}. Supabase was not updated.`
             );
         }
 
@@ -187,6 +190,7 @@ export async function uploadActiveRosterAction(
 
         // Paso 3: BigQuery -> Supabase (cifrando lo sensible ahí, defensa adicional)
         let savedCount = 0;
+        const employeeNumbersInUpload: number[] = [];
         for (const r of currentRoster) {
             const sensitiveDataEnc = await encryptObject({
                 nationalId: r.national_id,
@@ -209,6 +213,7 @@ export async function uploadActiveRosterAction(
             });
 
             const employeeNumber = r.employee_number;
+            employeeNumbersInUpload.push(employeeNumber ?? -1);
 
             await prisma.hrActiveRoster.upsert({
                 where: {
@@ -235,6 +240,7 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    status: "Active",
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
                     uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
@@ -255,6 +261,9 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    // Quien viene en la carga vuelve a quedar Activo, incluso si
+                    // una carga anterior lo había marcado Inactive (recontratación).
+                    status: "Active",
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
                     uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
@@ -263,9 +272,97 @@ export async function uploadActiveRosterAction(
             savedCount++;
         }
 
-        return ok({ uploadBatchId, count: savedCount });
+        // Paso 4: quien YA estaba en Supabase pero no viene en esta carga se
+        // marca Inactive -- nunca se borra (el histórico de la persona y su
+        // dato cifrado se conservan; HC Master lo muestra con badge gris).
+        let deactivatedCount = 0;
+        if (employeeNumbersInUpload.length > 0) {
+            const deactivated = await prisma.hrActiveRoster.updateMany({
+                where: {
+                    tenantId,
+                    employeeNumber: { notIn: employeeNumbersInUpload },
+                    status: { not: "Inactive" },
+                },
+                data: { status: "Inactive" },
+            });
+            deactivatedCount = deactivated.count;
+        }
+
+        // Paso 5: deja constancia de la carga en el historial. Va en try/catch
+        // a propósito: en este punto el roster YA quedó guardado, así que un
+        // fallo escribiendo el historial (p. ej. la tabla todavía no existe en
+        // ese ambiente, ver sql/ddl_hr_upload_batches.sql) no debe hacer
+        // fracasar una carga que sí funcionó.
+        try {
+            await prisma.hrUploadBatch.create({
+                data: {
+                    tenantId,
+                    uploadBatchId,
+                    fileName: fileName ?? null,
+                    sourceRowCount: rows.length,
+                    savedCount,
+                    deactivatedCount,
+                    uploadedAt,
+                },
+            });
+        } catch (historyError) {
+            console.error(
+                "[uploadActiveRosterAction] roster saved but could not record upload history:",
+                historyError
+            );
+        }
+
+        return ok({ uploadBatchId, count: savedCount, deactivatedCount });
     } catch (err) {
         console.error("[uploadActiveRosterAction] failed:", err);
-        return fail(err instanceof Error ? err.message : "Error desconocido al procesar la carga.");
+        return fail(err instanceof Error ? err.message : "Unknown error while processing the upload.");
+    }
+}
+
+/** Una carga anterior, tal como la muestra la UI (fechas ya serializadas). */
+export interface UploadBatchSummary {
+    uploadBatchId: string;
+    fileName: string | null;
+    sourceRowCount: number;
+    savedCount: number;
+    deactivatedCount: number;
+    uploadedAt: string;
+}
+
+/**
+ * Últimas cargas del tenant, más reciente primero.
+ *
+ * La Carga Centralizada la llama al montar para poder mostrar qué se subió
+ * la última vez. Antes, el único registro de una carga era el useState del
+ * componente: si algo lo remontaba (ver el fix de AdminGate) o el usuario
+ * simplemente cambiaba de módulo y volvía, no quedaba ni rastro de que la
+ * carga había ocurrido. Esto lo hace persistente.
+ */
+export async function getRecentUploadBatchesAction(
+    tenantId: string,
+    limit = 5
+): Promise<ActionResult<UploadBatchSummary[]>> {
+    if (!tenantId?.trim()) return fail("No tenant selected.");
+
+    try {
+        const batches = await prisma.hrUploadBatch.findMany({
+            where: { tenantId },
+            orderBy: { uploadedAt: "desc" },
+            take: Math.min(Math.max(limit, 1), 20),
+        });
+
+        return ok(
+            batches.map((b) => ({
+                uploadBatchId: b.uploadBatchId,
+                fileName: b.fileName,
+                sourceRowCount: b.sourceRowCount,
+                savedCount: b.savedCount,
+                deactivatedCount: b.deactivatedCount,
+                uploadedAt: b.uploadedAt.toISOString(),
+            }))
+        );
+    } catch (err) {
+        console.error("[getRecentUploadBatchesAction] failed:", err);
+        return fail(err instanceof Error ? err.message : "Could not load the upload history.");
     }
 }

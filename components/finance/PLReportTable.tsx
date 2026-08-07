@@ -85,7 +85,7 @@ interface PLReportTableProps {
 
 export const PLReportTable: React.FC<PLReportTableProps> = ({ tree, months, grandTotal, onCellClick }) => {
     if (tree.length === 0) {
-        return <div className="text-sm text-slate-400 py-8 text-center">No hay transacciones cargadas todavía.</div>;
+        return <div className="text-sm text-slate-400 py-8 text-center">No transactions loaded yet.</div>;
     }
 
     return (
@@ -94,7 +94,7 @@ export const PLReportTable: React.FC<PLReportTableProps> = ({ tree, months, gran
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-[#001A40] text-white">
-                            <th className="py-2 px-3 text-left text-xs font-semibold tracking-wide">Categoría</th>
+                            <th className="py-2 px-3 text-left text-xs font-semibold tracking-wide">Category</th>
                             {months.map((m) => (
                                 <th key={m} className="py-2 px-3 text-right text-xs font-semibold tracking-wide whitespace-nowrap">
                                     {m.slice(0, 3).toUpperCase()}
@@ -112,7 +112,7 @@ export const PLReportTable: React.FC<PLReportTableProps> = ({ tree, months, gran
                     </tbody>
                     <tfoot>
                         <tr className="bg-[#001A40] text-white font-bold text-xs">
-                            <td className="py-2 px-3 rounded-bl-2xl">Total General</td>
+                            <td className="py-2 px-3 rounded-bl-2xl">Grand Total</td>
                             {months.map((m) => {
                                 const monthTotal = tree.reduce((sum, n) => sum + (n.byMonth[m] ?? 0), 0);
                                 return (

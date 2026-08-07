@@ -112,11 +112,11 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({
                     ) : activeModule === "commercial-activity" ? (
                         <CommercialActivityModule activeSubModule={activeSubModule} />
                     ) : activeSubModule === "hc-master" ? (
-                        <AdminGate title="Datos de empleados (HC Master)">
+                        <AdminGate title="Employee data (HC Master)">
                             <HCMaestro />
                         </AdminGate>
                     ) : activeSubModule === "centralized-upload" ? (
-                        <AdminGate title="Carga Centralizada de Empleados" requiredRoles={["admin", "hr"]}>
+                        <AdminGate title="Centralized Employee Upload" requiredRoles={["admin", "hr"]}>
                             <CentralizedUploadPage />
                         </AdminGate>
                     ) : activeSubModule === "pnl" ? (
