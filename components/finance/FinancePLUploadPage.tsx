@@ -161,12 +161,12 @@ export const FinancePLUploadPage: React.FC = () => {
                 setUploadState({ step: "error", message: result.error });
             }
         } catch (err) {
-            setUploadState({ step: "error", message: err instanceof Error ? err.message : "Error al leer el archivo." });
+            setUploadState({ step: "error", message: err instanceof Error ? err.message : "Could not read the file." });
         }
     }
 
     if (isAdmin === null) {
-        return <div className="p-8 text-sm text-slate-400">Cargando…</div>;
+        return <div className="p-8 text-sm text-slate-400">Loading…</div>;
     }
 
     const kpis = report?.kpis;
@@ -180,7 +180,7 @@ export const FinancePLUploadPage: React.FC = () => {
                     <div>
                         <h1 className="text-xl font-bold text-[#001A40]">P&amp;L Overview</h1>
                         <p className="text-sm text-slate-500">
-                            {isAdmin ? "Vista de administrador" : `Sucursal ${myBranchCode ?? "(sin asignar)"}`}
+                            {isAdmin ? "Administrator view" : `Branch ${myBranchCode ?? "(unassigned)"}`}
                         </p>
                     </div>
 
@@ -238,7 +238,7 @@ export const FinancePLUploadPage: React.FC = () => {
                         {isAdmin && (
                             <label className="bg-slate-100 hover:bg-slate-200 text-[#001A40] font-bold rounded-full px-4 py-2 text-sm transition-all cursor-pointer flex items-center gap-2">
                                 <Upload size={14} />
-                                {uploadState.step === "uploading" ? "Procesando…" : "Upload File"}
+                                {uploadState.step === "uploading" ? "Processing…" : "Upload File"}
                                 <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} />
                             </label>
                         )}
@@ -247,12 +247,12 @@ export const FinancePLUploadPage: React.FC = () => {
 
                 {uploadState.step === "done" && (
                     <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs text-sm">
-                        <span className="text-emerald-700 font-medium">✓ Carga completada: {uploadState.rowCount} transacciones.</span>
+                        <span className="text-emerald-700 font-medium">✓ Upload complete: {uploadState.rowCount} transactions.</span>
                         {uploadState.uncategorized > 0 && (
-                            <span className="text-amber-600 ml-3">{uploadState.uncategorized} sin categoría GL.</span>
+                            <span className="text-amber-600 ml-3">{uploadState.uncategorized} without a GL category.</span>
                         )}
                         {uploadState.unknownBranch > 0 && (
-                            <span className="text-amber-600 ml-3">{uploadState.unknownBranch} con sucursal desconocida.</span>
+                            <span className="text-amber-600 ml-3">{uploadState.unknownBranch} with an unknown branch.</span>
                         )}
                     </div>
                 )}
@@ -300,7 +300,7 @@ export const FinancePLUploadPage: React.FC = () => {
                     </div>
                 )}
 
-                {reportLoading && <div className="text-sm text-slate-400 py-8 text-center">Cargando reporte…</div>}
+                {reportLoading && <div className="text-sm text-slate-400 py-8 text-center">Loading report…</div>}
                 {reportError && <div className="text-sm text-red-600 py-4">{reportError}</div>}
                 {!reportLoading && !reportError && report && (
                     <PLReportTable
@@ -316,7 +316,7 @@ export const FinancePLUploadPage: React.FC = () => {
                 )}
                 {!reportLoading && !reportError && !report && !isAdmin && !myBranchCode && (
                     <div className="text-sm text-amber-600 py-8 text-center">
-                        Tu cuenta todavía no tiene una sucursal asignada. Contacta a tu administrador.
+                        Your account does not have a branch assigned yet. Contact your administrator.
                     </div>
                 )}
             </div>

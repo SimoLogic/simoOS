@@ -162,8 +162,9 @@ export async function uploadActiveRosterAction(
     tenantId: string,
     rows: RawActiveRosterRow[]
 ): Promise<ActionResult<{ uploadBatchId: string; count: number; deactivatedCount: number }>> {
-    if (!tenantId?.trim()) return fail("Falta el tenant.");
-    if (!rows.length) return fail("El archivo no tiene filas para procesar.");
+    // Los mensajes de error se muestran tal cual en la UI -> van en inglés.
+    if (!tenantId?.trim()) return fail("No tenant selected.");
+    if (!rows.length) return fail("The file has no rows to process.");
 
     const uploadBatchId = randomUUID();
     const uploadedAt = new Date();
@@ -171,7 +172,7 @@ export async function uploadActiveRosterAction(
     try {
         // Paso 1: Excel -> BigQuery
         const bigQueryRows = buildBigQueryRows(tenantId, uploadBatchId, uploadedAt, rows);
-        if (bigQueryRows.length === 0) return fail("No se encontraron filas válidas (con nombre) en el archivo.");
+        if (bigQueryRows.length === 0) return fail("No valid rows (with a name) were found in the file.");
 
         try {
             await insertActiveRosterRows(bigQueryRows);
@@ -179,7 +180,7 @@ export async function uploadActiveRosterAction(
             console.error("[uploadActiveRosterAction] BigQuery insert failed:", bqError);
             // Cadena estricta: si BigQuery falla, NO se toca Supabase.
             return fail(
-                `No se pudo guardar en BigQuery: ${bqError instanceof Error ? bqError.message : "error desconocido"}. No se actualizó Supabase.`
+                `Could not save to BigQuery: ${bqError instanceof Error ? bqError.message : "unknown error"}. Supabase was not updated.`
             );
         }
 
@@ -289,6 +290,6 @@ export async function uploadActiveRosterAction(
         return ok({ uploadBatchId, count: savedCount, deactivatedCount });
     } catch (err) {
         console.error("[uploadActiveRosterAction] failed:", err);
-        return fail(err instanceof Error ? err.message : "Error desconocido al procesar la carga.");
+        return fail(err instanceof Error ? err.message : "Unknown error while processing the upload.");
     }
 }

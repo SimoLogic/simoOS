@@ -61,17 +61,17 @@ export const DrillDownDrawer: React.FC<DrillDownDrawerProps> = ({
 
                 <div className="border-t border-slate-200 pt-4">
                     {error && <div className="text-sm text-red-600">{error}</div>}
-                    {!error && rows === null && <div className="text-sm text-slate-400">Cargando…</div>}
+                    {!error && rows === null && <div className="text-sm text-slate-400">Loading…</div>}
                     {!error && rows && rows.length === 0 && (
-                        <div className="text-sm text-slate-400">Sin transacciones individuales para esta celda.</div>
+                        <div className="text-sm text-slate-400">No individual transactions for this cell.</div>
                     )}
                     {!error && rows && rows.length > 0 && (
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-left text-xs font-semibold text-slate-400 uppercase border-b border-slate-200">
                                     <th className="py-2 pr-2">Loan # / Ref</th>
-                                    <th className="py-2 pr-2">Descripción / Vendor</th>
-                                    <th className="py-2 text-right">Monto</th>
+                                    <th className="py-2 pr-2">Description / Vendor</th>
+                                    <th className="py-2 text-right">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
