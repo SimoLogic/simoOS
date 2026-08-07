@@ -448,6 +448,10 @@ model HrActiveRoster {
   /// EPS, pensión, cesantías, CCF, banco, número de cuenta.
   sensitiveDataEnc       String?   @map("sensitive_data_enc")
 
+  /// "CO" | "US" -- país de la nómina. Los empleados de EE.UU. hoy solo
+  /// tienen identidad básica: no se les cargó sensitiveDataEnc.
+  country                String    @default("CO") @map("country")
+
   /// "Active" | "Inactive" -- se recalcula en cada carga centralizada:
   /// quien no venga en el archivo nuevo pasa a "Inactive" (no se borra),
   /// ver uploadActiveRosterAction en app/actions/hr-centralized-upload-actions.ts.

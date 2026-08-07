@@ -41,6 +41,13 @@ import {
  *
  * Los campos sensibles se muestran completos porque la página entera está
  * detrás de AdminGate (rol admin) -- ver components/dashboard/DashboardContent.tsx.
+ *
+ * Pestañas Colombia / USA (2026-08-07): filtran por hr_active_roster.country
+ * ('CO' | 'US'). Colombia queda seleccionada por defecto. La pestaña acota
+ * todo lo de abajo -- tabla, búsqueda, opciones de filtro y contadores.
+ * Los empleados de EE.UU. no tienen sensitiveDataEnc (solo se les cargó
+ * identidad básica), así que su panel de detalle dice "No sensitive data on
+ * file" en vez de mostrar secciones vacías o el aviso de error de descifrado.
  */
 
 // ─── Column Definitions ───────────────────────────────────────────────────────
@@ -49,6 +56,12 @@ const STATUS_STYLES: Record<string, string> = {
     Active: "bg-emerald-50 text-emerald-700 border-emerald-200",
     Inactive: "bg-slate-100 text-slate-500 border-slate-200",
 };
+
+/** Pestañas de país. El valor es hr_active_roster.country ('CO' | 'US'). */
+const COUNTRY_TABS: { value: string; label: string }[] = [
+    { value: "CO", label: "Colombia" },
+    { value: "US", label: "USA" },
+];
 
 interface ColumnDef {
     key: keyof ActiveRosterEmployee;
@@ -124,6 +137,9 @@ const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 
 const EmployeeDetail: React.FC<{ employee: ActiveRosterEmployee }> = ({ employee: e }) => (
     <div className="px-8 py-6 bg-slate-50/80 border-y border-slate-200 flex flex-col gap-7">
+        {/* Aviso SOLO cuando el dato existe pero no se pudo leer. Los empleados
+            de EE.UU. no tienen sensitiveDataEnc (nunca se les cargó: solo
+            identidad básica), y eso no es un error -- se resuelve más abajo. */}
         {e.sensitiveDataUnavailable && (
             <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -132,32 +148,45 @@ const EmployeeDetail: React.FC<{ employee: ActiveRosterEmployee }> = ({ employee
             </div>
         )}
 
-        <DetailSection title="Personal & Contact">
-            <DetailField label="National ID" value={e.nationalId} />
-            <DetailField label="Birth Date" value={e.birthDate} />
-            <DetailField label="Gender" value={e.gender} />
-            <DetailField label="Personal Email" value={e.personalEmail} />
-            <DetailField label="Phone (Colombia)" value={e.phoneCo} />
-            <DetailField label="Phone (USA)" value={e.phoneUsa} />
-            <DetailField label="Address" value={e.homeAddress} />
-            <DetailField label="Neighborhood" value={e.neighborhood} />
-            <DetailField label="City" value={e.city} />
-        </DetailSection>
+        {e.hasSensitiveData ? (
+            <>
+                <DetailSection title="Personal & Contact">
+                    <DetailField label="National ID" value={e.nationalId} />
+                    <DetailField label="Birth Date" value={e.birthDate} />
+                    <DetailField label="Gender" value={e.gender} />
+                    <DetailField label="Personal Email" value={e.personalEmail} />
+                    <DetailField label="Phone (Colombia)" value={e.phoneCo} />
+                    <DetailField label="Phone (USA)" value={e.phoneUsa} />
+                    <DetailField label="Address" value={e.homeAddress} />
+                    <DetailField label="Neighborhood" value={e.neighborhood} />
+                    <DetailField label="City" value={e.city} />
+                </DetailSection>
 
-        <DetailSection title="Emergency Contact">
-            <DetailField label="Name" value={e.emergencyContactName} />
-            <DetailField label="Phone" value={e.emergencyContactPhone} />
-            <DetailField label="Relationship" value={e.emergencyContactRelation} />
-        </DetailSection>
+                <DetailSection title="Emergency Contact">
+                    <DetailField label="Name" value={e.emergencyContactName} />
+                    <DetailField label="Phone" value={e.emergencyContactPhone} />
+                    <DetailField label="Relationship" value={e.emergencyContactRelation} />
+                </DetailSection>
 
-        <DetailSection title="Affiliations & Bank">
-            <DetailField label="EPS (Health)" value={e.eps} />
-            <DetailField label="Pension" value={e.pension} />
-            <DetailField label="Severance (Cesantías)" value={e.cesantias} />
-            <DetailField label="CCF" value={e.ccf} />
-            <DetailField label="Bank" value={e.bankName} />
-            <DetailField label="Bank Account" value={e.bankAccount} />
-        </DetailSection>
+                <DetailSection title="Affiliations & Bank">
+                    <DetailField label="EPS (Health)" value={e.eps} />
+                    <DetailField label="Pension" value={e.pension} />
+                    <DetailField label="Severance (Cesantías)" value={e.cesantias} />
+                    <DetailField label="CCF" value={e.ccf} />
+                    <DetailField label="Bank" value={e.bankName} />
+                    <DetailField label="Bank Account" value={e.bankAccount} />
+                </DetailSection>
+            </>
+        ) : (
+            !e.sensitiveDataUnavailable && (
+                <DetailSection title="Personal & Contact">
+                    <DetailField label="Gender" value={e.gender} />
+                    <div className="col-span-3 text-xs text-slate-400 italic self-center">
+                        No sensitive data on file for this employee.
+                    </div>
+                </DetailSection>
+            )
+        )}
 
         <DetailSection title="Employment & Profile">
             <DetailField label="Month Started" value={e.monthStarted} />
@@ -178,6 +207,8 @@ export const HCMaestro: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    /** Pestaña de país activa -- Colombia por defecto. */
+    const [country, setCountry] = useState("CO");
 
     const [search, setSearch] = useState("");
     const [showFilters, setShowFilters] = useState(false);
@@ -213,11 +244,25 @@ export const HCMaestro: React.FC = () => {
         };
     }, [currentTenant?.tenant_id, reloadToken]);
 
+    /** Empleados de la pestaña activa -- todo lo de abajo (filtros, tabla,
+     *  contadores) trabaja sobre este subconjunto, no sobre el roster entero. */
+    const countryEmployees = useMemo(
+        () => employees.filter((e) => e.country === country),
+        [employees, country]
+    );
+
+    /** Conteo por pestaña, sobre el roster completo (no depende de los filtros). */
+    const countByCountry = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const e of employees) counts[e.country] = (counts[e.country] ?? 0) + 1;
+        return counts;
+    }, [employees]);
+
     /** Valores presentes en los datos -- los dropdowns se arman del dataset real,
      *  no de catálogos fijos que no aplican a esta fuente. */
     const optionsFor = useMemo(() => {
         const uniqueSorted = (pick: (e: ActiveRosterEmployee) => string | null) =>
-            Array.from(new Set(employees.map(pick).filter((v): v is string => !!v))).sort((a, b) =>
+            Array.from(new Set(countryEmployees.map(pick).filter((v): v is string => !!v))).sort((a, b) =>
                 a.localeCompare(b, undefined, { numeric: true })
             );
         return {
@@ -227,10 +272,10 @@ export const HCMaestro: React.FC = () => {
             englishLevel: uniqueSorted((e) => e.englishLevel),
             status: uniqueSorted((e) => e.status),
         };
-    }, [employees]);
+    }, [countryEmployees]);
 
     const displayed = useMemo(() => {
-        let list = [...employees];
+        let list = [...countryEmployees];
         const q = search.trim().toLowerCase();
 
         if (q) {
@@ -261,9 +306,12 @@ export const HCMaestro: React.FC = () => {
             });
         }
         return list;
-    }, [employees, search, filters, sortField, sortDir]);
+    }, [countryEmployees, search, filters, sortField, sortDir]);
 
-    const activeCount = useMemo(() => employees.filter((e) => e.status === "Active").length, [employees]);
+    const activeCount = useMemo(
+        () => countryEmployees.filter((e) => e.status === "Active").length,
+        [countryEmployees]
+    );
 
     const handleSort = (key: keyof ActiveRosterEmployee) => {
         if (sortField === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -274,6 +322,16 @@ export const HCMaestro: React.FC = () => {
     };
 
     const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+    /** Cambiar de país limpia lo que era específico del país anterior: la fila
+     *  expandida (es de otro empleado) y los filtros armados con valores que
+     *  puede que no existan del otro lado. El de Status sí se conserva. */
+    const handleCountryChange = (next: string) => {
+        if (next === country) return;
+        setCountry(next);
+        setExpandedId(null);
+        setFilters((p) => ({ ...p, branchCode: "", area: "", contractType: "", englishLevel: "" }));
+    };
 
     return (
         <div className="flex flex-col h-full bg-white relative overflow-hidden">
@@ -310,6 +368,36 @@ export const HCMaestro: React.FC = () => {
                 </div>
             </div>
 
+            {/* Pestañas de país -- acotan tabla, búsqueda, filtros y contadores. */}
+            <div className="px-8 border-b border-slate-100 shrink-0 flex items-center gap-1">
+                {COUNTRY_TABS.map((tab) => {
+                    const isActive = country === tab.value;
+                    return (
+                        <button
+                            key={tab.value}
+                            onClick={() => handleCountryChange(tab.value)}
+                            aria-current={isActive ? "page" : undefined}
+                            className={cn(
+                                "px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
+                                isActive
+                                    ? "border-cobalt-blue text-cobalt-blue"
+                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            {tab.label}
+                            <span
+                                className={cn(
+                                    "ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded-full",
+                                    isActive ? "bg-cobalt-blue/10 text-cobalt-blue" : "bg-slate-100 text-slate-400"
+                                )}
+                            >
+                                {countByCountry[tab.value] ?? 0}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+
             {/* Toolbar */}
             <div className="px-8 py-3 border-b border-slate-100 bg-slate-50/60 shrink-0 flex items-center gap-3">
                 <div className="relative">
@@ -335,7 +423,8 @@ export const HCMaestro: React.FC = () => {
                     {activeFilterCount > 0 ? `${activeFilterCount} Filters Active` : "Filters"}
                 </button>
                 <span className="ml-auto text-xs text-slate-400 font-medium">
-                    {displayed.length} records in current view · {activeCount} active of {employees.length} total
+                    {displayed.length} records in current view · {activeCount} active of{" "}
+                    {countryEmployees.length} total
                 </span>
             </div>
 
@@ -501,7 +590,9 @@ export const HCMaestro: React.FC = () => {
                                             ? loadError
                                             : employees.length === 0
                                                 ? "No employees loaded yet. Use Centralized Upload to import the roster."
-                                                : "No records match your current filters."}
+                                                : countryEmployees.length === 0
+                                                    ? "No employees on record for this country yet."
+                                                    : "No records match your current filters."}
                                 </td>
                             </tr>
                         )}

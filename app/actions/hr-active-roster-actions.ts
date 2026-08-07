@@ -75,9 +75,17 @@ export interface ActiveRosterEmployee extends ActiveRosterSensitiveData {
     professionalProfile: string | null;
     university: string | null;
     englishLevel: string | null;
+    /** "CO" | "US" -- país de la nómina. */
+    country: string;
     status: string;
     uploadBatchId: string;
     uploadedAt: string;
+    /**
+     * true si la fila trae datos sensibles legibles. false para los empleados
+     * de EE.UU., a quienes nunca se les cargó sensitiveDataEnc (solo identidad
+     * básica) -- ese caso NO es un error, hay que distinguirlo del de abajo.
+     */
+    hasSensitiveData: boolean;
     /** true si sensitiveDataEnc existía pero no se pudo descifrar (llave rotada, dato corrupto). */
     sensitiveDataUnavailable: boolean;
 }
@@ -126,6 +134,7 @@ export async function getActiveRosterAction(
         for (const row of rows) {
             let sensitive: ActiveRosterSensitiveData = EMPTY_SENSITIVE;
             let sensitiveDataUnavailable = false;
+            let hasSensitiveData = false;
 
             if (row.sensitiveDataEnc) {
                 try {
@@ -133,6 +142,7 @@ export async function getActiveRosterAction(
                         row.sensitiveDataEnc
                     );
                     sensitive = { ...EMPTY_SENSITIVE, ...decrypted };
+                    hasSensitiveData = true;
                 } catch (decryptError) {
                     // Una fila ilegible no puede tumbar el reporte completo:
                     // se devuelve sin datos sensibles y marcada para la UI.
@@ -164,9 +174,11 @@ export async function getActiveRosterAction(
                 professionalProfile: row.professionalProfile,
                 university: row.university,
                 englishLevel: row.englishLevel,
+                country: row.country,
                 status: row.status,
                 uploadBatchId: row.uploadBatchId,
                 uploadedAt: row.uploadedAt.toISOString(),
+                hasSensitiveData,
                 sensitiveDataUnavailable,
             });
         }
