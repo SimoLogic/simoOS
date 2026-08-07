@@ -113,6 +113,22 @@ export async function insertActiveRosterRows(rows: ActiveRosterBigQueryRow[]): P
 }
 
 /**
+ * El cliente de BigQuery devuelve los campos DATE/TIMESTAMP envueltos en un
+ * objeto `{ value: "..." }` (clases BigQueryDate/BigQueryTimestamp), no como
+ * texto plano -- por eso `new Date(r.date_started)` fallaba con "Invalid
+ * Date" al leer de vuelta. Se desenvuelve aquí para que el resto del código
+ * pueda seguir asumiendo string | null, como ya declara el tipo.
+ */
+function unwrapBigQueryValue(v: unknown): string | null {
+    if (v == null) return null;
+    if (typeof v === "string") return v;
+    if (typeof v === "object" && "value" in (v as Record<string, unknown>)) {
+        return String((v as { value: unknown }).value);
+    }
+    return String(v);
+}
+
+/**
  * Lee de vuelta el snapshot actual (última carga por empleado) desde
  * hr_centralizado.v_active_roster_current -- BigQuery es el paso
  * intermedio de la cadena Excel -> BigQuery -> Supabase (decisión
@@ -125,7 +141,13 @@ export async function readCurrentActiveRoster(tenantCode: string): Promise<Activ
         query: `SELECT * FROM \`${bigquery.projectId}.hr_centralizado.v_active_roster_current\` WHERE tenant_code = @tenantCode`,
         params: { tenantCode },
     });
-    return rows as ActiveRosterBigQueryRow[];
+
+    return (rows as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        uploaded_at: unwrapBigQueryValue(r.uploaded_at) ?? new Date().toISOString(),
+        date_started: unwrapBigQueryValue(r.date_started),
+        indefinite_contract_date: unwrapBigQueryValue(r.indefinite_contract_date),
+    })) as ActiveRosterBigQueryRow[];
 }
 
 /** Exportado para el health-check route (app/api/bq-healthcheck). */
