@@ -76,14 +76,33 @@ export interface ActiveRosterBigQueryRow {
     professional_profile: string | null;
     university: string | null;
     english_level: string | null;
+    // Sensible -- decisión 2026-08-07: ya puede viajar a BigQuery (revocó la
+    // restricción anterior del 2026-07-31). Se sigue cifrando en Supabase
+    // como defensa adicional, aunque ya no sea obligatorio.
+    national_id: string | null;
+    home_address: string | null;
+    neighborhood: string | null;
+    city: string | null;
+    phone_co: string | null;
+    personal_email: string | null;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
+    emergency_contact_relation: string | null;
+    phone_usa: string | null;
+    birth_date: string | null;
+    eps: string | null;
+    pension: string | null;
+    cesantias: string | null;
+    ccf: string | null;
+    bank_name: string | null;
+    bank_account: string | null;
 }
 
 /**
  * Inserta filas en hr_centralizado.active_roster_raw (tabla append-only --
  * cada carga queda registrada, no se sobreescribe el histórico).
- * Solo campos NO sensibles -- ver decisión de gobierno de datos 2026-07-31
- * en docs/AGENT_CONTEXT_ANTIGRAVITY.md (cédula/cuenta bancaria/dirección
- * NUNCA viajan a BigQuery, solo quedan cifradas en Supabase).
+ * Incluye TODOS los campos, sensibles y no sensibles -- decisión 2026-08-07
+ * (ver docs/AGENT_CONTEXT_ANTIGRAVITY.md, revoca la restricción anterior).
  */
 export async function insertActiveRosterRows(rows: ActiveRosterBigQueryRow[]): Promise<void> {
     if (rows.length === 0) return;
@@ -91,6 +110,22 @@ export async function insertActiveRosterRows(rows: ActiveRosterBigQueryRow[]): P
     const dataset = bigquery.dataset("hr_centralizado");
     const table = dataset.table("active_roster_raw");
     await table.insert(rows, { skipInvalidRows: false, ignoreUnknownValues: false });
+}
+
+/**
+ * Lee de vuelta el snapshot actual (última carga por empleado) desde
+ * hr_centralizado.v_active_roster_current -- BigQuery es el paso
+ * intermedio de la cadena Excel -> BigQuery -> Supabase (decisión
+ * 2026-08-07): Supabase se llena A PARTIR de lo que quedó en BigQuery,
+ * no en paralelo desde el Excel original.
+ */
+export async function readCurrentActiveRoster(tenantCode: string): Promise<ActiveRosterBigQueryRow[]> {
+    const bigquery = getBigQueryClient();
+    const [rows] = await bigquery.query({
+        query: `SELECT * FROM \`${bigquery.projectId}.hr_centralizado.v_active_roster_current\` WHERE tenant_code = @tenantCode`,
+        params: { tenantCode },
+    });
+    return rows as ActiveRosterBigQueryRow[];
 }
 
 /** Exportado para el health-check route (app/api/bq-healthcheck). */
