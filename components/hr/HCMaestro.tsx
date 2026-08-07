@@ -2,163 +2,99 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import {
-    Search, Download, Save, Filter, ArrowUpDown,
-    CheckCircle2, AlertTriangle, Lock, Info, Pencil, X
+    Search, Download, Filter, ArrowUpDown, ChevronDown, ChevronRight,
+    Info, ShieldAlert, RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-    FullEmployeeRecord, LocalLegalEntity,
-    AREAS_EMPRESA, EPS_OPTIONS, ARL_OPTIONS, AFP_OPTIONS, CCF_OPTIONS, TIPOS_CONTRATO, ENTIDADES_LEGALES
-} from "@/lib/hr-types";
-import { getLocalLegalEntitiesAction } from "@/app/actions/legal-entity-actions";
-import { getActiveJobTitlesAction } from "@/app/actions/job-title-actions";
-import { JobTitleRef } from "@/lib/job-title-types";
-import {
-    getEmployeesAction as getEmployees,
-    saveEmployeesAction as saveEmployees,
-    updateEmployeeAction as updateEmployee
-} from "@/app/actions/hr-actions";
-import { getTenants } from "@/lib/tenant-store";
 import { useTenant } from "@/lib/tenant-context";
+import {
+    getActiveRosterAction,
+    type ActiveRosterEmployee,
+} from "@/app/actions/hr-active-roster-actions";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+/**
+ * HC MASTER — reconstruido sobre public.hr_active_roster (2026-08-07).
+ *
+ * ANTES: leía dim_employee vía getEmployeesAction (app/actions/hr-actions.ts),
+ * un modelo distinto (identificación/EPS/ARL/AFP/historial laboral editables)
+ * que hoy está VACÍO -- por eso la pantalla no mostraba a nadie aunque la
+ * Carga Centralizada ya tuviera empleados reales cargados.
+ *
+ * AHORA: lee hr_active_roster, la tabla que alimenta el módulo de Carga
+ * Centralizada (Excel -> BigQuery -> Supabase).
+ *
+ * QUÉ SE SIMPLIFICÓ Y POR QUÉ (para retomarlo si hace falta):
+ *  - Edición inline + "Save All" + toasts de guardado: se quitaron. Escribían
+ *    en dim_employee con updateEmployeeAction/saveEmployeesAction, que no
+ *    corresponden a este dataset. hr_active_roster se reconstruye entera en
+ *    cada carga del Excel, así que editar celda por celda aquí se perdería
+ *    en la siguiente carga. Si se quiere edición, primero hay que decidir
+ *    cómo conviven el Excel y los cambios manuales (¿override por campo?).
+ *  - Columnas de afiliaciones editables (EPS/ARL/AFP/CCF), historial laboral
+ *    (sub-área, centro de costo, entidad legal, cliente, proyecto, cargo/rol
+ *    del catálogo de job titles), salario base y datos SST (tallas, tipo de
+ *    sangre): no existen en hr_active_roster. EPS/pensión/cesantías/CCF sí
+ *    llegan del Excel pero cifrados, así que se muestran en el panel de
+ *    detalle, en solo lectura, no como columna filtrable.
+ *  - Bloqueo/desbloqueo de fila (candado) y foto del empleado: sin sentido en
+ *    una vista de solo lectura sin fotos en este dataset.
+ *
+ * Los campos sensibles se muestran completos porque la página entera está
+ * detrás de AdminGate (rol admin) -- ver components/dashboard/DashboardContent.tsx.
+ */
 
-const LOCKED_KEYS = new Set([
-    "eid",
-    "tenant_id",
-    "maestro.identificationNumber",
-    "maestro.documentTypeId",
-    "maestro.firstName",
-    "maestro.lastName",
-    "maestro.secondLastName",
-    "maestro.birthDate",
-]);
+// ─── Column Definitions ───────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
     Active: "bg-emerald-50 text-emerald-700 border-emerald-200",
     Inactive: "bg-slate-100 text-slate-500 border-slate-200",
-    "On Leave": "bg-amber-50 text-amber-700 border-amber-200",
-    Terminated: "bg-red-50 text-red-600 border-red-200",
 };
 
-// ─── Column Definitions ───────────────────────────────────────────────────────
-
 interface ColumnDef {
-    key: string;
+    key: keyof ActiveRosterEmployee;
     label: string;
-    locked?: boolean;
     width?: string;
-    type?: "text" | "select" | "number" | "date";
-    options?: { value: string | number; label: string }[];
-    format?: (val: unknown) => string;
-    badge?: boolean;
-    group: "Identity" | "Professional" | "Benefits" | "Contact" | "Payroll";
+    format?: (row: ActiveRosterEmployee) => string;
+}
+
+/** Formatea una fecha ISO como YYYY-MM-DD (sin hora, sin corrimiento de zona). */
+function fmtDate(iso: string | null): string {
+    return iso ? iso.slice(0, 10) : "";
 }
 
 const COLUMNS: ColumnDef[] = [
-    // Identity
-    { key: "eid", label: "EID", locked: true, width: "w-28", group: "Identity" },
-    { key: "tenant_id", label: "Tenant ID", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.firstName", label: "First Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.lastName", label: "Last Name", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.identificationNumber", label: "ID (CC)", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.birthDate", label: "DOB", locked: true, width: "w-32", group: "Identity" },
-    { key: "maestro.documentTypeId", label: "Doc Type", locked: true, width: "w-28", group: "Identity" },
-    { key: "maestro.gender", label: "Gender", width: "w-24", type: "select", options: [{ value: "M", label: "M" }, { value: "F", label: "F" }, { value: "X", label: "X" }], group: "Identity" },
-
-    // Professional
-    {
-        key: "status", label: "Status", width: "w-32", badge: true, type: "select",
-        options: ["Active", "Inactive", "On Leave", "Terminated"].map(s => ({ value: s, label: s })),
-        group: "Professional"
-    },
-    {
-        key: "historialLaboral.area", label: "Area", width: "w-36", type: "select",
-        options: AREAS_EMPRESA.map(a => ({ value: a, label: a })), group: "Professional"
-    },
-    { key: "historialLaboral.subArea", label: "Sub-Area", width: "w-36", group: "Professional" },
-    // entidad_legal options injected dynamically — set below after DB load
-    { key: "historialLaboral.legalEntity", label: "Local Entity", width: "w-40", type: "select", options: [], group: "Professional" },
-    { key: "historialLaboral.costCenter", label: "Cost Center", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.directLeader", label: "Direct Leader", width: "w-40", group: "Professional" },
-    { key: "historialLaboral.jobTitleName", label: "Job Title", width: "w-44", type: "select", group: "Professional" },
-    { key: "historialLaboral.roleTitleName", label: "Role Title", width: "w-44", type: "select", group: "Professional" },
-    {
-        key: "historialLaboral.contractType", label: "Contract", width: "w-44", type: "select",
-        options: TIPOS_CONTRATO.filter(t => t.value).map(t => ({ value: t.value || "", label: t.label })),
-        group: "Professional"
-    },
-    { key: "historialLaboral.startDate", label: "Start Date", width: "w-32", type: "date", group: "Professional" },
-    { key: "historialLaboral.branch", label: "Branch", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.cliente", label: "Client", width: "w-32", group: "Professional" },
-    { key: "historialLaboral.project", label: "Project", width: "w-32", group: "Professional" },
-
-    // Benefits
-    { key: "afiliaciones.epsName", label: "EPS", width: "w-40", type: "select", options: EPS_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.arlName", label: "ARL", width: "w-40", type: "select", options: ARL_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.afpName", label: "AFP", width: "w-40", type: "select", options: AFP_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.ccfName", label: "CCF", width: "w-40", type: "select", options: CCF_OPTIONS.map(o => ({ value: o.nombre, label: o.nombre })), group: "Benefits" },
-    { key: "afiliaciones.contributorSubtype", label: "PILA Subtype", width: "w-40", group: "Benefits" },
-
-    // Contact
-    { key: "maestro.personalEmail", label: "Personal Email", width: "w-48", group: "Contact" },
-    { key: "email_corporativo", label: "Corp Email", width: "w-48", group: "Contact" },
-    { key: "maestro.residenceAddress", label: "Address", width: "w-64", group: "Contact" },
-
-    // Payroll
-    {
-        key: "historialLaboral.baseSalary", label: "Base Salary", width: "w-44", type: "number",
-        format: (v) => `$ ${Number(v).toLocaleString("en-US")}`, group: "Payroll"
-    },
-    { key: "historialLaboral.salaryType", label: "Salary Type", width: "w-32", group: "Payroll" },
-
-    // SST
-    { key: "sst.shirtSize", label: "Shirt Size", width: "w-24", group: "Contact" },
-    { key: "sst.pantsSize", label: "Pants Size", width: "w-24", group: "Contact" },
-    { key: "sst.shoeSize", label: "Shoe Size", width: "w-24", group: "Contact" },
-    { key: "sst.bloodType", label: "Blood Type", width: "w-24", group: "Contact" },
+    { key: "employeeNumber", label: "Employee #", width: "w-24", format: (r) => (r.employeeNumber != null ? String(r.employeeNumber) : "") },
+    { key: "fullName", label: "Full Name", width: "w-56" },
+    { key: "branchCode", label: "Branch", width: "w-24" },
+    { key: "position", label: "Position", width: "w-52" },
+    { key: "area", label: "Area", width: "w-40" },
+    { key: "supervisorName", label: "Supervisor", width: "w-44" },
+    { key: "corporateEmail", label: "Corporate Email", width: "w-60" },
+    { key: "dateStarted", label: "Date Started", width: "w-32", format: (r) => fmtDate(r.dateStarted) },
+    { key: "contractType", label: "Contract Type", width: "w-40" },
+    { key: "englishLevel", label: "English Level", width: "w-32" },
+    { key: "status", label: "Status", width: "w-28" },
 ];
-
-const ESSENTIAL_KEYS = new Set([
-    "eid",
-    "tenant_id",
-    "maestro.firstName",
-    "maestro.lastName",
-    "maestro.identificationNumber",
-    "status",
-    "historialLaboral.area",
-    "historialLaboral.jobTitleName",
-    "historialLaboral.roleTitleName",
-    "historialLaboral.legalEntity",
-    "historialLaboral.directLeader",
-    "historialLaboral.baseSalary",
-    "email_corporativo"
-]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getValue = (obj: any, path: string): unknown =>
-    path.split(".").reduce((acc, part) => (acc != null ? acc[part] : undefined), obj);
+function cellText(row: ActiveRosterEmployee, col: ColumnDef): string {
+    if (col.format) return col.format(row);
+    const val = row[col.key];
+    return val == null ? "" : String(val);
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const setValue = (obj: any, path: string, value: unknown): void => {
-    const parts = path.split(".");
-    const last = parts.pop()!;
-    const target = parts.reduce((acc, part) => acc[part], obj);
-    if (target) target[last] = value;
-};
-
-function exportToCSV(employees: FullEmployeeRecord[], activeColumns: ColumnDef[]) {
-    const headers = activeColumns.map((c) => c.label);
-    const rows = employees.map((emp) =>
-        activeColumns.map((col) => {
-            const val = getValue(emp, col.key);
-            if (typeof val === "number") return val;
-            return `"${String(val ?? "").replace(/"/g, '""')}"`;
-        }).join(",")
+/**
+ * Exporta SOLO las columnas de la tabla (no sensibles). Los campos del panel
+ * de detalle (cédula, dirección, cuenta bancaria) se dejan fuera a propósito:
+ * un CSV sale del navegador sin ningún control y ese dato vive cifrado.
+ */
+function exportToCSV(rows: ActiveRosterEmployee[]) {
+    const headers = COLUMNS.map((c) => c.label);
+    const body = rows.map((row) =>
+        COLUMNS.map((col) => `"${cellText(row, col).replace(/"/g, '""')}"`).join(",")
     );
-    const csv = [headers.join(","), ...rows].join("\n");
+    const csv = [headers.join(","), ...body].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -168,309 +104,179 @@ function exportToCSV(employees: FullEmployeeRecord[], activeColumns: ColumnDef[]
     URL.revokeObjectURL(url);
 }
 
-// ─── Inline Cell ─────────────────────────────────────────────────────────────
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
 
-interface CellProps {
-    col: ColumnDef;
-    record: FullEmployeeRecord;
-    onChange: (val: unknown) => void;
-    isEditing: boolean;
-    onStartEdit: () => void;
-}
+const DetailField: React.FC<{ label: string; value: string | null }> = ({ label, value }) => (
+    <div className="space-y-0.5">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{label}</div>
+        <div className={cn("text-xs", value ? "text-slate-700" : "text-slate-300 italic")}>
+            {value || "—"}
+        </div>
+    </div>
+);
 
-const InlineCell: React.FC<CellProps> = ({ col, record, onChange, isEditing, onStartEdit }) => {
-    const value = getValue(record, col.key);
-    const isLocked = col.locked || LOCKED_KEYS.has(col.key);
+const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <section>
+        <h4 className="text-[11px] font-bold text-navy-blue uppercase tracking-widest mb-3">{title}</h4>
+        <div className="grid grid-cols-4 gap-x-6 gap-y-4">{children}</div>
+    </section>
+);
 
-    if (!isEditing || isLocked) {
-        const displayVal = col.format ? col.format(value) : String(value ?? "");
-        return (
-            <div
-                onClick={!isLocked ? onStartEdit : undefined}
-                className={cn(
-                    "flex items-center gap-1.5 min-h-[32px] px-2 py-1 rounded transition-all",
-                    isLocked ? "cursor-default" : "cursor-pointer hover:bg-cobalt-blue/5 hover:ring-1 hover:ring-cobalt-blue/20"
-                )}
-            >
-                {isLocked && <Lock className="w-2.5 h-2.5 text-slate-300 shrink-0" />}
-                {col.badge && value ? (
-                    <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap", STATUS_STYLES[String(value)] ?? "")}>
-                        {String(value)}
-                    </span>
-                ) : (
-                    <span className={cn(
-                        "text-xs truncate",
-                        isLocked ? "text-slate-500 font-medium" : "text-slate-700",
-                        col.key === "eid" && "font-mono font-semibold text-cobalt-blue",
-                        !value && "text-slate-300 italic"
-                    )}>
-                        {displayVal || "—"}
-                    </span>
-                )}
+const EmployeeDetail: React.FC<{ employee: ActiveRosterEmployee }> = ({ employee: e }) => (
+    <div className="px-8 py-6 bg-slate-50/80 border-y border-slate-200 flex flex-col gap-7">
+        {e.sensitiveDataUnavailable && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                Protected data for this employee could not be decrypted. Re-run the centralized upload
+                to restore it.
             </div>
-        );
-    }
+        )}
 
-    const commonClass =
-        "w-full text-xs border border-cobalt-blue/40 rounded bg-white px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-cobalt-blue/30 focus:border-cobalt-blue transition-all shadow-sm";
+        <DetailSection title="Personal & Contact">
+            <DetailField label="National ID" value={e.nationalId} />
+            <DetailField label="Birth Date" value={e.birthDate} />
+            <DetailField label="Gender" value={e.gender} />
+            <DetailField label="Personal Email" value={e.personalEmail} />
+            <DetailField label="Phone (Colombia)" value={e.phoneCo} />
+            <DetailField label="Phone (USA)" value={e.phoneUsa} />
+            <DetailField label="Address" value={e.homeAddress} />
+            <DetailField label="Neighborhood" value={e.neighborhood} />
+            <DetailField label="City" value={e.city} />
+        </DetailSection>
 
-    if (col.type === "select" && col.options) {
-        return (
-            <select autoFocus value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={commonClass}>
-                <option value="">— Select —</option>
-                {col.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-        );
-    }
+        <DetailSection title="Emergency Contact">
+            <DetailField label="Name" value={e.emergencyContactName} />
+            <DetailField label="Phone" value={e.emergencyContactPhone} />
+            <DetailField label="Relationship" value={e.emergencyContactRelation} />
+        </DetailSection>
 
-    return (
-        <input
-            autoFocus
-            type={col.type === "number" ? "number" : col.type === "date" ? "date" : "text"}
-            value={String(value ?? "")}
-            onChange={(e) => onChange(col.type === "number" ? Number(e.target.value) : e.target.value)}
-            className={commonClass}
-        />
-    );
-};
+        <DetailSection title="Affiliations & Bank">
+            <DetailField label="EPS (Health)" value={e.eps} />
+            <DetailField label="Pension" value={e.pension} />
+            <DetailField label="Severance (Cesantías)" value={e.cesantias} />
+            <DetailField label="CCF" value={e.ccf} />
+            <DetailField label="Bank" value={e.bankName} />
+            <DetailField label="Bank Account" value={e.bankAccount} />
+        </DetailSection>
+
+        <DetailSection title="Employment & Profile">
+            <DetailField label="Month Started" value={e.monthStarted} />
+            <DetailField label="Indefinite Contract Date" value={fmtDate(e.indefiniteContractDate) || null} />
+            <DetailField label="Seniority" value={e.antiquityLabel} />
+            <DetailField label="University" value={e.university} />
+            <DetailField label="Professional Profile" value={e.professionalProfile} />
+            <DetailField label="Last Upload" value={fmtDate(e.uploadedAt)} />
+        </DetailSection>
+    </div>
+);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const HCMaestro: React.FC = () => {
     const { currentTenant } = useTenant();
-    const [employees, setEmployees] = useState<FullEmployeeRecord[]>([]);
-    const [allTenants, setAllTenants] = useState<{ tenant_id: string; dba_name: string }[]>([]);
+    const [employees, setEmployees] = useState<ActiveRosterEmployee[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    const [localEntities, setLocalEntities] = useState<LocalLegalEntity[]>([]);
-    const [jobTitles, setJobTitles] = useState<JobTitleRef[]>([]);
-    const [unlockedRows, setUnlockedRows] = useState<Set<string>>(new Set());
-
-    useEffect(() => {
-        getTenants().then(list =>
-            setAllTenants(list.map((t: any) => ({ tenant_id: t.tenant_id, dba_name: t.dba_name })))
-        );
-        getLocalLegalEntitiesAction().then(entities => setLocalEntities(entities));
-        if (currentTenant) {
-            getActiveJobTitlesAction(currentTenant.tenant_id).then(ts => setJobTitles(ts));
-        }
-    }, [currentTenant]);
-
-    const toggleRowLock = (eid: string) => {
-        setUnlockedRows(prev => {
-            const next = new Set(prev);
-            if (next.has(eid)) next.delete(eid);
-            else next.add(eid);
-            return next;
-        });
-        setEditingCell(null);
-    };
-
-
-    const [dirtyRows, setDirtyRows] = useState<Set<string>>(new Set());
-    const [savedRows, setSavedRows] = useState<Set<string>>(new Set());
-    const [editingCell, setEditingCell] = useState<{ eid: string; key: string } | null>(null);
-    const [toasts, setToasts] = useState<{ id: string; message: string; type: "success" | "warning" | "error" }[]>([]);
-
-    const [isEssentialView, setIsEssentialView] = useState(true);
     const [search, setSearch] = useState("");
     const [showFilters, setShowFilters] = useState(false);
-    const [sortField, setSortField] = useState<string | null>(null);
+    const [sortField, setSortField] = useState<keyof ActiveRosterEmployee | null>("employeeNumber");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-
-    // Unified filters grouped by Intake Module
     const [filters, setFilters] = useState({
-        // Maestro (Personal)
-        tenant_id: "",
-        gender: "",
-        documentType: "",
-
-        // Laboral (Professional)
-        status: "",
-        legalEntity: "",
+        status: "Active",
+        branchCode: "",
         area: "",
-        subArea: "",
-        leader: "",
-        costCenter: "",
-        contract: "",
-        salaryType: "",
-        branch: "",
-        client: "",
-        project: "",
-
-        // Afiliaciones (Benefits)
-        eps: "",
-        afp: "",
-        arl: "",
-        ccf: "",
-
-        // SST (Safety)
-        bloodType: "",
-        shirtSize: ""
+        contractType: "",
+        englishLevel: "",
     });
+    const [reloadToken, setReloadToken] = useState(0);
 
     useEffect(() => {
-        const fetchEmployees = async () => {
-            if (!currentTenant) return;
-            const data = await getEmployees(currentTenant.tenant_id);
-            setEmployees(data);
+        if (!currentTenant?.tenant_id) return;
+        let cancelled = false;
+        setIsLoading(true);
+        setLoadError(null);
+
+        getActiveRosterAction(currentTenant.tenant_id).then((result) => {
+            if (cancelled) return;
+            if (result.success) setEmployees(result.data);
+            else {
+                setEmployees([]);
+                setLoadError(result.error);
+            }
+            setIsLoading(false);
+        });
+
+        return () => {
+            cancelled = true;
         };
-        fetchEmployees();
-    }, [currentTenant]);
+    }, [currentTenant?.tenant_id, reloadToken]);
 
-    const addToast = (message: string, type: "success" | "warning" | "error" = "success") => {
-        const id = Math.random().toString(36).slice(2);
-        setToasts((prev) => [...prev, { id, message, type }]);
-        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-    };
-
-    const handleCellChange = (eid: string, key: string, val: unknown) => {
-        setEmployees((prev) =>
-            prev.map((e) => {
-                if (e.eid !== eid) return e;
-                const clone = JSON.parse(JSON.stringify(e)) as FullEmployeeRecord;
-                
-                if (key === "historialLaboral.jobTitleName") {
-                    const jt = jobTitles.find(j => j.title === val);
-                    setValue(clone, "historialLaboral.jobTitleName", val);
-                    setValue(clone, "historialLaboral.jobTitleId", jt?.id || null);
-                    // Clear role title on job title change
-                    setValue(clone, "historialLaboral.roleTitleName", "");
-                    setValue(clone, "historialLaboral.roleTitleId", null);
-                } else if (key === "historialLaboral.roleTitleName") {
-                    const currentJtName = getValue(clone, "historialLaboral.jobTitleName") as string;
-                    const jt = jobTitles.find(j => j.title === currentJtName);
-                    const roleTitle = jt?.role_titles?.find(r => r.role_title === val);
-                    setValue(clone, "historialLaboral.roleTitleName", val);
-                    setValue(clone, "historialLaboral.roleTitleId", roleTitle?.id || null);
-                } else {
-                    setValue(clone, key, val);
-                }
-                
-                return clone;
-            })
-        );
-        setDirtyRows((prev) => new Set(prev).add(eid));
-        setSavedRows((prev) => { const s = new Set(prev); s.delete(eid); return s; });
-    };
-
-    const handleRowSave = async (eid: string) => {
-        const row = employees.find((e) => e.eid === eid);
-        if (!row || !currentTenant) return;
-
-        // This will update the DB
-        await updateEmployee(row, currentTenant.tenant_id);
-
-        setDirtyRows((prev) => { const s = new Set(prev); s.delete(eid); return s; });
-        setSavedRows((prev) => new Set(prev).add(eid));
-        addToast(`Employee ${eid} saved.`, "success");
-        setTimeout(() => setSavedRows((prev) => { const s = new Set(prev); s.delete(eid); return s; }), 2500);
-    };
-
-    const handleSaveAll = async () => {
-        if (!currentTenant) return;
-        if (dirtyRows.size === 0) { addToast("No pending changes to save.", "warning"); return; }
-        await saveEmployees(employees, currentTenant.tenant_id);
-        setDirtyRows(new Set());
-        addToast("All changes saved successfully.", "success");
-    };
-
-    const activeColumns = useMemo(() => {
-        if (isEssentialView) {
-            return COLUMNS.filter(c => ESSENTIAL_KEYS.has(c.key));
-        }
-        return COLUMNS;
-    }, [isEssentialView]);
-
-    const entityOptions = useMemo(() => {
-        return localEntities.length > 0
-            ? localEntities.map(e => ({ value: e.entity_name, label: e.entity_name }))
-            : ENTIDADES_LEGALES.map(e => ({ value: e, label: e }));
-    }, [localEntities]);
-
-    const activeColumnsWithEntities = useMemo(() => {
-        return activeColumns.map(col =>
-            col.key === "historialLaboral.legalEntity" ? { ...col, options: entityOptions } : col
-        );
-    }, [activeColumns, entityOptions]);
+    /** Valores presentes en los datos -- los dropdowns se arman del dataset real,
+     *  no de catálogos fijos que no aplican a esta fuente. */
+    const optionsFor = useMemo(() => {
+        const uniqueSorted = (pick: (e: ActiveRosterEmployee) => string | null) =>
+            Array.from(new Set(employees.map(pick).filter((v): v is string => !!v))).sort((a, b) =>
+                a.localeCompare(b, undefined, { numeric: true })
+            );
+        return {
+            branchCode: uniqueSorted((e) => e.branchCode),
+            area: uniqueSorted((e) => e.area),
+            contractType: uniqueSorted((e) => e.contractType),
+            englishLevel: uniqueSorted((e) => e.englishLevel),
+            status: uniqueSorted((e) => e.status),
+        };
+    }, [employees]);
 
     const displayed = useMemo(() => {
         let list = [...employees];
-        const q = search.toLowerCase();
+        const q = search.trim().toLowerCase();
 
         if (q) {
             list = list.filter(
                 (e) =>
-                    (e.eid ?? "").toLowerCase().includes(q) ||
-                    (e.maestro?.firstName ?? "").toLowerCase().includes(q) ||
-                    (e.maestro?.lastName ?? "").toLowerCase().includes(q) ||
-                    String(e.maestro?.identificationNumber ?? "").includes(q)
+                    e.fullName.toLowerCase().includes(q) ||
+                    String(e.employeeNumber ?? "").includes(q) ||
+                    (e.position ?? "").toLowerCase().includes(q) ||
+                    (e.area ?? "").toLowerCase().includes(q) ||
+                    (e.supervisorName ?? "").toLowerCase().includes(q) ||
+                    (e.corporateEmail ?? "").toLowerCase().includes(q)
             );
         }
 
-        // Maestro Filters
-        if (filters.tenant_id) list = list.filter(e => e.tenant_id === filters.tenant_id);
-        if (filters.gender) list = list.filter(e => e.maestro.gender === filters.gender);
-        if (filters.documentType) list = list.filter(e => e.maestro.documentTypeId === filters.documentType);
-
-        // Laboral Filters
-        if (filters.status) list = list.filter(e => e.status === filters.status);
-        if (filters.legalEntity) list = list.filter(e => e.historialLaboral.legalEntity === filters.legalEntity);
-        if (filters.area) list = list.filter(e => e.historialLaboral.area === filters.area);
-        if (filters.subArea) list = list.filter(e => (e.historialLaboral.subArea || "").toLowerCase().includes(filters.subArea.toLowerCase()));
-        if (filters.leader) list = list.filter(e => (e.historialLaboral.directLeader || "").toLowerCase().includes(filters.leader.toLowerCase()));
-        if (filters.costCenter) list = list.filter(e => e.historialLaboral.costCenter?.includes(filters.costCenter));
-        if (filters.contract) list = list.filter(e => e.historialLaboral.contractType === filters.contract);
-        if (filters.salaryType) list = list.filter(e => e.historialLaboral.salaryType === filters.salaryType);
-        if (filters.branch) list = list.filter(e => e.historialLaboral.branch === filters.branch);
-        if (filters.client) list = list.filter(e => e.historialLaboral.client === filters.client);
-        if (filters.project) list = list.filter(e => e.historialLaboral.project === filters.project);
-
-        // Afiliaciones Filters
-        if (filters.eps) list = list.filter(e => e.afiliaciones.epsName === filters.eps);
-        if (filters.afp) list = list.filter(e => e.afiliaciones.afpName === filters.afp);
-        if (filters.arl) list = list.filter(e => e.afiliaciones.arlName === filters.arl);
-        if (filters.ccf) list = list.filter(e => e.afiliaciones.ccfName === filters.ccf);
-
-        // SST Filters
-        if (filters.bloodType) list = list.filter(e => e.sst.bloodType === filters.bloodType);
-        if (filters.shirtSize) list = list.filter(e => e.sst.shirtSize === filters.shirtSize);
+        if (filters.status) list = list.filter((e) => e.status === filters.status);
+        if (filters.branchCode) list = list.filter((e) => e.branchCode === filters.branchCode);
+        if (filters.area) list = list.filter((e) => e.area === filters.area);
+        if (filters.contractType) list = list.filter((e) => e.contractType === filters.contractType);
+        if (filters.englishLevel) list = list.filter((e) => e.englishLevel === filters.englishLevel);
 
         if (sortField) {
+            const field = sortField;
             list.sort((a, b) => {
-                const av = getValue(a, sortField);
-                const bv = getValue(b, sortField);
-                const cmp = String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true });
+                const cmp = String(a[field] ?? "").localeCompare(String(b[field] ?? ""), undefined, {
+                    numeric: true,
+                });
                 return sortDir === "asc" ? cmp : -cmp;
             });
         }
         return list;
     }, [employees, search, filters, sortField, sortDir]);
 
-    const handleSort = (key: string) => {
+    const activeCount = useMemo(() => employees.filter((e) => e.status === "Active").length, [employees]);
+
+    const handleSort = (key: keyof ActiveRosterEmployee) => {
         if (sortField === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        else { setSortField(key); setSortDir("asc"); }
+        else {
+            setSortField(key);
+            setSortDir("asc");
+        }
     };
 
-    return (
-        <div
-            className="flex flex-col h-full bg-white relative overflow-hidden"
-            onClick={(e) => { if (!(e.target as HTMLElement).closest("[data-cell]")) setEditingCell(null); }}
-        >
-            {/* Toasts */}
-            <div className="fixed top-20 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
-                {toasts.map((t) => (
-                    <div key={t.id} className={cn(
-                        "px-4 py-2 rounded-lg shadow-lg border text-sm flex items-center gap-2",
-                        t.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
-                            t.type === "warning" ? "bg-amber-50 border-amber-200 text-amber-700" :
-                                "bg-red-50 border-red-200 text-red-700"
-                    )}>
-                        {t.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                        {t.message}
-                    </div>
-                ))}
-            </div>
+    const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
+    return (
+        <div className="flex flex-col h-full bg-white relative overflow-hidden">
             {/* Header */}
             <div className="px-8 pt-7 pb-5 border-b border-slate-100 shrink-0">
                 <div className="flex items-start justify-between">
@@ -482,51 +288,23 @@ export const HCMaestro: React.FC = () => {
                         </div>
                         <h2 className="text-xl font-bold text-navy-blue">HC Master</h2>
                         <p className="text-sm text-slate-400 mt-0.5">
-                            Report and Export. Identity fields are locked. Filtering follows <strong>Intake Modules</strong>.
+                            Read-only roster fed by <strong>Centralized Upload</strong>. Expand a row to see
+                            protected data.
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* View Toggle */}
-                        <div className="flex items-center bg-slate-100 p-1 rounded-lg">
-                            <button
-                                onClick={() => setIsEssentialView(true)}
-                                className={cn(
-                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
-                                    isEssentialView ? "bg-white text-cobalt-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
-                                )}
-                            >
-                                Essential Mode
-                            </button>
-                            <button
-                                onClick={() => setIsEssentialView(false)}
-                                className={cn(
-                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
-                                    !isEssentialView ? "bg-white text-cobalt-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
-                                )}
-                            >
-                                Technical Roster (All Fields)
-                            </button>
-                        </div>
-
-                        {/* Export CSV */}
                         <button
-                            onClick={() => exportToCSV(displayed, activeColumns)}
+                            onClick={() => setReloadToken((t) => t + 1)}
                             className="px-3 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 text-slate-600"
                         >
-                            <Download className="w-4 h-4" /> Export Report
+                            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> Refresh
                         </button>
-                        {/* Save All */}
                         <button
-                            onClick={handleSaveAll}
-                            className={cn(
-                                "px-4 py-2 text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 transition-all",
-                                dirtyRows.size > 0
-                                    ? "bg-navy-blue text-white hover:bg-navy-blue/90"
-                                    : "bg-slate-100 text-slate-400 cursor-default"
-                            )}
+                            onClick={() => exportToCSV(displayed)}
+                            disabled={displayed.length === 0}
+                            className="px-3 py-2 text-sm font-medium border border-slate-200 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2 text-slate-600 disabled:opacity-40 disabled:hover:bg-transparent"
                         >
-                            <Save className="w-4 h-4" />
-                            Save All {dirtyRows.size > 0 && `(${dirtyRows.size})`}
+                            <Download className="w-4 h-4" /> Export Report
                         </button>
                     </div>
                 </div>
@@ -538,228 +316,113 @@ export const HCMaestro: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search name, EID, ID number..."
+                        placeholder="Search name, employee #, position, area, supervisor, email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white w-64 focus:ring-2 focus:ring-cobalt-blue/20 outline-none focus:border-cobalt-blue transition-all"
+                        className="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white w-96 focus:ring-2 focus:ring-cobalt-blue/20 outline-none focus:border-cobalt-blue transition-all"
                     />
                 </div>
                 <button
                     onClick={() => setShowFilters(!showFilters)}
                     className={cn(
                         "px-3 py-2 text-xs font-medium rounded-lg border flex items-center gap-2 transition-all shadow-sm",
-                        showFilters || Object.values(filters).some(Boolean)
+                        showFilters || activeFilterCount > 0
                             ? "bg-cobalt-blue text-white border-cobalt-blue"
                             : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                     )}
                 >
                     <Filter className="w-3.5 h-3.5" />
-                    {Object.values(filters).filter(Boolean).length > 0
-                        ? `${Object.values(filters).filter(Boolean).length} Filters Active`
-                        : "Filter by Intake Form"}
+                    {activeFilterCount > 0 ? `${activeFilterCount} Filters Active` : "Filters"}
                 </button>
                 <span className="ml-auto text-xs text-slate-400 font-medium">
-                    {displayed.length} records in current view
+                    {displayed.length} records in current view · {activeCount} active of {employees.length} total
                 </span>
             </div>
 
-            {/* NEW: Filter by Intake Form - Sectioned Expandable Panel */}
+            {/* Filter panel */}
             {showFilters && (
-                <div className="px-8 py-6 border-b border-slate-100 bg-white shadow-inner overflow-y-auto max-h-[450px]">
-                    <div className="flex flex-col gap-10">
-
-                        {/* 1. MAESTRO MODULE */}
-                        <section className="relative">
-                            <div className="flex items-center gap-3 mb-5">
-                                <span className="flex items-center justify-center w-6 h-6 rounded bg-navy-blue text-white text-[10px] font-bold">01</span>
-                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Maestro Module: Identity & Personal</h3>
-                                <div className="flex-1 h-[1px] bg-slate-100 min-w-[20px]" />
-                            </div>
-                            <div className="grid grid-cols-5 gap-x-6 gap-y-4 ml-9">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Tenant ID</label>
-                                    <select value={filters.tenant_id} onChange={e => setFilters(p => ({ ...p, tenant_id: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Tenants</option>
-                                        {allTenants.map(t => <option key={t.tenant_id} value={t.tenant_id}>{t.tenant_id} - {t.dba_name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Gender</label>
-                                    <select value={filters.gender} onChange={e => setFilters(p => ({ ...p, gender: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Genders</option>
-                                        <option value="M">Male (M)</option>
-                                        <option value="F">Female (F)</option>
-                                        <option value="X">Other (X)</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Document Type</label>
-                                    <select value={filters.documentType} onChange={e => setFilters(p => ({ ...p, documentType: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Types</option>
-                                        <option value="ID">National ID (CC/CE)</option>
-                                        <option value="PPT">PPT</option>
-                                        <option value="SSN">SSN</option>
-                                        <option value="PA">Passport</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* 2. LABORAL MODULE */}
-                        <section className="relative">
-                            <div className="flex items-center gap-3 mb-5">
-                                <span className="flex items-center justify-center w-6 h-6 rounded bg-cobalt-blue text-white text-[10px] font-bold">02</span>
-                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Laboral Module: Job & Contract</h3>
-                                <div className="flex-1 h-[1px] bg-slate-100 min-w-[20px]" />
-                            </div>
-                            <div className="grid grid-cols-5 gap-x-6 gap-y-4 ml-9">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Status</label>
-                                    <select value={filters.status} onChange={e => setFilters(p => ({ ...p, status: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Statuses</option>
-                                        {["Active", "Inactive", "On Leave", "Terminated"].map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Local Entity</label>
-                                    <select value={filters.legalEntity} onChange={e => setFilters(p => ({ ...p, legalEntity: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Entities</option>
-                                        {entityOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Area / Department</label>
-                                    <select value={filters.area} onChange={e => setFilters(p => ({ ...p, area: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Areas</option>
-                                        {AREAS_EMPRESA.map(a => <option key={a} value={a}>{a}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Leader / Supervisor</label>
-                                    <input type="text" placeholder="Search leader..." value={filters.leader} onChange={e => setFilters(p => ({ ...p, leader: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Cost Center</label>
-                                    <input type="text" placeholder="Search CC..." value={filters.costCenter} onChange={e => setFilters(p => ({ ...p, costCenter: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Contract Type</label>
-                                    <select value={filters.contract} onChange={e => setFilters(p => ({ ...p, contract: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All Contracts</option>
-                                        {TIPOS_CONTRATO.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Salary Type</label>
-                                    <select value={filters.salaryType} onChange={e => setFilters(p => ({ ...p, salaryType: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30">
-                                        <option value="">All Types</option>
-                                        <option value="Fixed">Fixed Salary</option>
-                                        <option value="Variable">Variable Salary</option>
-                                        <option value="Comprehensive">Comprehensive</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Client / Project</label>
-                                    <input type="text" placeholder="Client or Project..." value={filters.client} onChange={e => setFilters(p => {
-                                        const val = e.target.value;
-                                        return { ...p, client: val, project: val };
-                                    })} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30" />
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* 3. BENEFITS MODULE */}
-                        <section className="relative">
-                            <div className="flex items-center gap-3 mb-5">
-                                <span className="flex items-center justify-center w-6 h-6 rounded bg-emerald-600 text-white text-[10px] font-bold">03</span>
-                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Benefits Module: Affiliations</h3>
-                                <div className="flex-1 h-[1px] bg-slate-100 min-w-[20px]" />
-                            </div>
-                            <div className="grid grid-cols-5 gap-x-6 gap-y-4 ml-9">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">EPS</label>
-                                    <select value={filters.eps} onChange={e => setFilters(p => ({ ...p, eps: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All EPS</option>
-                                        {EPS_OPTIONS.map(o => <option key={o.nombre} value={o.nombre}>{o.nombre}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">AFP (Pension)</label>
-                                    <select value={filters.afp} onChange={e => setFilters(p => ({ ...p, afp: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All AFP</option>
-                                        {AFP_OPTIONS.map(o => <option key={o.nombre} value={o.nombre}>{o.nombre}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ARL (Risk)</label>
-                                    <select value={filters.arl} onChange={e => setFilters(p => ({ ...p, arl: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All ARL</option>
-                                        {ARL_OPTIONS.map(o => <option key={o.nombre} value={o.nombre}>{o.nombre}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">CCF (Caja)</label>
-                                    <select value={filters.ccf} onChange={e => setFilters(p => ({ ...p, ccf: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors">
-                                        <option value="">All CCF</option>
-                                        {CCF_OPTIONS.map(o => <option key={o.nombre} value={o.nombre}>{o.nombre}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* 4. SST MODULE */}
-                        <section className="relative">
-                            <div className="flex items-center gap-3 mb-5">
-                                <span className="flex items-center justify-center w-6 h-6 rounded bg-action-red text-white text-[10px] font-bold">04</span>
-                                <h3 className="text-xs font-bold text-navy-blue uppercase tracking-widest">Safety Module: SST</h3>
-                                <div className="flex-1 h-[1px] bg-slate-100 min-w-[20px]" />
-                            </div>
-                            <div className="grid grid-cols-5 gap-x-6 gap-y-4 ml-9">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Blood Type</label>
-                                    <input type="text" placeholder="O+, A-, etc..." value={filters.bloodType} onChange={e => setFilters(p => ({ ...p, bloodType: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30" />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Shirt Size</label>
-                                    <select value={filters.shirtSize} onChange={e => setFilters(p => ({ ...p, shirtSize: e.target.value }))} className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30">
-                                        <option value="">All Sizes</option>
-                                        {["XS", "S", "M", "L", "XL", "XXL"].map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-start-5 flex items-end">
-                                    <button
-                                        onClick={() => setFilters({
-                                            tenant_id: "", gender: "", documentType: "", status: "", legalEntity: "", area: "", subArea: "", leader: "", costCenter: "", contract: "",
-                                            salaryType: "", branch: "", client: "", project: "", eps: "", afp: "", arl: "", ccf: "", bloodType: "", shirtSize: ""
-                                        })}
-                                        className="w-full py-2.5 text-[10px] font-bold text-action-red border border-action-red/20 rounded hover:bg-action-red/5 transition-all uppercase tracking-[0.1em]"
-                                    >
-                                        Clear All Intake Modules
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
-
+                <div className="px-8 py-5 border-b border-slate-100 bg-white shadow-inner shrink-0">
+                    <div className="grid grid-cols-6 gap-x-6 gap-y-4 items-end">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Status</label>
+                            <select
+                                value={filters.status}
+                                onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
+                                className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors"
+                            >
+                                <option value="">All Statuses</option>
+                                {optionsFor.status.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Branch</label>
+                            <select
+                                value={filters.branchCode}
+                                onChange={(e) => setFilters((p) => ({ ...p, branchCode: e.target.value }))}
+                                className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors"
+                            >
+                                <option value="">All Branches</option>
+                                {optionsFor.branchCode.map((b) => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Area</label>
+                            <select
+                                value={filters.area}
+                                onChange={(e) => setFilters((p) => ({ ...p, area: e.target.value }))}
+                                className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors"
+                            >
+                                <option value="">All Areas</option>
+                                {optionsFor.area.map((a) => <option key={a} value={a}>{a}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Contract Type</label>
+                            <select
+                                value={filters.contractType}
+                                onChange={(e) => setFilters((p) => ({ ...p, contractType: e.target.value }))}
+                                className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors"
+                            >
+                                <option value="">All Contracts</option>
+                                {optionsFor.contractType.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">English Level</label>
+                            <select
+                                value={filters.englishLevel}
+                                onChange={(e) => setFilters((p) => ({ ...p, englishLevel: e.target.value }))}
+                                className="w-full text-xs border border-slate-200 rounded px-2 py-2 outline-none bg-slate-50/30 hover:bg-white transition-colors"
+                            >
+                                <option value="">All Levels</option>
+                                {optionsFor.englishLevel.map((l) => <option key={l} value={l}>{l}</option>)}
+                            </select>
+                        </div>
+                        <button
+                            onClick={() => setFilters({ status: "", branchCode: "", area: "", contractType: "", englishLevel: "" })}
+                            className="py-2.5 text-[10px] font-bold text-action-red border border-action-red/20 rounded hover:bg-action-red/5 transition-all uppercase tracking-[0.1em]"
+                        >
+                            Clear All Filters
+                        </button>
                     </div>
                 </div>
-            ) || <div></div>}
+            )}
 
             {/* Table */}
             <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm border-collapse min-w-max">
                     <thead className="sticky top-0 z-20">
                         <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-3 py-2.5 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 w-24 text-[10px] font-bold text-slate-400 uppercase text-center">
-                                Edit / Save
-                            </th>
-                            <th className="px-3 py-2.5 w-10 bg-slate-50 border-l border-slate-100" />
-                            {activeColumnsWithEntities.map((col) => (
-                                <th key={col.key} className={cn("px-3 py-2.5 text-left border-l border-slate-100 whitespace-nowrap", col.width)}>
+                            <th className="px-3 py-2.5 w-10 bg-slate-50" />
+                            {COLUMNS.map((col) => (
+                                <th
+                                    key={col.key}
+                                    className={cn("px-3 py-2.5 text-left border-l border-slate-100 whitespace-nowrap", col.width)}
+                                >
                                     <button
                                         onClick={() => handleSort(col.key)}
                                         className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider hover:text-navy-blue transition-colors"
                                     >
-                                        {col.locked && <Lock className="w-2.5 h-2.5 text-slate-300" />}
                                         {col.label}
                                         <ArrowUpDown className="w-3 h-3 text-slate-300" />
                                     </button>
@@ -768,85 +431,77 @@ export const HCMaestro: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {displayed.map((emp, idx) => (
-                            <tr
-                                key={emp.eid}
-                                className={cn(
-                                    "border-b border-slate-50 transition-colors hover:bg-cobalt-blue/5",
-                                    idx % 2 === 0 ? "bg-white" : "bg-slate-50/30",
-                                    dirtyRows.has(emp.eid) && "bg-amber-50/40",
-                                    savedRows.has(emp.eid) && "bg-emerald-50/30"
-                                )}
-                            >
-                                <td className="px-2 py-1.5 sticky left-0 z-10 border-r border-slate-100 bg-inherit w-24">
-                                   <div className="flex items-center justify-center gap-1.5">
-                                       <button
-                                           onClick={() => toggleRowLock(emp.eid)}
-                                           className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-all", unlockedRows.has(emp.eid) ? "text-cobalt-blue bg-cobalt-blue/10 hover:bg-cobalt-blue/20" : "text-slate-400 hover:bg-slate-100")}
-                                           title={unlockedRows.has(emp.eid) ? "Lock Edit Mode" : "Unlock for editing"}
-                                       >
-                                           {unlockedRows.has(emp.eid) ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-                                       </button>
-                                       <button
-                                           onClick={() => handleRowSave(emp.eid)}
-                                           disabled={!dirtyRows.has(emp.eid)}
-                                           title={dirtyRows.has(emp.eid) ? "Save this row" : "No changes"}
-                                           className={cn(
-                                               "w-7 h-7 rounded-lg flex items-center justify-center transition-all shadow-sm",
-                                               dirtyRows.has(emp.eid)
-                                                   ? "bg-cobalt-blue text-white shadow-md shadow-cobalt-blue/20 hover:scale-105"
-                                                   : savedRows.has(emp.eid)
-                                                       ? "text-emerald-500 bg-emerald-50"
-                                                       : "text-slate-200 bg-slate-50 cursor-default"
-                                           )}
-                                       >
-                                           {savedRows.has(emp.eid) ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                       </button>
-                                   </div>
-                                </td>
-                                {/* Avatar thumbnail */}
-                                <td className="px-2 py-1 w-10 border-l border-slate-50">
-                                    <div className="w-7 h-7 rounded-full overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-100 flex items-center justify-center">
-                                        {emp.foto_url ? (
-                                            <img src={emp.foto_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-[9px] font-bold text-slate-400">
-                                                {(emp.maestro.firstName?.[0] || "") + (emp.maestro.lastName?.[0] || "")}
-                                            </span>
+                        {displayed.map((emp, idx) => {
+                            const isExpanded = expandedId === emp.id;
+                            return (
+                                <React.Fragment key={emp.id}>
+                                    <tr
+                                        onClick={() => setExpandedId(isExpanded ? null : emp.id)}
+                                        className={cn(
+                                            "border-b border-slate-50 transition-colors hover:bg-cobalt-blue/5 cursor-pointer",
+                                            idx % 2 === 0 ? "bg-white" : "bg-slate-50/30",
+                                            isExpanded && "bg-cobalt-blue/5",
+                                            emp.status === "Inactive" && "opacity-60"
                                         )}
-                                    </div>
-                                </td>
-                                {activeColumnsWithEntities.map((col) => {
-                                    let dynamicCol = col;
-                                    if (unlockedRows.has(emp.eid) && col.key === "historialLaboral.jobTitleName") {
-                                        dynamicCol = { ...col, options: jobTitles.map(j => ({ value: j.title, label: j.title })) };
-                                    } else if (unlockedRows.has(emp.eid) && col.key === "historialLaboral.roleTitleName") {
-                                        const currentJt = emp.historialLaboral?.jobTitleName ?? "";
-                                        const jt = jobTitles.find(j => j.title === currentJt);
-                                        dynamicCol = { ...col, options: jt ? (jt.role_titles || []).map(r => ({ value: r.role_title, label: r.role_title })) : [] };
-                                    }
-                                    return (
-                                        <td
-                                            key={col.key}
-                                            data-cell="true"
-                                            className={cn("px-2 py-1 align-middle border-l border-slate-50", col.width, col.locked && "bg-slate-50/40")}
-                                        >
-                                            <InlineCell
-                                                col={dynamicCol}
-                                                record={emp}
-                                                isEditing={unlockedRows.has(emp.eid) && editingCell?.eid === emp.eid && editingCell?.key === col.key}
-                                                onStartEdit={() => { if(unlockedRows.has(emp.eid)) setEditingCell({ eid: emp.eid, key: col.key }); }}
-                                                onChange={(val) => handleCellChange(emp.eid, col.key, val)}
-                                            />
+                                    >
+                                        <td className="px-2 py-1.5 w-10 text-slate-400">
+                                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                         </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
+                                        {COLUMNS.map((col) => {
+                                            const text = cellText(emp, col);
+                                            return (
+                                                <td
+                                                    key={col.key}
+                                                    className={cn("px-3 py-2 align-middle border-l border-slate-50", col.width)}
+                                                >
+                                                    {col.key === "status" ? (
+                                                        <span
+                                                            className={cn(
+                                                                "text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap",
+                                                                STATUS_STYLES[text] ?? "bg-slate-100 text-slate-500 border-slate-200"
+                                                            )}
+                                                        >
+                                                            {text}
+                                                        </span>
+                                                    ) : (
+                                                        <span
+                                                            className={cn(
+                                                                "text-xs truncate block",
+                                                                col.key === "employeeNumber"
+                                                                    ? "font-mono font-semibold text-cobalt-blue"
+                                                                    : col.key === "fullName"
+                                                                        ? "text-slate-800 font-medium"
+                                                                        : "text-slate-700",
+                                                                !text && "text-slate-300 italic"
+                                                            )}
+                                                        >
+                                                            {text || "—"}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                    {isExpanded && (
+                                        <tr>
+                                            <td colSpan={COLUMNS.length + 1} className="p-0">
+                                                <EmployeeDetail employee={emp} />
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
                         {displayed.length === 0 && (
                             <tr>
-                                <td colSpan={activeColumns.length + 1} className="px-8 py-16 text-center text-sm text-slate-400">
-                                    No records match your current filters.
+                                <td colSpan={COLUMNS.length + 1} className="px-8 py-16 text-center text-sm text-slate-400">
+                                    {isLoading
+                                        ? "Loading employees…"
+                                        : loadError
+                                            ? loadError
+                                            : employees.length === 0
+                                                ? "No employees loaded yet. Use Centralized Upload to import the roster."
+                                                : "No records match your current filters."}
                                 </td>
                             </tr>
                         )}
@@ -858,15 +513,12 @@ export const HCMaestro: React.FC = () => {
             <div className="px-8 py-3 bg-slate-50 border-t border-slate-100 shrink-0 flex items-center justify-between">
                 <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 shrink-0" />
-                    Identity fields (EID, Name, ID, DOB) are <Lock className="w-3 h-3 inline mx-0.5" /> locked.
-                    Mode: <strong>{isEssentialView ? "Essential Report" : "Technical Roster (All Modules)"}</strong>.
+                    Source: <strong>hr_active_roster</strong> (Centralized Upload). Employees missing from the
+                    latest file are kept and marked <strong>Inactive</strong>.
                 </p>
-                {dirtyRows.size > 0 && (
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-amber-400" />
-                        <span className="text-[11px] text-slate-500">{dirtyRows.size} row{dirtyRows.size !== 1 ? "s" : ""} with unsaved changes</span>
-                    </div>
-                )}
+                <p className="text-[11px] text-slate-400">
+                    Protected data is decrypted server-side and visible to administrators only.
+                </p>
             </div>
         </div>
     );
