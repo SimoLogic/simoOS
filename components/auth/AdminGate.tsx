@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/auth/supabase-browser-client";
 import { useTenant } from "@/lib/tenant-context";
 
 interface AdminGateProps {
     children: React.ReactNode;
-    /** Título mostrado en la pantalla de login (contexto de qué se está protegiendo). */
+    /** Title shown on the login screen (context of what is being protected). */
     title?: string;
     /** Roles permitidos (OR) -- por defecto solo 'admin', mantiene el comportamiento
      * original de este componente para el gate de HC Master ya en producción. */
@@ -26,7 +26,7 @@ type GateStatus = "checking" | "signed-out" | "not-admin" | "admin";
  */
 export const AdminGate: React.FC<AdminGateProps> = ({
     children,
-    title = "Acceso restringido",
+    title = "Restricted access",
     requiredRoles = ["admin"],
 }) => {
     const [status, setStatus] = useState<GateStatus>("checking");
@@ -36,9 +36,25 @@ export const AdminGate: React.FC<AdminGateProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { currentTenant, setCurrentTenantById } = useTenant();
 
+    /** Último user.id ya verificado -- evita re-chequear en cada evento de auth. */
+    const verifiedUserIdRef = useRef<string | null>(null);
+    /** currentTenant en un ref: la suscripción de abajo se monta una sola vez y
+     *  si leyera la variable de render se quedaría con el valor del primer
+     *  render (null) para siempre. */
+    const currentTenantIdRef = useRef<string | null>(null);
+    currentTenantIdRef.current = currentTenant?.tenant_id ?? null;
+
+    /** setStatus idempotente: si el valor no cambió, no se toca el estado.
+     *  Crítico -- cualquier cambio de `status` desmonta y vuelve a montar
+     *  `children`, y con eso se pierde su estado interno (ver checkAdmin). */
+    function setStatusIfChanged(next: GateStatus) {
+        setStatus((prev) => (prev === next ? prev : next));
+    }
+
     async function checkAdmin(session: Session | null) {
         if (!session) {
-            setStatus("signed-out");
+            verifiedUserIdRef.current = null;
+            setStatusIfChanged("signed-out");
             return;
         }
         const { data, error } = await supabaseBrowser.rpc("current_user_has_any_role", {
@@ -46,7 +62,8 @@ export const AdminGate: React.FC<AdminGateProps> = ({
         });
         if (error) {
             console.error("current_user_has_any_role RPC failed", error);
-            setStatus("not-admin");
+            verifiedUserIdRef.current = null;
+            setStatusIfChanged("not-admin");
             return;
         }
         if (data) {
@@ -61,17 +78,33 @@ export const AdminGate: React.FC<AdminGateProps> = ({
                 .eq("id", session.user.id)
                 .single();
 
-            if (!userError && userRow?.tenant_id && userRow.tenant_id !== currentTenant?.tenant_id) {
+            if (!userError && userRow?.tenant_id && userRow.tenant_id !== currentTenantIdRef.current) {
                 await setCurrentTenantById(userRow.tenant_id);
             }
         }
-        setStatus(data ? "admin" : "not-admin");
+        verifiedUserIdRef.current = data ? session.user.id : null;
+        setStatusIfChanged(data ? "admin" : "not-admin");
     }
 
     useEffect(() => {
         supabaseBrowser.auth.getSession().then(({ data }) => checkAdmin(data.session));
 
+        // onAuthStateChange NO es solo login/logout: auth-js emite SIGNED_IN
+        // cada vez que la pestaña vuelve a estar visible (_onVisibilityChanged
+        // -> _recoverAndRefresh) y TOKEN_REFRESHED cada vez que el ticker
+        // renueva el token. Si en cada uno de esos eventos se volviera a
+        // consultar el rol y a llamar setStatus, un solo fallo transitorio de
+        // la RPC (p. ej. la petición sale con el token viejo justo durante el
+        // refresh) manda `status` a "not-admin", desmonta `children` y borra su
+        // estado; al siguiente evento vuelve a "admin" y `children` se remonta
+        // en blanco. Eso es lo que hacía que la Carga Centralizada volviera
+        // sola a la pantalla de "seleccionar archivo" después de subir.
+        //
+        // Por eso: si el usuario de la sesión es el mismo que ya verificamos,
+        // el evento se ignora por completo (ni RPC ni setState).
         const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+            const userId = session?.user?.id ?? null;
+            if (userId && userId === verifiedUserIdRef.current) return;
             checkAdmin(session);
         });
 
@@ -86,7 +119,7 @@ export const AdminGate: React.FC<AdminGateProps> = ({
         if (error) {
             setLoginError(
                 error.message === "Invalid login credentials"
-                    ? "Correo o contraseña incorrectos."
+                    ? "Incorrect email or password."
                     : error.message
             );
         }
@@ -102,7 +135,7 @@ export const AdminGate: React.FC<AdminGateProps> = ({
     if (status === "checking") {
         return (
             <div className="flex-1 h-full flex items-center justify-center text-slate-400 text-sm">
-                Verificando acceso…
+                Checking access…
             </div>
         );
     }
@@ -114,16 +147,16 @@ export const AdminGate: React.FC<AdminGateProps> = ({
     if (status === "not-admin") {
         return (
             <div className="flex-1 h-full flex flex-col items-center justify-center gap-3 text-center px-6">
-                <div className="text-lg font-semibold text-slate-700">Acceso restringido</div>
+                <div className="text-lg font-semibold text-slate-700">Restricted access</div>
                 <p className="text-sm text-slate-500 max-w-md">
-                    Tu cuenta no tiene permiso de administrador para ver esta información. Si crees que
-                    esto es un error, contacta a tu administrador de simoOS.
+                    Your account does not have administrator permission to view this information. If you
+                    think this is a mistake, contact your simoOS administrator.
                 </p>
                 <button
                     onClick={handleLogout}
                     className="mt-2 text-sm text-[#0047AB] hover:underline"
                 >
-                    Cerrar sesión
+                    Sign out
                 </button>
             </div>
         );
@@ -139,12 +172,12 @@ export const AdminGate: React.FC<AdminGateProps> = ({
                 <div>
                     <h2 className="text-base font-semibold text-slate-800">{title}</h2>
                     <p className="text-sm text-slate-500 mt-1">
-                        Esta sección requiere iniciar sesión con una cuenta de administrador.
+                        This section requires signing in with an administrator account.
                     </p>
                 </div>
 
                 <label className="flex flex-col gap-1 text-sm text-slate-600">
-                    Correo
+                    Email
                     <input
                         type="email"
                         required
@@ -156,7 +189,7 @@ export const AdminGate: React.FC<AdminGateProps> = ({
                 </label>
 
                 <label className="flex flex-col gap-1 text-sm text-slate-600">
-                    Contraseña
+                    Password
                     <input
                         type="password"
                         required
@@ -174,7 +207,7 @@ export const AdminGate: React.FC<AdminGateProps> = ({
                     disabled={isSubmitting}
                     className="bg-[#0047AB] text-white text-sm font-medium rounded-md py-2 disabled:opacity-50"
                 >
-                    {isSubmitting ? "Entrando…" : "Iniciar sesión"}
+                    {isSubmitting ? "Signing in…" : "Sign in"}
                 </button>
             </form>
         </div>

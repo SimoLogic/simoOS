@@ -448,6 +448,11 @@ model HrActiveRoster {
   /// EPS, pensión, cesantías, CCF, banco, número de cuenta.
   sensitiveDataEnc       String?   @map("sensitive_data_enc")
 
+  /// "Active" | "Inactive" -- se recalcula en cada carga centralizada:
+  /// quien no venga en el archivo nuevo pasa a "Inactive" (no se borra),
+  /// ver uploadActiveRosterAction en app/actions/hr-centralized-upload-actions.ts.
+  status                 String    @default("Active") @map("status")
+
   uploadBatchId          String    @map("upload_batch_id")
   uploadedAt             DateTime  @default(now()) @map("uploaded_at")
 

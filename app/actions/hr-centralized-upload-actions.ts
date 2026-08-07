@@ -155,12 +155,13 @@ function buildBigQueryRows(
  *   1. Excel -> BigQuery (append-only, todos los campos).
  *   2. Lee de vuelta el snapshot actual desde BigQuery
  *      (hr_centralizado.v_active_roster_current).
- *   3. Guarda ese snapshot en Supabase (sensible cifrado ahí).
+ *   3. Guarda ese snapshot en Supabase (sensible cifrado ahí), status "Active".
+ *   4. Marca "Inactive" a quien ya estaba en Supabase y no viene en esta carga.
  */
 export async function uploadActiveRosterAction(
     tenantId: string,
     rows: RawActiveRosterRow[]
-): Promise<ActionResult<{ uploadBatchId: string; count: number }>> {
+): Promise<ActionResult<{ uploadBatchId: string; count: number; deactivatedCount: number }>> {
     if (!tenantId?.trim()) return fail("Falta el tenant.");
     if (!rows.length) return fail("El archivo no tiene filas para procesar.");
 
@@ -187,6 +188,7 @@ export async function uploadActiveRosterAction(
 
         // Paso 3: BigQuery -> Supabase (cifrando lo sensible ahí, defensa adicional)
         let savedCount = 0;
+        const employeeNumbersInUpload: number[] = [];
         for (const r of currentRoster) {
             const sensitiveDataEnc = await encryptObject({
                 nationalId: r.national_id,
@@ -209,6 +211,7 @@ export async function uploadActiveRosterAction(
             });
 
             const employeeNumber = r.employee_number;
+            employeeNumbersInUpload.push(employeeNumber ?? -1);
 
             await prisma.hrActiveRoster.upsert({
                 where: {
@@ -235,6 +238,7 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    status: "Active",
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
                     uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
@@ -255,6 +259,9 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    // Quien viene en la carga vuelve a quedar Activo, incluso si
+                    // una carga anterior lo había marcado Inactive (recontratación).
+                    status: "Active",
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
                     uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
@@ -263,7 +270,23 @@ export async function uploadActiveRosterAction(
             savedCount++;
         }
 
-        return ok({ uploadBatchId, count: savedCount });
+        // Paso 4: quien YA estaba en Supabase pero no viene en esta carga se
+        // marca Inactive -- nunca se borra (el histórico de la persona y su
+        // dato cifrado se conservan; HC Master lo muestra con badge gris).
+        let deactivatedCount = 0;
+        if (employeeNumbersInUpload.length > 0) {
+            const deactivated = await prisma.hrActiveRoster.updateMany({
+                where: {
+                    tenantId,
+                    employeeNumber: { notIn: employeeNumbersInUpload },
+                    status: { not: "Inactive" },
+                },
+                data: { status: "Inactive" },
+            });
+            deactivatedCount = deactivated.count;
+        }
+
+        return ok({ uploadBatchId, count: savedCount, deactivatedCount });
     } catch (err) {
         console.error("[uploadActiveRosterAction] failed:", err);
         return fail(err instanceof Error ? err.message : "Error desconocido al procesar la carga.");
