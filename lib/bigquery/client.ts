@@ -150,5 +150,94 @@ export async function readCurrentActiveRoster(tenantCode: string): Promise<Activ
     })) as ActiveRosterBigQueryRow[];
 }
 
+// ─── EE.UU. — Employee Draws (CompensaFe) ────────────────────────────────────
+
+/**
+ * Una fila del CSV EmployeeDraws ya normalizada, tal cual se inserta en
+ * hr_centralizado.employee_draws_us_raw (tabla append-only, igual que
+ * active_roster_raw en Colombia).
+ *
+ * OJO: los tipos exactos de las columnas numéricas en BigQuery no se pudieron
+ * verificar desde el entorno de desarrollo (el cliente requiere OIDC de
+ * Vercel). Se asume NUMERIC para los montos y DATE para las fechas. Si la
+ * suposición estuviera mal, el insert falla ruidosamente con
+ * skipInvalidRows: false y -- por la cadena estricta -- Supabase no se toca.
+ */
+export interface EmployeeDrawBigQueryRow {
+    upload_batch_id: string;
+    uploaded_at: string; // ISO timestamp
+    tenant_code: string;
+    branch_number: string | null;
+    employee_number: number | null;
+    employee_name: string | null;
+    hire_date: string | null; // YYYY-MM-DD
+    job_title: string | null;
+    region_name: string | null;
+    branch_name: string | null;
+    type: string | null;
+    guar_min: number | null;
+    draw_date: string | null; // YYYY-MM-DD
+    amount: number | null;
+    waived: number | null;
+    recaptured: number | null;
+    draw_balance: number | null;
+    waived_date: string | null; // YYYY-MM-DD
+    net_pay: number | null;
+    recaptured_date: string | null; // YYYY-MM-DD
+    notes: string | null;
+}
+
+/**
+ * Inserta filas en hr_centralizado.employee_draws_us_raw (append-only --
+ * cada carga queda registrada, no se sobreescribe el histórico).
+ */
+export async function insertEmployeeDrawsRows(rows: EmployeeDrawBigQueryRow[]): Promise<void> {
+    if (rows.length === 0) return;
+    const bigquery = getBigQueryClient();
+    const dataset = bigquery.dataset("hr_centralizado");
+    const table = dataset.table("employee_draws_us_raw");
+    await table.insert(rows, { skipInvalidRows: false, ignoreUnknownValues: false });
+}
+
+/**
+ * Una fila de hr_centralizado.v_active_roster_us_current -- la vista ya viene
+ * deduplicada por employee_number (un empleado por fila), a diferencia de la
+ * tabla raw, donde un mismo empleado aparece una vez por cada draw.
+ */
+export interface UsRosterBigQueryRow {
+    tenant_code: string;
+    country: string;
+    branch_code: string | null;
+    employee_number: number | null;
+    full_name: string | null;
+    position: string | null;
+    region_name: string | null;
+    date_started: string | null; // YYYY-MM-DD
+    last_seen_at: string | null; // ISO timestamp
+}
+
+/**
+ * Lee de vuelta el roster vigente de EE.UU. desde
+ * hr_centralizado.v_active_roster_us_current -- mismo rol que
+ * readCurrentActiveRoster en Colombia: Supabase se llena A PARTIR de lo que
+ * quedó en BigQuery, nunca en paralelo desde el archivo original.
+ *
+ * Desenvuelve DATE/TIMESTAMP igual que readCurrentActiveRoster: el cliente los
+ * entrega como { value: "..." } y no como texto plano (ver unwrapBigQueryValue).
+ */
+export async function readCurrentUsRoster(tenantCode: string): Promise<UsRosterBigQueryRow[]> {
+    const bigquery = getBigQueryClient();
+    const [rows] = await bigquery.query({
+        query: `SELECT * FROM \`${bigquery.projectId}.hr_centralizado.v_active_roster_us_current\` WHERE tenant_code = @tenantCode`,
+        params: { tenantCode },
+    });
+
+    return (rows as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        date_started: unwrapBigQueryValue(r.date_started),
+        last_seen_at: unwrapBigQueryValue(r.last_seen_at),
+    })) as UsRosterBigQueryRow[];
+}
+
 /** Exportado para el health-check route (app/api/bq-healthcheck). */
 export { getBigQueryClient };

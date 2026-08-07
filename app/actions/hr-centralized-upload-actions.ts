@@ -240,6 +240,7 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    country: "CO",
                     status: "Active",
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
@@ -261,6 +262,7 @@ export async function uploadActiveRosterAction(
                     professionalProfile: r.professional_profile,
                     university: r.university,
                     englishLevel: r.english_level,
+                    country: "CO",
                     // Quien viene en la carga vuelve a quedar Activo, incluso si
                     // una carga anterior lo había marcado Inactive (recontratación).
                     status: "Active",
@@ -275,11 +277,17 @@ export async function uploadActiveRosterAction(
         // Paso 4: quien YA estaba en Supabase pero no viene en esta carga se
         // marca Inactive -- nunca se borra (el histórico de la persona y su
         // dato cifrado se conservan; HC Master lo muestra con badge gris).
+        //
+        // El filtro country: "CO" es obligatorio: desde que la nómina de EE.UU.
+        // vive en esta misma tabla (ver hr-us-roster-upload-actions.ts), sin él
+        // una carga de Colombia marcaría Inactive a TODOS los de EE.UU., que
+        // por definición nunca vienen en este archivo.
         let deactivatedCount = 0;
         if (employeeNumbersInUpload.length > 0) {
             const deactivated = await prisma.hrActiveRoster.updateMany({
                 where: {
                     tenantId,
+                    country: "CO",
                     employeeNumber: { notIn: employeeNumbersInUpload },
                     status: { not: "Inactive" },
                 },
@@ -298,6 +306,7 @@ export async function uploadActiveRosterAction(
                 data: {
                     tenantId,
                     uploadBatchId,
+                    source: "CO_ACTIVE_ROSTER",
                     fileName: fileName ?? null,
                     sourceRowCount: rows.length,
                     savedCount,
@@ -322,6 +331,8 @@ export async function uploadActiveRosterAction(
 /** Una carga anterior, tal como la muestra la UI (fechas ya serializadas). */
 export interface UploadBatchSummary {
     uploadBatchId: string;
+    /** "CO_ACTIVE_ROSTER" | "US_EMPLOYEE_DRAWS" */
+    source: string;
     fileName: string | null;
     sourceRowCount: number;
     savedCount: number;
@@ -340,13 +351,16 @@ export interface UploadBatchSummary {
  */
 export async function getRecentUploadBatchesAction(
     tenantId: string,
-    limit = 5
+    limit = 5,
+    source?: string
 ): Promise<ActionResult<UploadBatchSummary[]>> {
     if (!tenantId?.trim()) return fail("No tenant selected.");
 
     try {
         const batches = await prisma.hrUploadBatch.findMany({
-            where: { tenantId },
+            // Sin el filtro de source, la pestaña de EE.UU. mostraría la última
+            // carga de Colombia como si fuera suya (ambas escriben aquí).
+            where: { tenantId, ...(source ? { source } : {}) },
             orderBy: { uploadedAt: "desc" },
             take: Math.min(Math.max(limit, 1), 20),
         });
@@ -354,6 +368,7 @@ export async function getRecentUploadBatchesAction(
         return ok(
             batches.map((b) => ({
                 uploadBatchId: b.uploadBatchId,
+                source: b.source,
                 fileName: b.fileName,
                 sourceRowCount: b.sourceRowCount,
                 savedCount: b.savedCount,

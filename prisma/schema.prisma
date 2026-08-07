@@ -476,6 +476,10 @@ model HrUploadBatch {
   tenantId         String   @map("tenant_id")
   /// Mismo valor que hr_active_roster.upload_batch_id de esa carga.
   uploadBatchId    String   @unique @map("upload_batch_id")
+  /// Qué pipeline generó el lote: "CO_ACTIVE_ROSTER" (Excel SLTEAM) o
+  /// "US_EMPLOYEE_DRAWS" (CSV CompensaFe). Sin esto la pestaña de EE.UU.
+  /// mostraría la última carga de Colombia como si fuera suya.
+  source           String   @default("CO_ACTIVE_ROSTER") @map("source")
   fileName         String?  @map("file_name")
   /// Filas leídas de la hoja "Active" del Excel.
   sourceRowCount   Int      @default(0) @map("source_row_count")
