@@ -79,6 +79,13 @@ function excelDateToISO(value: unknown): Date | null {
     return isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** Convierte a Date de forma segura -- null en vez de reventar con "Invalid Date" si el valor no es parseable. */
+function toSafeDate(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 /**
  * Paso 1: normaliza las filas del Excel a filas de BigQuery (todos los
  * campos, sensibles incluidos).
@@ -220,9 +227,9 @@ export async function uploadActiveRosterAction(
                     area: r.area,
                     supervisorName: r.supervisor_name,
                     corporateEmail: r.corporate_email,
-                    dateStarted: r.date_started ? new Date(r.date_started) : null,
+                    dateStarted: toSafeDate(r.date_started),
                     monthStarted: r.month_started,
-                    indefiniteContractDate: r.indefinite_contract_date ? new Date(r.indefinite_contract_date) : null,
+                    indefiniteContractDate: toSafeDate(r.indefinite_contract_date),
                     antiquityLabel: r.antiquity_label,
                     contractType: r.contract_type,
                     professionalProfile: r.professional_profile,
@@ -230,7 +237,7 @@ export async function uploadActiveRosterAction(
                     englishLevel: r.english_level,
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
-                    uploadedAt: new Date(r.uploaded_at),
+                    uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
                 },
                 update: {
                     branchCode: r.branch_code,
@@ -240,9 +247,9 @@ export async function uploadActiveRosterAction(
                     area: r.area,
                     supervisorName: r.supervisor_name,
                     corporateEmail: r.corporate_email,
-                    dateStarted: r.date_started ? new Date(r.date_started) : null,
+                    dateStarted: toSafeDate(r.date_started),
                     monthStarted: r.month_started,
-                    indefiniteContractDate: r.indefinite_contract_date ? new Date(r.indefinite_contract_date) : null,
+                    indefiniteContractDate: toSafeDate(r.indefinite_contract_date),
                     antiquityLabel: r.antiquity_label,
                     contractType: r.contract_type,
                     professionalProfile: r.professional_profile,
@@ -250,7 +257,7 @@ export async function uploadActiveRosterAction(
                     englishLevel: r.english_level,
                     sensitiveDataEnc,
                     uploadBatchId: r.upload_batch_id,
-                    uploadedAt: new Date(r.uploaded_at),
+                    uploadedAt: toSafeDate(r.uploaded_at) ?? new Date(),
                 },
             });
             savedCount++;
