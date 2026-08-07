@@ -3,25 +3,25 @@
 /**
  * HR CENTRALIZED UPLOAD — Server Action
  *
- * Recibe las filas ya parseadas de la hoja "Active" del Excel centralizado
- * de SLTEAM (subido desde el navegador con SheetJS), y:
- *   1. Cifra los campos sensibles (cédula, dirección, cuenta bancaria, etc.)
- *      en un solo blob AES-256-GCM -- ver lib/security/hr-vault.ts.
- *   2. Guarda el maestro completo (no sensible + cifrado) en Supabase
- *      (public.hr_active_roster vía Prisma), upsert por tenant+número.
- *   3. Envía SOLO los campos no sensibles a BigQuery
- *      (hr_centralizado.active_roster_raw) para análisis -- append-only,
- *      queda histórico de cada carga mensual.
+ * Cadena real (decisión 2026-08-07, revoca el diseño paralelo anterior):
+ *   Excel -> BigQuery (TODO, sensible incluido) -> se lee de vuelta desde
+ *   BigQuery -> Supabase (sensible cifrado ahí como defensa adicional).
+ *
+ * Ya no hay separación "sensible nunca sale de Supabase" -- eso se revocó
+ * explícitamente. BigQuery es ahora el paso intermedio real, no un
+ * side-channel de analítica que corre en paralelo.
+ *
+ * Si BigQuery falla, NO se escribe nada en Supabase (Supabase depende de
+ * lo que ya haya en BigQuery) -- distinto al diseño anterior, donde
+ * BigQuery era "opcional".
  *
  * Protegido en la UI por AdminGate (roles admin/hr) -- ver
- * components/hr/CentralizedUploadPage.tsx. Esta Server Action en sí NO
- * vuelve a validar el rol porque Prisma corre con las credenciales del
- * servidor (no expuestas al navegador); el gate de UI es la barrera real.
+ * components/hr/CentralizedUploadPage.tsx.
  */
 
 import { prisma } from "@/lib/database";
 import { encryptObject } from "@/lib/security/hr-vault";
-import { insertActiveRosterRows, type ActiveRosterBigQueryRow } from "@/lib/bigquery/client";
+import { insertActiveRosterRows, readCurrentActiveRoster, type ActiveRosterBigQueryRow } from "@/lib/bigquery/client";
 import { randomUUID } from "crypto";
 
 export type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -80,9 +80,75 @@ function excelDateToISO(value: unknown): Date | null {
 }
 
 /**
- * Sube el maestro "Active" completo: reemplaza/actualiza el snapshot actual
- * en Supabase (upsert), y agrega una fila nueva por empleado en BigQuery
- * (histórico append-only -- no reemplaza cargas anteriores).
+ * Paso 1: normaliza las filas del Excel a filas de BigQuery (todos los
+ * campos, sensibles incluidos).
+ */
+function buildBigQueryRows(
+    tenantId: string,
+    uploadBatchId: string,
+    uploadedAt: Date,
+    rows: RawActiveRosterRow[]
+): ActiveRosterBigQueryRow[] {
+    const out: ActiveRosterBigQueryRow[] = [];
+    for (const row of rows) {
+        const fullName = row.NOMBRE?.trim();
+        if (!fullName) continue; // fila vacía / de relleno, se ignora
+
+        const employeeNumber = row["#"] ? Number(row["#"]) : null;
+        const branchCode = row.BRANCH != null ? String(row.BRANCH) : null;
+        const dateStarted = excelDateToISO(row["Date Started (dd/mm/aaaa)"]);
+        const indefiniteContractDate = excelDateToISO(row["Indefinite Contract Date"]);
+
+        out.push({
+            upload_batch_id: uploadBatchId,
+            uploaded_at: uploadedAt.toISOString(),
+            tenant_code: tenantId,
+            branch_code: branchCode,
+            employee_number: employeeNumber,
+            full_name: fullName,
+            gender: row[" GENDER"] ?? null,
+            position: row["Position POSITION"] ?? null,
+            area: row.Area ?? null,
+            supervisor_name: row.Supervisor ?? null,
+            corporate_email: row["Corporate email"] ?? null,
+            date_started: dateStarted ? dateStarted.toISOString().slice(0, 10) : null,
+            month_started: row.Month ?? null,
+            indefinite_contract_date: indefiniteContractDate
+                ? indefiniteContractDate.toISOString().slice(0, 10)
+                : null,
+            antiquity_label: row.antiquity ?? null,
+            contract_type: row["Tipo de contrato"] ?? null,
+            professional_profile: row["Professional Profile "] ?? null,
+            university: row.University ?? null,
+            english_level: row["English Level"] ?? null,
+            national_id: row.ID ? String(row.ID) : null,
+            home_address: row["Home Adress"] ?? null,
+            neighborhood: row.Neighborhood ?? null,
+            city: row.City ?? null,
+            phone_co: row["Phone (Colombia)"] ?? null,
+            personal_email: row["Personal E-mail"] ?? null,
+            emergency_contact_name: row["Emergency Contact"] ?? null,
+            emergency_contact_phone: row.Phone ?? null,
+            emergency_contact_relation: row.Parentesco ?? null,
+            phone_usa: row["Phone USA"] ?? null,
+            birth_date: row["Birth Date"] ?? null,
+            eps: row.EPS ?? row["Beneficio Salud"] ?? null,
+            pension: row.Pensiones ?? null,
+            cesantias: row["Cesantías"] ?? null,
+            ccf: row["Caja de Compensación"] ?? null,
+            bank_name: row.Banco ?? null,
+            bank_account: row["#Cuenta"] ? String(row["#Cuenta"]) : null,
+        });
+    }
+    return out;
+}
+
+/**
+ * Sube el maestro "Active" completo, en cadena real:
+ *   1. Excel -> BigQuery (append-only, todos los campos).
+ *   2. Lee de vuelta el snapshot actual desde BigQuery
+ *      (hr_centralizado.v_active_roster_current).
+ *   3. Guarda ese snapshot en Supabase (sensible cifrado ahí).
  */
 export async function uploadActiveRosterAction(
     tenantId: string,
@@ -93,38 +159,49 @@ export async function uploadActiveRosterAction(
 
     const uploadBatchId = randomUUID();
     const uploadedAt = new Date();
-    const bigQueryRows: ActiveRosterBigQueryRow[] = [];
 
     try {
-        for (const row of rows) {
-            const fullName = row.NOMBRE?.trim();
-            if (!fullName) continue; // fila vacía / de relleno, se ignora
+        // Paso 1: Excel -> BigQuery
+        const bigQueryRows = buildBigQueryRows(tenantId, uploadBatchId, uploadedAt, rows);
+        if (bigQueryRows.length === 0) return fail("No se encontraron filas válidas (con nombre) en el archivo.");
 
-            const employeeNumber = row["#"] ? Number(row["#"]) : null;
-            const branchCode = row.BRANCH != null ? String(row.BRANCH) : null;
-            const dateStarted = excelDateToISO(row["Date Started (dd/mm/aaaa)"]);
-            const indefiniteContractDate = excelDateToISO(row["Indefinite Contract Date"]);
+        try {
+            await insertActiveRosterRows(bigQueryRows);
+        } catch (bqError) {
+            console.error("[uploadActiveRosterAction] BigQuery insert failed:", bqError);
+            // Cadena estricta: si BigQuery falla, NO se toca Supabase.
+            return fail(
+                `No se pudo guardar en BigQuery: ${bqError instanceof Error ? bqError.message : "error desconocido"}. No se actualizó Supabase.`
+            );
+        }
 
-            // Solo lo sensible va cifrado -- nunca sale de Supabase, nunca viaja a BigQuery.
+        // Paso 2: leer de vuelta el snapshot actual desde BigQuery
+        const currentRoster = await readCurrentActiveRoster(tenantId);
+
+        // Paso 3: BigQuery -> Supabase (cifrando lo sensible ahí, defensa adicional)
+        let savedCount = 0;
+        for (const r of currentRoster) {
             const sensitiveDataEnc = await encryptObject({
-                nationalId: row.ID ? String(row.ID) : null,
-                homeAddress: row["Home Adress"] ?? null,
-                neighborhood: row.Neighborhood ?? null,
-                city: row.City ?? null,
-                phoneCo: row["Phone (Colombia)"] ?? null,
-                personalEmail: row["Personal E-mail"] ?? null,
-                emergencyContactName: row["Emergency Contact"] ?? null,
-                emergencyContactPhone: row.Phone ?? null,
-                emergencyContactRelation: row.Parentesco ?? null,
-                phoneUsa: row["Phone USA"] ?? null,
-                birthDate: row["Birth Date"] ?? null,
-                eps: row.EPS ?? row["Beneficio Salud"] ?? null,
-                pension: row.Pensiones ?? null,
-                cesantias: row["Cesantías"] ?? null,
-                ccf: row["Caja de Compensación"] ?? null,
-                bankName: row.Banco ?? null,
-                bankAccount: row["#Cuenta"] ? String(row["#Cuenta"]) : null,
+                nationalId: r.national_id,
+                homeAddress: r.home_address,
+                neighborhood: r.neighborhood,
+                city: r.city,
+                phoneCo: r.phone_co,
+                personalEmail: r.personal_email,
+                emergencyContactName: r.emergency_contact_name,
+                emergencyContactPhone: r.emergency_contact_phone,
+                emergencyContactRelation: r.emergency_contact_relation,
+                phoneUsa: r.phone_usa,
+                birthDate: r.birth_date,
+                eps: r.eps,
+                pension: r.pension,
+                cesantias: r.cesantias,
+                ccf: r.ccf,
+                bankName: r.bank_name,
+                bankAccount: r.bank_account,
             });
+
+            const employeeNumber = r.employee_number;
 
             await prisma.hrActiveRoster.upsert({
                 where: {
@@ -135,86 +212,51 @@ export async function uploadActiveRosterAction(
                 },
                 create: {
                     tenantId,
-                    branchCode,
+                    branchCode: r.branch_code,
                     employeeNumber,
-                    fullName,
-                    gender: row[" GENDER"] ?? null,
-                    position: row["Position POSITION"] ?? null,
-                    area: row.Area ?? null,
-                    supervisorName: row.Supervisor ?? null,
-                    corporateEmail: row["Corporate email"] ?? null,
-                    dateStarted,
-                    monthStarted: row.Month ?? null,
-                    indefiniteContractDate,
-                    antiquityLabel: row.antiquity ?? null,
-                    contractType: row["Tipo de contrato"] ?? null,
-                    professionalProfile: row["Professional Profile "] ?? null,
-                    university: row.University ?? null,
-                    englishLevel: row["English Level"] ?? null,
+                    fullName: r.full_name,
+                    gender: r.gender,
+                    position: r.position,
+                    area: r.area,
+                    supervisorName: r.supervisor_name,
+                    corporateEmail: r.corporate_email,
+                    dateStarted: r.date_started ? new Date(r.date_started) : null,
+                    monthStarted: r.month_started,
+                    indefiniteContractDate: r.indefinite_contract_date ? new Date(r.indefinite_contract_date) : null,
+                    antiquityLabel: r.antiquity_label,
+                    contractType: r.contract_type,
+                    professionalProfile: r.professional_profile,
+                    university: r.university,
+                    englishLevel: r.english_level,
                     sensitiveDataEnc,
-                    uploadBatchId,
-                    uploadedAt,
+                    uploadBatchId: r.upload_batch_id,
+                    uploadedAt: new Date(r.uploaded_at),
                 },
                 update: {
-                    branchCode,
-                    fullName,
-                    gender: row[" GENDER"] ?? null,
-                    position: row["Position POSITION"] ?? null,
-                    area: row.Area ?? null,
-                    supervisorName: row.Supervisor ?? null,
-                    corporateEmail: row["Corporate email"] ?? null,
-                    dateStarted,
-                    monthStarted: row.Month ?? null,
-                    indefiniteContractDate,
-                    antiquityLabel: row.antiquity ?? null,
-                    contractType: row["Tipo de contrato"] ?? null,
-                    professionalProfile: row["Professional Profile "] ?? null,
-                    university: row.University ?? null,
-                    englishLevel: row["English Level"] ?? null,
+                    branchCode: r.branch_code,
+                    fullName: r.full_name,
+                    gender: r.gender,
+                    position: r.position,
+                    area: r.area,
+                    supervisorName: r.supervisor_name,
+                    corporateEmail: r.corporate_email,
+                    dateStarted: r.date_started ? new Date(r.date_started) : null,
+                    monthStarted: r.month_started,
+                    indefiniteContractDate: r.indefinite_contract_date ? new Date(r.indefinite_contract_date) : null,
+                    antiquityLabel: r.antiquity_label,
+                    contractType: r.contract_type,
+                    professionalProfile: r.professional_profile,
+                    university: r.university,
+                    englishLevel: r.english_level,
                     sensitiveDataEnc,
-                    uploadBatchId,
-                    uploadedAt,
+                    uploadBatchId: r.upload_batch_id,
+                    uploadedAt: new Date(r.uploaded_at),
                 },
             });
-
-            bigQueryRows.push({
-                upload_batch_id: uploadBatchId,
-                uploaded_at: uploadedAt.toISOString(),
-                tenant_code: tenantId,
-                branch_code: branchCode,
-                employee_number: employeeNumber,
-                full_name: fullName,
-                gender: row[" GENDER"] ?? null,
-                position: row["Position POSITION"] ?? null,
-                area: row.Area ?? null,
-                supervisor_name: row.Supervisor ?? null,
-                corporate_email: row["Corporate email"] ?? null,
-                date_started: dateStarted ? dateStarted.toISOString().slice(0, 10) : null,
-                month_started: row.Month ?? null,
-                indefinite_contract_date: indefiniteContractDate
-                    ? indefiniteContractDate.toISOString().slice(0, 10)
-                    : null,
-                antiquity_label: row.antiquity ?? null,
-                contract_type: row["Tipo de contrato"] ?? null,
-                professional_profile: row["Professional Profile "] ?? null,
-                university: row.University ?? null,
-                english_level: row["English Level"] ?? null,
-            });
+            savedCount++;
         }
 
-        // BigQuery: histórico append-only. Si falla, la carga a Supabase ya
-        // quedó guardada -- se informa el error pero no se revierte lo demás
-        // (la app sigue funcionando con Supabase; BigQuery es analítica, no
-        // la fuente de verdad operativa).
-        try {
-            await insertActiveRosterRows(bigQueryRows);
-        } catch (bqError) {
-            console.error("[uploadActiveRosterAction] BigQuery insert failed:", bqError);
-            return ok({ uploadBatchId, count: bigQueryRows.length });
-            // Nota: no se marca como error total -- ver comentario arriba.
-        }
-
-        return ok({ uploadBatchId, count: bigQueryRows.length });
+        return ok({ uploadBatchId, count: savedCount });
     } catch (err) {
         console.error("[uploadActiveRosterAction] failed:", err);
         return fail(err instanceof Error ? err.message : "Error desconocido al procesar la carga.");
